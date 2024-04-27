@@ -10,19 +10,16 @@
  * @author Eugene Kuleshov
  */
 // DontCheck(InterfaceIsType): can't be fixed (for backward binary compatibility).
-pub struct Opcodes {}
+pub struct Opcodes;
 
-pub struct OpcodesConsts {}
+pub struct OpcodesConsts;
 
-pub enum ASMVersion {
-    ASM4,
-    ASM5,
-    ASM6,
-    ASM7,
-    ASM8,
-    ASM9,
-    ASM10Experimental,
-}
+// versions are temporary unused
+// pub enum ASMVersion {
+//     ASM4, ASM5, ASM6,
+//     ASM7, ASM8, ASM9,
+//     ASM10Experimental,
+// }
 
 impl Opcodes {
     // Java ClassFile versions (the minor version is stored in the 16 most significant bits, and the
