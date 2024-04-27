@@ -4,4 +4,5 @@ pub mod opcodes;
 pub mod field;
 pub mod annotation;
 pub(crate) mod internal;
+pub mod attribute;
 

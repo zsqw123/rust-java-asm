@@ -1,12 +1,13 @@
 use crate::{asm_visitor, asm_visitor_impl};
 use crate::annotation::AnnotationVisitor;
+use crate::attribute::Attribute;
 
 asm_visitor! {
     pub struct FieldVisitor<'a>
 }
 
+// todo pub fn visitTypeAnnotation
 asm_visitor_impl! {
-    /// todo pub fn visitTypeAnnotation
     impl FieldVisitor<'_> {
        /// Visits an annotation of the field.
        ///
@@ -17,7 +18,7 @@ asm_visitor_impl! {
        /// interested in visiting this annotation.
        ///
         pub fn visit_annotation(&self, descriptor: &str, visible: bool) -> Option<&AnnotationVisitor>;
-        pub fn visit_attribute(&self) -> Option<()>;
+        pub fn visit_attribute(&self, attr: &Attribute) -> Option<()>;
         pub fn visit_end(&self) -> Option<()>;
     }
 }

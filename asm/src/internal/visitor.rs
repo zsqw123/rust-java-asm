@@ -9,7 +9,7 @@ macro_rules! asm_visitor {
         $vis struct $visitorName<$lt> {
             $vis delegated: Option<&$lt $visitorName<$lt>>,
         }
-        
+
         #[allow(dead_code)]
         impl<$lt> $visitorName<$lt> {
             pub fn new() -> Self {
@@ -32,7 +32,7 @@ macro_rules! asm_visitor_impl {
             $(
                 $(#[$funMeta:meta])*
                 $vis:vis fn $innerFuncName:ident(
-                    &self $(,)? $($parameterName:ident: $parameterType: ty),*
+                    &self $(,)? $($parameterName:ident: $parameterType: ty),* $(,)?
                 ) -> Option<$returns:ty>;
             )*
         }
