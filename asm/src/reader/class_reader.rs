@@ -9,6 +9,7 @@ pub struct ClassReader<'a> {
     constant_dynamic_values: Option<Vec<ConstantDynamic<'a>>>,
 }
 
+/// consts for [ClassReader]
 impl ClassReader<'_> {
     /// A flag to skip the Code attributes. If this flag is set the Code attributes are neither parsed
     /// nor visited.
