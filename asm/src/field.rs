@@ -6,6 +6,8 @@ asm_visitor! {
     pub struct FieldVisitor<'a>
 }
 
+pub struct FieldValue {}
+
 // todo pub fn visitTypeAnnotation
 asm_visitor_impl! {
     impl FieldVisitor<'_> {
