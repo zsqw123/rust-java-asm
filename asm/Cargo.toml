@@ -1,0 +1,4 @@
+[package]
+name = "java-asm"
+version.workspace =  true
+edition.workspace = true
