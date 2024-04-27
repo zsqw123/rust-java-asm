@@ -1,5 +1,5 @@
-use crate::attribute::Attribute;
 use crate::{asm_visitor, asm_visitor_impl};
+use crate::attribute::Attribute;
 
 asm_visitor! {
     pub struct MethodVisitor<'a>
@@ -134,7 +134,11 @@ asm_visitor_impl! {
         //
         pub fn visit_frame(&self, frame_type: i8, num_local: u32,
             local: &[LocalVariableType], num_stack: u32, stack: &[LocalVariableType]) -> Option<()>;
-
+        
+        // -----------------------------------------------------------------------------------------------
+        // Normal instructions
+        // -----------------------------------------------------------------------------------------------
+        
         // Visits a zero operand instruction.
         //
         // @param opcode the opcode of the instruction to be visited. This opcode is either NOP,

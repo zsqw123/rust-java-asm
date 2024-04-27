@@ -9,14 +9,14 @@ asm_visitor! {
 // todo pub fn visitTypeAnnotation
 asm_visitor_impl! {
     impl FieldVisitor<'_> {
-       /// Visits an annotation of the field.
-       ///
-       /// - descriptor the class descriptor of the annotation class.
-       /// - visible `true` if the annotation is visible at runtime.
-       ///
-       /// returns a visitor to visit the annotation values, or `null` if this visitor is not
-       /// interested in visiting this annotation.
-       ///
+        // Visits an annotation of the field.
+        //
+        // - descriptor the class descriptor of the annotation class.
+        // - visible `true` if the annotation is visible at runtime.
+        //
+        // returns a visitor to visit the annotation values, or `null` if this visitor is not
+        // interested in visiting this annotation.
+        //
         pub fn visit_annotation(&self, descriptor: &str, visible: bool) -> Option<&AnnotationVisitor>;
         pub fn visit_attribute(&self, attr: &Attribute) -> Option<()>;
         pub fn visit_end(&self) -> Option<()>;
