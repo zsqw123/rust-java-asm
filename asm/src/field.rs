@@ -6,7 +6,13 @@ asm_visitor! {
     pub struct FieldVisitor<'a>
 }
 
-pub struct FieldValue {}
+pub enum FieldValue {
+    Integer(i32),
+    Float(f32),
+    Long(i64),
+    Double(f64),
+    String(String),
+}
 
 // todo pub fn visitTypeAnnotation
 asm_visitor_impl! {

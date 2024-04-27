@@ -1,6 +1,7 @@
 use crate::{asm_visitor, asm_visitor_impl};
 use crate::annotation::AnnotationVisitor;
 use crate::attribute::Attribute;
+use crate::constant_dynamic::ConstantDynamic;
 use crate::handle::Handle;
 use crate::label::Label;
 use crate::type_path::TypePath;
@@ -15,12 +16,7 @@ pub enum LocalVariableType<'a> {
 }
 
 pub enum BootstrapMethodArgument<'a> {
-    ConstantDynamic {
-        name: &'a str,
-        descriptor: &'a str,
-        bootstrap_method: &'a Handle,
-        bootstrap_method_arguments: &'a [&'a BootstrapMethodArgument<'a>],
-    },
+    ConstantDynamic(ConstantDynamic<'a>)
 }
 
 pub enum LdcValue {
