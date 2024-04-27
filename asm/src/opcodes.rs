@@ -12,6 +12,8 @@
 // DontCheck(InterfaceIsType): can't be fixed (for backward binary compatibility).
 pub struct Opcodes {}
 
+pub struct OpcodesConsts {}
+
 pub enum ASMVersion {
     ASM4,
     ASM5,
@@ -111,7 +113,7 @@ impl Opcodes {
 
     // ASM specific stack map frame types, used in {@link ClassVisitor#visitFrame}.
     // Standard stack map frame element types, used in {@link ClassVisitor#visitFrame}.
-    // removed from ASM, refer to [Frame]
+    // removed from ASM, refer to [frame.rs]
 
 
     // The JVM opcode values (with the MethodVisitor method name used to visit them in comment, and
@@ -274,4 +276,52 @@ impl Opcodes {
     const MULTIANEWARRAY: u8 = 197; // visitMultiANewArrayInsn
     const IFNULL: u8 = 198; // visitJumpInsn
     const IFNONNULL: u8 = 199; // -
+}
+
+impl OpcodesConsts {
+    const LDC_W: u8 = 19;
+    const LDC2_W: u8 = 20;
+    const ILOAD_0: u8 = 26;
+    const ILOAD_1: u8 = 27;
+    const ILOAD_2: u8 = 28;
+    const ILOAD_3: u8 = 29;
+    const LLOAD_0: u8 = 30;
+    const LLOAD_1: u8 = 31;
+    const LLOAD_2: u8 = 32;
+    const LLOAD_3: u8 = 33;
+    const FLOAD_0: u8 = 34;
+    const FLOAD_1: u8 = 35;
+    const FLOAD_2: u8 = 36;
+    const FLOAD_3: u8 = 37;
+    const DLOAD_0: u8 = 38;
+    const DLOAD_1: u8 = 39;
+    const DLOAD_2: u8 = 40;
+    const DLOAD_3: u8 = 41;
+    const ALOAD_0: u8 = 42;
+    const ALOAD_1: u8 = 43;
+    const ALOAD_2: u8 = 44;
+    const ALOAD_3: u8 = 45;
+    const ISTORE_0: u8 = 59;
+    const ISTORE_1: u8 = 60;
+    const ISTORE_2: u8 = 61;
+    const ISTORE_3: u8 = 62;
+    const LSTORE_0: u8 = 63;
+    const LSTORE_1: u8 = 64;
+    const LSTORE_2: u8 = 65;
+    const LSTORE_3: u8 = 66;
+    const FSTORE_0: u8 = 67;
+    const FSTORE_1: u8 = 68;
+    const FSTORE_2: u8 = 69;
+    const FSTORE_3: u8 = 70;
+    const DSTORE_0: u8 = 71;
+    const DSTORE_1: u8 = 72;
+    const DSTORE_2: u8 = 73;
+    const DSTORE_3: u8 = 74;
+    const ASTORE_0: u8 = 75;
+    const ASTORE_1: u8 = 76;
+    const ASTORE_2: u8 = 77;
+    const ASTORE_3: u8 = 78;
+    const WIDE: u8 = 196;
+    const GOTO_W: u8 = 200;
+    const JSR_W: u8 = 201;
 }
