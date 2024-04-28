@@ -34,4 +34,14 @@ impl Constants {
     const NEST_MEMBERS: &'static str = "NestMembers";
     const PERMITTED_SUBCLASSES: &'static str = "PermittedSubclasses";
     const RECORD: &'static str = "Record";
+
+    const REF_getField: u8 = 1;
+    const REF_getStatic: u8 = 2;
+    const REF_putField: u8 = 3;
+    const REF_putStatic: u8 = 4;
+    const REF_invokeVirtual: u8 = 5;
+    const REF_invokeStatic: u8 = 6;
+    const REF_invokeSpecial: u8 = 7;
+    const REF_newInvokeSpecial: u8 = 8;
+    const REF_invokeInterface: u8 = 9;
 }

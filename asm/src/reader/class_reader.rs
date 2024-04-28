@@ -52,3 +52,7 @@ impl ClassReader<'_> {
     /// The size of the temporary byte array used to read class input streams chunk by chunk.
     const INPUT_STREAM_DATA_CHUNK_SIZE: u16 = 4096;
 }
+
+impl ClassReader<'_> {
+    
+}

@@ -147,7 +147,6 @@ asm_visitor_impl! {
         /// @throws IllegalStateException if a frame is visited just after another one, without any
         ///     instruction between the two (unless this frame is a Opcodes#F_SAME frame, in which case it
         ///     is silently ignored).
-        ///
         pub fn visit_frame(&self, frame_type: i8, num_local: u32,
             local: &[LocalVariableType], num_stack: u32, stack: &[LocalVariableType]) -> Option<()>;
 
