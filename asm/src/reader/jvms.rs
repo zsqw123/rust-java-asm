@@ -19,22 +19,22 @@
 
 /// [JVMS4](https://docs.oracle.com/javase/specs/jvms/se9/html/jvms-4.html)
 pub struct ClassFile {
-    magic: u32,
-    minor_version: u16,
-    major_version: u16,
-    constant_pool_count: u16,
-    constant_pool: Vec<CPInfo>,
-    access_flags: u16,
-    this_class: u16,
-    super_class: u16,
-    interfaces_count: u16,
-    interfaces: Vec<u16>,
-    fields_count: u16,
-    fields: Vec<FieldInfo>,
-    methods_count: u16,
-    methods: Vec<MethodInfo>,
-    attributes_count: u16,
-    attributes: Vec<AttributeInfo>,
+    pub magic: u32,
+    pub minor_version: u16,
+    pub major_version: u16,
+    pub constant_pool_count: u16,
+    pub constant_pool: Vec<CPInfo>,
+    pub access_flags: u16,
+    pub this_class: u16,
+    pub super_class: u16,
+    pub interfaces_count: u16,
+    pub interfaces: Vec<u16>,
+    pub fields_count: u16,
+    pub fields: Vec<FieldInfo>,
+    pub methods_count: u16,
+    pub methods: Vec<MethodInfo>,
+    pub attributes_count: u16,
+    pub attributes: Vec<AttributeInfo>,
 }
 
 // cp_info {
@@ -42,8 +42,8 @@ pub struct ClassFile {
 //     u1 info[];
 // }
 pub struct CPInfo {
-    tag: u8,
-    info: Const,
+    pub tag: u8,
+    pub info: Const,
 }
 
 pub enum Const {
@@ -133,11 +133,11 @@ pub enum Const {
 //     attribute_info attributes[attributes_count];
 // }
 pub struct FieldInfo {
-    access_flags: u16,
-    name_index: u16,
-    descriptor_index: u16,
-    attributes_count: u16,
-    attributes: Vec<AttributeInfo>,
+    pub access_flags: u16,
+    pub name_index: u16,
+    pub descriptor_index: u16,
+    pub attributes_count: u16,
+    pub attributes: Vec<AttributeInfo>,
 }
 
 // method_info {
@@ -148,11 +148,11 @@ pub struct FieldInfo {
 //     attribute_info attributes[attributes_count];
 // }
 pub struct MethodInfo {
-    access_flags: u16,
-    name_index: u16,
-    descriptor_index: u16,
-    attributes_count: u16,
-    attributes: Vec<AttributeInfo>,
+    pub access_flags: u16,
+    pub name_index: u16,
+    pub descriptor_index: u16,
+    pub attributes_count: u16,
+    pub attributes: Vec<AttributeInfo>,
 }
 
 // attribute_info {
@@ -161,9 +161,9 @@ pub struct MethodInfo {
 //     u1 info[attribute_length];
 // }
 pub struct AttributeInfo {
-    attribute_name_index: u16,
-    attribute_length: u32,
-    info: Attribute,
+    pub attribute_name_index: u16,
+    pub attribute_length: u32,
+    pub info: Attribute,
 }
 
 pub enum Attribute {
@@ -283,8 +283,8 @@ pub enum StackMapFrame {
 //     u2 catch_type;
 // }
 pub struct ExceptionTable {
-    start_pc: u16,
-    end_pc: u16,
-    handler_pc: u16,
-    catch_type: u16,
+    pub start_pc: u16,
+    pub end_pc: u16,
+    pub handler_pc: u16,
+    pub catch_type: u16,
 }
