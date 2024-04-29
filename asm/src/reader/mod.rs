@@ -1,2 +1,3 @@
 pub mod class_reader;
-pub mod jvms;
+mod jvms_reader;
+mod bytes_reader;
