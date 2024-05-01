@@ -2,7 +2,7 @@ use std::io::{BufReader, Read};
 
 use crate::constants::Constants;
 use crate::err::{AsmErr, AsmResult};
-use crate::jvms::{AttributeInfo, ClassFile, Const, CPInfo, FieldInfo, MethodInfo};
+use crate::jvms::{Attribute, AttributeInfo, ClassFile, Const, CPInfo, FieldInfo, MethodInfo};
 use crate::jvms::Const::Utf8;
 use crate::reader::bytes_reader::{FromReadContext, ReadContext};
 
@@ -112,8 +112,17 @@ impl FromReadContext<MethodInfo> for MethodInfo {
 }
 
 impl FromReadContext<AttributeInfo> for AttributeInfo {
+    /// Returns raw attributes in this section,
+    /// All attributes will be treated at [Attribute::Custom]
     fn from_context(context: &mut ReadContext) -> AsmResult<AttributeInfo> {
-        todo!()
+        let attribute_name_index: u16 = context.read()?;
+        let attribute_length: u32 = context.read()?;
+        let attribute_vec: Vec<u8> = context.read_vec(attribute_length as usize)?;
+        let info = Attribute::Custom(attribute_vec);
+        let attribute_info = AttributeInfo {
+            attribute_name_index, attribute_length, info,
+        };
+        Ok(attribute_info)
     }
 }
 
