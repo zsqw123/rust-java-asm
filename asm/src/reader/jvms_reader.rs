@@ -2,7 +2,7 @@ use std::io::{BufReader, Read};
 
 use crate::err::{AsmErr, AsmResult};
 use crate::jvms::{AttributeInfo, ClassFile, CPInfo, FieldInfo, MethodInfo};
-use crate::reader::bytes_reader::{FromReadContext, ReadContext, UReader};
+use crate::reader::bytes_reader::{FromReadContext, ReadContext};
 
 struct JvmsClassReader {}
 
@@ -15,13 +15,14 @@ impl JvmsClassReader {
             return Err(AsmErr::ContentReadErr { io_error: e });
         };
         let bytes = str.as_bytes();
-        ClassFile::from_context(&(bytes, &mut 0))
+        let index = &mut 0;
+        ClassFile::from_context(&mut ReadContext { bytes, index })
     }
 }
 
 
 impl FromReadContext<ClassFile> for ClassFile {
-    fn from_context(context: &ReadContext) -> AsmResult<ClassFile> {
+    fn from_context(context: &mut ReadContext) -> AsmResult<ClassFile> {
         let magic: u32 = context.read()?;
         let minor_version: u16 = context.read()?;
         let major_version: u16 = context.read()?;
@@ -52,32 +53,32 @@ impl FromReadContext<ClassFile> for ClassFile {
 }
 
 impl FromReadContext<CPInfo> for CPInfo {
-    fn from_context(context: &ReadContext) -> AsmResult<CPInfo> {
+    fn from_context(context: &mut ReadContext) -> AsmResult<CPInfo> {
         todo!()
     }
 }
 
 impl FromReadContext<FieldInfo> for FieldInfo {
-    fn from_context(context: &ReadContext) -> AsmResult<FieldInfo> {
+    fn from_context(context: &mut ReadContext) -> AsmResult<FieldInfo> {
         todo!()
     }
 }
 
 impl FromReadContext<MethodInfo> for MethodInfo {
-    fn from_context(context: &ReadContext) -> AsmResult<MethodInfo> {
+    fn from_context(context: &mut ReadContext) -> AsmResult<MethodInfo> {
         todo!()
     }
 }
 
 impl FromReadContext<AttributeInfo> for AttributeInfo {
-    fn from_context(context: &ReadContext) -> AsmResult<AttributeInfo> {
+    fn from_context(context: &mut ReadContext) -> AsmResult<AttributeInfo> {
         todo!()
     }
 }
 
 impl FromReadContext<u8> for u8 {
-    fn from_context(context: &ReadContext) -> AsmResult<u8> {
-        let (bytes, index) = *context;
+    fn from_context(context: &mut ReadContext) -> AsmResult<u8> {
+        let (bytes, index) = context.paired();
         let content = bytes[*index];
         *index += 1;
         Ok(content)
@@ -85,18 +86,18 @@ impl FromReadContext<u8> for u8 {
 }
 
 impl FromReadContext<u16> for u16 {
-    fn from_context(context: &ReadContext) -> AsmResult<u16> {
-        let (bytes, index) = *context;
+    fn from_context(context: &mut ReadContext) -> AsmResult<u16> {
+        let (bytes, index) = context.paired();
         let h = (bytes[*index] as u16) << 8;
         let l = bytes[*index + 1] as u16;
-        *index += 2;
+        // *index += 2;
         Ok(h | l)
     }
 }
 
 impl FromReadContext<u32> for u32 {
-    fn from_context(context: &ReadContext) -> AsmResult<u32> {
-        let (bytes, index) = *context;
+    fn from_context(context: &mut ReadContext) -> AsmResult<u32> {
+        let (bytes, index) = context.paired();
         let a = (bytes[*index] as u32) << 24;
         let b = (bytes[*index + 1] as u32) << 16;
         let c = (bytes[*index + 2] as u32) << 8;
