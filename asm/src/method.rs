@@ -34,7 +34,7 @@ asm_visitor_impl! {
 
         /// Visits a parameter of this method.
         ///
-        /// - name, parameter name or {@literal null} if none is provided.
+        /// - name, parameter name or [None] if none is provided.
         /// - access, the parameter's access flags, only {@code ACC_FINAL}, {@code ACC_SYNTHETIC}
         ///     or/and {@code ACC_MANDATED} are allowed (see {@link Opcodes}).
         pub fn visit_parameter(&self, name: &str, access: u8) -> Option<()>;
@@ -42,7 +42,7 @@ asm_visitor_impl! {
         /// Visits the default value of this annotation interface method.
         ///
         /// returns a visitor to the visit the actual default value of this annotation interface method, or
-        ///     {@literal null} if this visitor is not interested in visiting this default value. The
+        ///     [None] if this visitor is not interested in visiting this default value. The
         ///     'name' parameters passed to the methods of this annotation visitor are ignored. Moreover,
         ///     exactly one visit method must be called on this annotation visitor, followed by visitEnd.
         pub fn visit_annotation_default(&self) -> Option<MethodVisitor>;
@@ -52,7 +52,7 @@ asm_visitor_impl! {
         /// - descriptor the class descriptor of the annotation class.
         /// - visible {@literal true} if the annotation is visible at runtime.
         ///
-        /// returns a visitor to visit the annotation values, or {@literal null} if this visitor is not
+        /// returns a visitor to visit the annotation values, or [None] if this visitor is not
         ///     interested in visiting this annotation.
         pub fn visit_annotation(&self, descriptor: &str) -> Option<MethodVisitor>;
 
@@ -81,7 +81,7 @@ asm_visitor_impl! {
         /// - descriptor the class descriptor of the annotation class.
         /// - visible {@literal true} if the annotation is visible at runtime.
         ///
-        /// returns a visitor to visit the annotation values, or {@literal null} if this visitor is not
+        /// returns a visitor to visit the annotation values, or [None] if this visitor is not
         ///     interested in visiting this annotation.
         pub fn visit_parameter_annotation(&self, parameter: u8, descriptor: &str, visable:bool) -> Option<MethodVisitor>;
 
@@ -137,7 +137,7 @@ asm_visitor_impl! {
         ///     Opcodes#FLOAT}, {@link Opcodes#LONG}, {@link Opcodes#DOUBLE}, {@link Opcodes#NULL} or
         ///     {@link Opcodes#UNINITIALIZED_THIS} (long and double are represented by a single element).
         ///     Reference types are represented by String objects (representing internal names, see {@link
-        ///     Type#getInternalName()}), and uninitialized types by Label objects (this label designates
+        ///     Type#get_internal_name()}), and uninitialized types by Label objects (this label designates
         ///     the NEW instruction that created this uninitialized value).
         /// - numStack the number of operand stack elements in the visited frame. Long and double
         ///     values count for one stack element.
@@ -190,12 +190,12 @@ asm_visitor_impl! {
         pub fn visit_var_insn(&self, opcode: u8, var_index: u32) -> Option<()>;
 
         /// Visits a type instruction. A type instruction is an instruction that takes the internal name of
-        /// a class as parameter (see {@link Type#getInternalName()}).
+        /// a class as parameter (see {@link Type#get_internal_name()}).
         ///
         /// - opcode, the opcode of the type instruction to be visited. This opcode is either NEW,
         ///     ANEWARRAY, CHECKCAST or INSTANCEOF.
         /// - insn_type, the operand of the instruction to be visited. This operand must be the internal
-        ///     name of an object or array class (see {@link Type#getInternalName()}).
+        ///     name of an object or array class (see {@link Type#get_internal_name()}).
         pub fn visit_type_insn(&self, opcode: u8, insn_type: &str) -> Option<()>;
 
         /// Visits a field instruction. A field instruction is an instruction that loads or stores the
@@ -203,7 +203,7 @@ asm_visitor_impl! {
         ///
         /// - opcode, the opcode of the type instruction to be visited. This opcode is either
         /// GETSTATIC, PUTSTATIC, GETFIELD or PUTFIELD.
-        /// - owner, the internal name of the field's owner class (see {@link Type#getInternalName()}).
+        /// - owner, the internal name of the field's owner class (see {@link Type#get_internal_name()}).
         /// - name, the field's name.
         /// - descriptor, the field's descriptor (see {@link Type}).
         pub fn visit_field_insn(&self, opcode: u8, owner: &str, name: &str) -> Option<()>;
@@ -213,7 +213,7 @@ asm_visitor_impl! {
         /// - opcode the opcode of the type instruction to be visited. This opcode is either
         ///     INVOKEVIRTUAL, INVOKESPECIAL, INVOKESTATIC or INVOKEINTERFACE.
         /// - owner the internal name of the method's owner class (see {@link
-        ///     Type#getInternalName()}).
+        ///     Type#get_internal_name()}).
         /// - name the method's name.
         /// - descriptor the method's descriptor (see {@link Type}).
         /// - isInterface if the method's owner class is an interface.
@@ -334,12 +334,12 @@ asm_visitor_impl! {
         ///     TypeReference#CONSTRUCTOR_REFERENCE_TYPE_ARGUMENT}, or {@link
         ///     TypeReference#METHOD_REFERENCE_TYPE_ARGUMENT}. See {@link TypeReference}.
         /// - type_path the path to the annotated type argument, wildcard bound, array element type, or
-        ///     static inner type within 'typeRef'. May be {@literal null} if the annotation targets
+        ///     static inner type within 'typeRef'. May be [None] if the annotation targets
         ///     'typeRef' as a whole.
         /// - descriptor the class descriptor of the annotation class.
         /// - visible {@literal true} if the annotation is visible at runtime.
         ///
-        /// returns a visitor to visit the annotation values, or {@literal null} if this visitor is not
+        /// returns a visitor to visit the annotation values, or [None] if this visitor is not
         ///     interested in visiting this annotation.
         pub fn visit_insn_annotation(&self, type_ref: i32, type_path: &TypePath,
             descriptor: &str, visible: bool) -> Option<&AnnotationVisitor>;
@@ -355,7 +355,7 @@ asm_visitor_impl! {
         /// - end the end of the exception handler's scope (exclusive).
         /// - handler the beginning of the exception handler's code.
         /// - exception_type the internal name of the type of exceptions handled by the handler (see {@link
-        ///     Type#getInternalName()}), or {@literal null} to catch any exceptions (for "finally"
+        ///     Type#get_internal_name()}), or [None] to catch any exceptions (for "finally"
         ///     blocks).
         ///
         /// @throws IllegalArgumentException if one of the labels has already been visited by this visitor
@@ -371,12 +371,12 @@ asm_visitor_impl! {
         /// - type_ref a reference to the annotated type. The sort of this type reference must be
         ///     {@link TypeReference#EXCEPTION_PARAMETER}. See {@link TypeReference}.
         /// - type_path the path to the annotated type argument, wildcard bound, array element type, or
-        ///     static inner type within 'typeRef'. May be {@literal null} if the annotation targets
+        ///     static inner type within 'typeRef'. May be [None] if the annotation targets
         ///     'typeRef' as a whole.
         /// - descriptor the class descriptor of the annotation class.
         /// - visible {@literal true} if the annotation is visible at runtime.
         ///
-        /// returns a visitor to visit the annotation values, or {@literal null} if this visitor is not
+        /// returns a visitor to visit the annotation values, or [None] if this visitor is not
         ///     interested in visiting this annotation.
         pub fn visit_try_catch_annotation(&self, type_ref: i32, type_path: &TypePath, 
             descriptor: &str, visible: bool) -> Option<&AnnotationVisitor>;
@@ -385,7 +385,7 @@ asm_visitor_impl! {
         ///
         /// - name the name of a local variable.
         /// - descriptor the type descriptor of this local variable.
-        /// - signature the type signature of this local variable. May be {@literal null} if the local
+        /// - signature the type signature of this local variable. May be [None] if the local
         ///     variable type does not use generic types.
         /// - start the first instruction corresponding to the scope of this local variable
         ///     (inclusive).
@@ -405,7 +405,7 @@ asm_visitor_impl! {
         ///     {@link TypeReference#LOCAL_VARIABLE} or {@link TypeReference#RESOURCE_VARIABLE}. See {@link
         ///     TypeReference}.
         /// - type_path the path to the annotated type argument, wildcard bound, array element type, or
-        ///     static inner type within 'typeRef'. May be {@literal null} if the annotation targets
+        ///     static inner type within 'typeRef'. May be [None] if the annotation targets
         ///     'typeRef' as a whole.
         /// - start the fist instructions corresponding to the continuous ranges that make the scope
         ///     of this local variable (inclusive).
@@ -416,7 +416,7 @@ asm_visitor_impl! {
         /// - descriptor the class descriptor of the annotation class.
         /// - visible {@literal true} if the annotation is visible at runtime.
         ///
-        /// returns a visitor to visit the annotation values, or {@literal null} if this visitor is not
+        /// returns a visitor to visit the annotation values, or [None] if this visitor is not
         ///     interested in visiting this annotation.
         pub fn visit_local_variable_annotation(&self,
             type_ref: i32,

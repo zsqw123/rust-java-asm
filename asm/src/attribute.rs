@@ -1,7 +1,7 @@
 #[derive(Debug)]
-pub struct Attribute<'a> {
-    attr_type: &'a str,
-    content: &'a [i8],
-    next_attr: Option<&'a Attribute<'a>>
+pub struct Attribute {
+    attr_type: String,
+    content: Vec<u8>,
+    next_attr: Option<Box<Attribute>>,
 }
 

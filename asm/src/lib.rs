@@ -13,4 +13,6 @@ pub mod constant_dynamic;
 pub mod constants;
 pub mod jvms;
 mod err;
+pub mod nodes;
+pub mod asm_type;
 

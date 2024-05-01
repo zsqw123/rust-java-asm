@@ -31,7 +31,7 @@ asm_visitor_impl! {
         /// - name, the value name.
         /// - descriptor, the class descriptor of the nested annotation class.
         ///
-        /// returns a visitor to visit the actual nested annotation value, or {@literal null} if this
+        /// returns a visitor to visit the actual nested annotation value, or [None] if this
         ///     visitor is not interested in visiting this nested annotation. <i>The nested annotation
         ///     value must be fully visited before calling other methods on this annotation visitor</i>.
         fn visit_annotation(&self, name: &str, descriptor: &str) -> Option<&Self> ;
@@ -41,7 +41,7 @@ asm_visitor_impl! {
         /// visit}. This is what {@link ClassReader} does for non empty arrays of primitive values.
         ///
         /// - name, the value name.
-        /// returns a visitor to visit the actual array value elements, or {@literal null} if this visitor
+        /// returns a visitor to visit the actual array value elements, or [None] if this visitor
         ///     is not interested in visiting these values. The 'name' parameters passed to the methods of
         ///     this visitor are ignored. <i>All the array values must be visited before calling other
         ///     methods on this annotation visitor</i>.

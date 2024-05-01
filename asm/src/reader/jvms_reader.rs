@@ -6,10 +6,10 @@ use crate::jvms::{Attribute, AttributeInfo, ClassFile, Const, CPInfo, FieldInfo,
 use crate::jvms::Const::Utf8;
 use crate::reader::bytes_reader::{FromReadContext, ReadContext};
 
-struct JvmsClassReader {}
+pub struct JvmsClassReader {}
 
 impl JvmsClassReader {
-    fn read_class_file<T: Read>(read: T) -> AsmResult<ClassFile> {
+    pub fn read_class_file<T: Read>(read: T) -> AsmResult<ClassFile> {
         let mut reader = BufReader::new(read);
         let mut str = String::new();
         let read_result = reader.read_to_string(&mut str);

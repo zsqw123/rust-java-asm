@@ -3,7 +3,7 @@
 resolver = "2"
 members = [
     "asm",
-    "asm-tree"
+#    "asm-tree" # merged in asm module
 ]
 
 [workspace.package]
