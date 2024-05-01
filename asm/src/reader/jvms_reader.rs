@@ -9,7 +9,7 @@ use crate::reader::bytes_reader::{FromReadContext, ReadContext};
 struct JvmsClassReader {}
 
 impl JvmsClassReader {
-    fn from_readable<T: Read>(read: T) -> AsmResult<ClassFile> {
+    fn read_class_file<T: Read>(read: T) -> AsmResult<ClassFile> {
         let mut reader = BufReader::new(read);
         let mut str = String::new();
         let read_result = reader.read_to_string(&mut str);
@@ -62,13 +62,33 @@ impl FromReadContext<CPInfo> for CPInfo {
     }
 }
 
+struct MemberInfo {
+    access_flags: u16,
+    name_index: u16,
+    descriptor_index: u16,
+    attributes_count: u16,
+    attributes: Vec<AttributeInfo>,
+}
+
+fn member_from_context(context: &mut ReadContext) -> AsmResult<MemberInfo> {
+    let access_flags: u16 = context.read()?;
+    let name_index: u16 = context.read()?;
+    let descriptor_index: u16 = context.read()?;
+    let attributes_count: u16 = context.read()?;
+    let attributes: Vec<AttributeInfo> = context.read_vec(attributes_count as usize)?;
+    let member = MemberInfo {
+        access_flags, name_index, descriptor_index,
+        attributes_count, attributes,
+    };
+    Ok(member)
+}
+
 impl FromReadContext<FieldInfo> for FieldInfo {
     fn from_context(context: &mut ReadContext) -> AsmResult<FieldInfo> {
-        let access_flags: u16 = context.read()?;
-        let name_index: u16 = context.read()?;
-        let descriptor_index: u16 = context.read()?;
-        let attributes_count: u16 = context.read()?;
-        let attributes: Vec<AttributeInfo> = context.read_vec(attributes_count as usize)?;
+        let MemberInfo {
+            access_flags, name_index, descriptor_index,
+            attributes_count, attributes,
+        } = member_from_context(context)?;
         let field = FieldInfo {
             access_flags, name_index, descriptor_index,
             attributes_count, attributes,
@@ -79,44 +99,21 @@ impl FromReadContext<FieldInfo> for FieldInfo {
 
 impl FromReadContext<MethodInfo> for MethodInfo {
     fn from_context(context: &mut ReadContext) -> AsmResult<MethodInfo> {
-        todo!()
+        let MemberInfo {
+            access_flags, name_index, descriptor_index,
+            attributes_count, attributes,
+        } = member_from_context(context)?;
+        let method = MethodInfo {
+            access_flags, name_index, descriptor_index,
+            attributes_count, attributes,
+        };
+        Ok(method)
     }
 }
 
 impl FromReadContext<AttributeInfo> for AttributeInfo {
     fn from_context(context: &mut ReadContext) -> AsmResult<AttributeInfo> {
         todo!()
-    }
-}
-
-impl FromReadContext<u8> for u8 {
-    fn from_context(context: &mut ReadContext) -> AsmResult<u8> {
-        let (bytes, index) = context.paired();
-        let content = bytes[*index];
-        *index += 1;
-        Ok(content)
-    }
-}
-
-impl FromReadContext<u16> for u16 {
-    fn from_context(context: &mut ReadContext) -> AsmResult<u16> {
-        let (bytes, index) = context.paired();
-        let h = (bytes[*index] as u16) << 8;
-        let l = bytes[*index + 1] as u16;
-        *index += 2;
-        Ok(h | l)
-    }
-}
-
-impl FromReadContext<u32> for u32 {
-    fn from_context(context: &mut ReadContext) -> AsmResult<u32> {
-        let (bytes, index) = context.paired();
-        let a = (bytes[*index] as u32) << 24;
-        let b = (bytes[*index + 1] as u32) << 16;
-        let c = (bytes[*index + 2] as u32) << 8;
-        let d = bytes[*index + 3] as u32;
-        *index += 4;
-        Ok(a | b | c | d)
     }
 }
 
@@ -165,5 +162,4 @@ impl Const {
         Ok(info)
     }
 }
-
 

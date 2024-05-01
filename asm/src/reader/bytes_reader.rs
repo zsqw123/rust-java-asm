@@ -33,3 +33,36 @@ impl ReadContext<'_> {
         Ok(vec)
     }
 }
+
+impl FromReadContext<u8> for u8 {
+    fn from_context(context: &mut ReadContext) -> AsmResult<u8> {
+        let (bytes, index) = context.paired();
+        let content = bytes[*index];
+        *index += 1;
+        Ok(content)
+    }
+}
+
+impl FromReadContext<u16> for u16 {
+    fn from_context(context: &mut ReadContext) -> AsmResult<u16> {
+        let (bytes, index) = context.paired();
+        let h = (bytes[*index] as u16) << 8;
+        let l = bytes[*index + 1] as u16;
+        *index += 2;
+        Ok(h | l)
+    }
+}
+
+impl FromReadContext<u32> for u32 {
+    fn from_context(context: &mut ReadContext) -> AsmResult<u32> {
+        let (bytes, index) = context.paired();
+        let a = (bytes[*index] as u32) << 24;
+        let b = (bytes[*index + 1] as u32) << 16;
+        let c = (bytes[*index + 2] as u32) << 8;
+        let d = bytes[*index + 3] as u32;
+        *index += 4;
+        Ok(a | b | c | d)
+    }
+}
+
+
