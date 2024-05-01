@@ -181,20 +181,6 @@ impl FromReadContext<ExceptionTable> for ExceptionTable {
 
 impl FromReadContext<StackMapFrame> for StackMapFrame {
     fn from_context(context: &mut ReadContext) -> AsmResult<StackMapFrame> {
-        macro_rules! match_context {
-            {$($constName:ident => $constType:ident {
-                $($fieldIdent:ident $(,)?)*
-            },)*} => {
-                match tag {
-                    $(Constants::$constName => Const::$constType {
-                            $($fieldIdent: context.read()?,)*
-                    },)*
-                    _ => return Err(AsmErr::IllegalArgument {
-                        info: format!("unknown const tag in const pool: {}", tag),
-                    }),
-                }
-            };
-        }
         let frame_type: u8 = context.read()?;
         let frame = match frame_type {
             0..=63 => StackMapFrame::SameFrame { frame_type },
@@ -203,10 +189,44 @@ impl FromReadContext<StackMapFrame> for StackMapFrame {
                 verification_type_info: context.read()?,
 
             },
-            _ => { return Err() }
-        }
-
-        Err()
+            247 => StackMapFrame::SameLocals1StackItemFrameExtended {
+                frame_type,
+                offset_delta: context.read()?,
+                verification_type_info: context.read()?,
+            },
+            248..=250 => StackMapFrame::ChopFrame {
+                frame_type,
+                offset_delta: context.read()?,
+            },
+            251 => StackMapFrame::SameFrameExtended {
+                frame_type,
+                offset_delta: context.read()?,
+            },
+            252..=254 => StackMapFrame::AppendFrame {
+                frame_type,
+                offset_delta: context.read()?,
+                locals: context.read_vec((frame_type - 251) as usize)?,
+            },
+            255 => {
+                let offset_delta: u16 = context.read()?;
+                let number_of_locals: u16 = context.read()?;
+                let locals: Vec<VerificationTypeInfo> = context.read_vec(number_of_locals as usize)?;
+                let number_of_stack_items: u16 = context.read()?;
+                let stack: Vec<VerificationTypeInfo> = context.read_vec(number_of_stack_items as usize)?;
+                StackMapFrame::FullFrame {
+                    frame_type,
+                    offset_delta,
+                    number_of_locals,
+                    locals,
+                    number_of_stack_items,
+                    stack,
+                }
+            },
+            _ => return Err(AsmErr::IllegalArgument(
+                format!("unknown frame type: {}", frame_type)
+            ))
+        };
+        Ok(frame)
     }
 }
 
