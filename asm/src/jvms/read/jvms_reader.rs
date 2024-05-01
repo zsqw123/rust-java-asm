@@ -175,7 +175,12 @@ impl Const {
 
 impl FromReadContext<ExceptionTable> for ExceptionTable {
     fn from_context(context: &mut ReadContext) -> AsmResult<ExceptionTable> {
-        todo!()
+        Ok(ExceptionTable {
+            start_pc: context.read()?,
+            end_pc: context.read()?,
+            handler_pc: context.read()?,
+            catch_type: context.read()?,
+        })
     }
 }
 
