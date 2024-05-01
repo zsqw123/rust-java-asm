@@ -64,7 +64,16 @@ impl FromReadContext<CPInfo> for CPInfo {
 
 impl FromReadContext<FieldInfo> for FieldInfo {
     fn from_context(context: &mut ReadContext) -> AsmResult<FieldInfo> {
-        todo!()
+        let access_flags: u16 = context.read()?;
+        let name_index: u16 = context.read()?;
+        let descriptor_index: u16 = context.read()?;
+        let attributes_count: u16 = context.read()?;
+        let attributes: Vec<AttributeInfo> = context.read_vec(attributes_count as usize)?;
+        let field = FieldInfo {
+            access_flags, name_index, descriptor_index,
+            attributes_count, attributes,
+        };
+        Ok(field)
     }
 }
 
