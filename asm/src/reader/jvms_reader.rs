@@ -114,7 +114,7 @@ impl FromReadContext<u32> for u32 {
 impl Const {
     #[allow(unused_variables)]
     fn from_context(context: &mut ReadContext, tag: u8) -> AsmResult<Const> {
-        macro_rules! context_from_tag {
+        macro_rules! match_context {
             {$($constName:ident => $constType:ident {
                 $($fieldIdent:ident $(,)?)*
             },)*} => {
@@ -133,7 +133,7 @@ impl Const {
             };
         }
 
-        let info = context_from_tag! {
+        let info = match_context! {
             CONSTANT_Class => Class { name_index },
             // refs
             CONSTANT_Fieldref => Field { class_index, name_and_type_index },
