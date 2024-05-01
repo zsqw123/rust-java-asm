@@ -1,8 +1,10 @@
 use std::io;
+use std::string::FromUtf8Error;
 
 pub enum AsmErr {
     ContentReadErr { io_error: io::Error },
-    IllegalArgument { info: String },
+    IllegalArgument(String),
+    ReadUTF8(FromUtf8Error),
 }
 
 pub(crate) type AsmResult<T> = Result<T, AsmErr>;

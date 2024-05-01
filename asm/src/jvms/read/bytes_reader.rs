@@ -10,6 +10,7 @@ impl ReadContext<'_> {
         ReadContext { bytes: self.bytes, index: self.index }
     }
 
+    #[inline]
     pub fn paired(&mut self) -> (&[u8], &mut usize) {
         (self.bytes, self.index)
     }

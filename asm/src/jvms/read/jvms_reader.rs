@@ -2,8 +2,9 @@ use std::io::{BufReader, Read};
 
 use crate::constants::Constants;
 use crate::err::{AsmErr, AsmResult};
-use crate::jvms::element::{Attribute, AttributeInfo, ClassFile, Const, CPInfo, FieldInfo, MethodInfo};
+use crate::jvms::element::{Attribute, AttributeInfo, ClassFile, Const, CPInfo, ExceptionTable, FieldInfo, MethodInfo, StackMapFrame, VerificationTypeInfo};
 use crate::jvms::element::Const::Utf8;
+use crate::jvms::frame::Frame;
 use crate::jvms::read::bytes_reader::{FromReadContext, ReadContext};
 
 pub struct JvmsClassReader {}
@@ -141,9 +142,9 @@ impl Const {
                         let length = context.read()?;
                         Utf8 { length, bytes: context.read_vec(length as usize)? }
                     }
-                    _ => return Err(AsmErr::IllegalArgument {
-                        info: format!("unknown const tag in const pool: {}", tag),
-                    }),
+                    _ => return Err(AsmErr::IllegalArgument(
+                        format!("unknown const tag in const pool: {}", tag),
+                    )),
                 }
             };
         }
@@ -172,3 +173,60 @@ impl Const {
     }
 }
 
+impl FromReadContext<ExceptionTable> for ExceptionTable {
+    fn from_context(context: &mut ReadContext) -> AsmResult<ExceptionTable> {
+        todo!()
+    }
+}
+
+impl FromReadContext<StackMapFrame> for StackMapFrame {
+    fn from_context(context: &mut ReadContext) -> AsmResult<StackMapFrame> {
+        macro_rules! match_context {
+            {$($constName:ident => $constType:ident {
+                $($fieldIdent:ident $(,)?)*
+            },)*} => {
+                match tag {
+                    $(Constants::$constName => Const::$constType {
+                            $($fieldIdent: context.read()?,)*
+                    },)*
+                    _ => return Err(AsmErr::IllegalArgument {
+                        info: format!("unknown const tag in const pool: {}", tag),
+                    }),
+                }
+            };
+        }
+        let frame_type: u8 = context.read()?;
+        let frame = match frame_type {
+            0..=63 => StackMapFrame::SameFrame { frame_type },
+            64..=127 => StackMapFrame::SameLocals1StackItemFrame {
+                frame_type,
+                verification_type_info: context.read()?,
+
+            },
+            _ => { return Err() }
+        }
+
+        Err()
+    }
+}
+
+impl FromReadContext<VerificationTypeInfo> for VerificationTypeInfo {
+    fn from_context(context: &mut ReadContext) -> AsmResult<VerificationTypeInfo> {
+        let tag: u8 = context.read()?;
+        let type_info = match tag {
+            Frame::ITEM_Top => VerificationTypeInfo::Top { tag },
+            Frame::ITEM_Integer => VerificationTypeInfo::Integer { tag },
+            Frame::ITEM_Float => VerificationTypeInfo::Float { tag },
+            Frame::ITEM_Null => VerificationTypeInfo::Null { tag },
+            Frame::ITEM_UninitializedThis => VerificationTypeInfo::UninitializedThis { tag },
+            Frame::ITEM_Object => VerificationTypeInfo::Object { tag, cpool_index: context.read()? },
+            Frame::ITEM_Uninitialized => VerificationTypeInfo::Uninitialized { tag, offset: context.read()? },
+            Frame::ITEM_Long => VerificationTypeInfo::Long { tag },
+            Frame::ITEM_Double => VerificationTypeInfo::Double { tag },
+            _ => return Err(AsmErr::IllegalArgument(
+                format!("unknown frame tag: {}", tag)
+            ))
+        };
+        Ok(type_info)
+    }
+}
