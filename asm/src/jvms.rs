@@ -107,11 +107,12 @@ pub enum Const {
     //     u2 descriptor_index; // CONSTANT_Utf8_info 
     // }
     MethodType { descriptor_index: u16 },
-    // CONSTANT_InvokeDynamic_info {
+    // CONSTANT_Dynamic_info { (similar with CONSTANT_InvokeDynamic_info)
     //     u1 tag;
     //     u2 bootstrap_method_attr_index; // BootstrapMethods_attribute 
     //     u2 name_and_type_index; // CONSTANT_NameAndType_info 
     // }
+    Dynamic { bootstrap_method_attr_index: u16, name_and_type_index: u16 },
     InvokeDynamic { bootstrap_method_attr_index: u16, name_and_type_index: u16 },
     // CONSTANT_Module_info {
     //     u1 tag;

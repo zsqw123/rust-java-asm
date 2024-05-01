@@ -1,9 +1,9 @@
 #[macro_export]
 macro_rules! asm_visitor {
-    (
+    {
         $(#[$classMeta:meta])*
         $vis:vis struct $visitorName:ident<$lt:lifetime>
-    ) => {
+    } => {
         $(#[$classMeta])*
         #[derive(Default)]
         $vis struct $visitorName<$lt> {
@@ -26,7 +26,7 @@ macro_rules! asm_visitor {
 
 #[macro_export]
 macro_rules! asm_visitor_impl {
-    (
+    {
         $(#[$classMeta:meta])*
         impl $visitorName:ident<$lt:lifetime> {
             $(
@@ -36,7 +36,7 @@ macro_rules! asm_visitor_impl {
                 ) -> Option<$returns:ty>;
             )*
         }
-    ) => {
+    } => {
         $(#[$classMeta])*
         #[allow(dead_code)]
         impl $visitorName<$lt> {

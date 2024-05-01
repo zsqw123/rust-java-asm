@@ -1,7 +1,9 @@
 use std::io::{BufReader, Read};
 
+use crate::constants::Constants;
 use crate::err::{AsmErr, AsmResult};
-use crate::jvms::{AttributeInfo, ClassFile, CPInfo, FieldInfo, MethodInfo};
+use crate::jvms::{AttributeInfo, ClassFile, Const, CPInfo, FieldInfo, MethodInfo};
+use crate::jvms::Const::Utf8;
 use crate::reader::bytes_reader::{FromReadContext, ReadContext};
 
 struct JvmsClassReader {}
@@ -54,7 +56,9 @@ impl FromReadContext<ClassFile> for ClassFile {
 
 impl FromReadContext<CPInfo> for CPInfo {
     fn from_context(context: &mut ReadContext) -> AsmResult<CPInfo> {
-        todo!()
+        let tag: u8 = context.read()?;
+        let info: Const = Const::from_context(context, tag)?;
+        Ok(CPInfo { tag, info })
     }
 }
 
@@ -90,7 +94,7 @@ impl FromReadContext<u16> for u16 {
         let (bytes, index) = context.paired();
         let h = (bytes[*index] as u16) << 8;
         let l = bytes[*index + 1] as u16;
-        // *index += 2;
+        *index += 2;
         Ok(h | l)
     }
 }
@@ -104,6 +108,52 @@ impl FromReadContext<u32> for u32 {
         let d = bytes[*index + 3] as u32;
         *index += 4;
         Ok(a | b | c | d)
+    }
+}
+
+impl Const {
+    #[allow(unused_variables)]
+    fn from_context(context: &mut ReadContext, tag: u8) -> AsmResult<Const> {
+        macro_rules! context_from_tag {
+            {$($constName:ident => $constType:ident {
+                $($fieldIdent:ident $(,)?)*
+            },)*} => {
+                match tag {
+                    $(Constants::$constName => Const::$constType {
+                            $($fieldIdent: context.read()?,)*  
+                    },)*
+                    Constants::CONSTANT_Utf8 => {
+                        let length = context.read()?;
+                        Utf8 { length, bytes: context.read_vec(length as usize)? }
+                    }
+                    _ => return Err(AsmErr::IllegalArgument {
+                        info: format!("unknown const tag in const pool: {}", tag),
+                    }),
+                }
+            };
+        }
+
+        let info = context_from_tag! {
+            CONSTANT_Class => Class { name_index },
+            // refs
+            CONSTANT_Fieldref => Field { class_index, name_and_type_index },
+            CONSTANT_Methodref => Method { class_index,name_and_type_index },
+            CONSTANT_InterfaceMethodref => InterfaceMethod { class_index, name_and_type_index },
+            // numbers
+            CONSTANT_Integer => Integer { bytes },
+            CONSTANT_Float => Float { bytes },
+            CONSTANT_Long => Long { high_bytes, low_bytes },
+            CONSTANT_Double => Double { high_bytes, low_bytes },
+            // others
+            CONSTANT_NameAndType => NameAndType { name_index, descriptor_index },
+            CONSTANT_MethodHandle => MethodHandle { reference_kind, reference_index},
+            CONSTANT_MethodType => MethodType { descriptor_index },
+            CONSTANT_Dynamic => Dynamic { bootstrap_method_attr_index, name_and_type_index },
+            CONSTANT_InvokeDynamic => InvokeDynamic { bootstrap_method_attr_index, name_and_type_index },
+            CONSTANT_Module => Module { name_index },
+            CONSTANT_Package => Package { name_index },
+        };
+        Ok(info)
     }
 }
 
