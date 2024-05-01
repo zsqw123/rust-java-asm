@@ -61,7 +61,7 @@ pub struct ClassNode {
     /// The runtime invisible type annotations of this class.
     pub invisible_type_annotations: Vec<TypeAnnotationNode>,
 
-    /// The non standard attributes of this class.
+    /// The non-standard attributes of this class.
     pub attrs: Vec<Attribute>,
 
     /// The inner classes of this class.
@@ -87,7 +87,9 @@ pub struct ClassNode {
     pub methods: Vec<MethodNode>,
 }
 
-pub struct ModuleNode {}
+pub struct ModuleNode {
+    
+}
 
 pub struct TypeAnnotationNode {}
 
@@ -100,5 +102,9 @@ pub struct MethodNode {}
 pub struct FieldNode {}
 
 pub struct RecordComponentNode {}
+
+pub enum InsnNode {
+    
+}
 
 

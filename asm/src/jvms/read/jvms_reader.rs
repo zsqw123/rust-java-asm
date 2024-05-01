@@ -2,9 +2,9 @@ use std::io::{BufReader, Read};
 
 use crate::constants::Constants;
 use crate::err::{AsmErr, AsmResult};
-use crate::jvms::{Attribute, AttributeInfo, ClassFile, Const, CPInfo, FieldInfo, MethodInfo};
-use crate::jvms::Const::Utf8;
-use crate::reader::bytes_reader::{FromReadContext, ReadContext};
+use crate::jvms::element::{Attribute, AttributeInfo, ClassFile, Const, CPInfo, FieldInfo, MethodInfo};
+use crate::jvms::element::Const::Utf8;
+use crate::jvms::read::bytes_reader::{FromReadContext, ReadContext};
 
 pub struct JvmsClassReader {}
 
@@ -135,7 +135,7 @@ impl Const {
             },)*} => {
                 match tag {
                     $(Constants::$constName => Const::$constType {
-                            $($fieldIdent: context.read()?,)*  
+                            $($fieldIdent: context.read()?,)*
                     },)*
                     Constants::CONSTANT_Utf8 => {
                         let length = context.read()?;
