@@ -6,6 +6,7 @@ use crate::jvms::write::bytes::WriteContext;
 
 mod jvms_writer;
 mod bytes;
+mod attrs;
 
 pub struct JvmsClassWriter {}
 
@@ -26,3 +27,42 @@ impl JvmsClassWriter {
     }
 }
 
+macro_rules! push_enum {
+    (
+        $contextExpr:expr, $fromExpr:expr;
+        $(@$enumPath1:path {
+            $( $fieldIdent1:ident $(,)? )*
+        };)*
+        $($enumPath2:path {
+            $( $fieldIdent2:ident $(,)? )*
+        };)*
+    ) => {
+        match $fromExpr {
+            $($enumPath1($($fieldIdent1,)*) => {
+                $(
+                    $contextExpr.push($fieldIdent1)?;
+                )*
+            })*
+            $($enumPath2{$($fieldIdent2,)*} => {
+                $(
+                    $contextExpr.push($fieldIdent2)?;
+                )*
+            })* 
+        }
+    };
+}
+
+pub(crate) use push_enum;
+
+macro_rules! push_items {
+    (
+        $contextExpr:expr, $fromExpr:expr;
+        $($fieldIdent:ident $(,)?)*
+    ) => {
+        $(
+            $contextExpr.push($fromExpr.$fieldIdent)?;
+        )*
+    };
+}
+
+pub(crate) use push_items;

@@ -1,6 +1,7 @@
 use crate::constants::Constants;
 use crate::err::AsmResult;
-use crate::jvms::element::{Attribute, AttributeInfo, ClassFile, CPInfo, ExceptionTable, FieldInfo, MethodInfo, StackMapFrame};
+use crate::jvms::attrs::{Attribute, ExceptionTable, StackMapFrame};
+use crate::jvms::element::{AttributeInfo, ClassFile, CPInfo,  FieldInfo, MethodInfo};
 use crate::jvms::read::bytes::ReadContext;
 use crate::jvms::read::util::read_utf8_from_cp;
 
