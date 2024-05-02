@@ -1,7 +1,6 @@
 use crate::constant_dynamic::ConstantDynamic;
 
-pub struct ClassReader<'a> {
-    class_file_buffer: &'a Vec<i8>,
+pub struct ClassReaderOption<'a> {
     header: u32,
     constant_pool_offsets: &'a Vec<u32>,
     constant_utf8_values: Vec<String>,
@@ -10,7 +9,7 @@ pub struct ClassReader<'a> {
 }
 
 /// consts for [ClassReader]
-impl ClassReader<'_> {
+impl ClassReaderOption<'_> {
     /// A flag to skip the Code attributes. If this flag is set the Code attributes are neither parsed
     /// nor visited.
     const SKIP_CODE: u16 = 1;
@@ -53,6 +52,6 @@ impl ClassReader<'_> {
     const INPUT_STREAM_DATA_CHUNK_SIZE: u16 = 4096;
 }
 
-impl ClassReader<'_> {
+impl ClassReaderOption<'_> {
     
 }

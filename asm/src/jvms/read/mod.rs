@@ -8,6 +8,7 @@ mod jvms_reader;
 mod bytes;
 mod transforms;
 pub mod util;
+mod attrs_reader;
 
 pub struct JvmsClassReader {}
 

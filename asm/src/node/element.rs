@@ -1,7 +1,7 @@
 use crate::asm_type::Type;
-use crate::attribute::Attribute;
 use crate::opcodes::Opcodes;
 
+#[derive(Clone, Debug)]
 pub struct ClassNode {
     /// The class version. The minor version is stored in the 16 most significant bits, and the major
     /// version in the 16 least significant bits.
@@ -87,24 +87,35 @@ pub struct ClassNode {
     pub methods: Vec<MethodNode>,
 }
 
+#[derive(Clone, Debug)]
 pub struct ModuleNode {
     
 }
 
+#[derive(Clone, Debug)]
 pub struct TypeAnnotationNode {}
 
+#[derive(Clone, Debug)]
 pub struct AnnotationNode {}
 
+#[derive(Clone, Debug)]
 pub struct InnerClassNode {}
 
+#[derive(Clone, Debug)]
 pub struct MethodNode {}
 
+#[derive(Clone, Debug)]
 pub struct FieldNode {}
 
+#[derive(Clone, Debug)]
 pub struct RecordComponentNode {}
 
+#[derive(Clone, Debug)]
 pub enum InsnNode {
     
 }
+
+#[derive(Clone, Debug)]
+pub struct Attribute {}
 
 
