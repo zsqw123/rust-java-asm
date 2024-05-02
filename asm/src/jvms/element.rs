@@ -50,6 +50,8 @@ pub struct CPInfo {
 
 #[derive(Clone)]
 pub enum Const {
+    // invalid const's tag is 0
+    Invalid,
     // CONSTANT_Class_info {
     //     u1 tag;
     //     u2 name_index; // index of a CONSTANT_Utf8_info structure

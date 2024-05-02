@@ -49,8 +49,10 @@ fn transform_attrs(attributes: &mut Vec<AttributeInfo>, cp: &Vec<CPInfo>) -> Asm
 }
 
 fn transform_attr(attribute_info: &AttributeInfo, cp: &Vec<CPInfo>) -> AsmResult<AttributeInfo> {
-    let &AttributeInfo { attribute_name_index, attribute_length, info } = attribute_info;
-    let Attribute::Custom(bytes) = info;
+    let attribute_name_index = attribute_info.attribute_name_index;
+    let attribute_length = attribute_info.attribute_length;
+    let info = attribute_info.info.clone();
+    let Attribute::Custom(bytes) = info else { return Ok(attribute_info.clone()) };
     let mut context = ReadContext {
         bytes: &bytes,
         index: &mut 0,

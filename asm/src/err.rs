@@ -1,6 +1,7 @@
 use std::io;
 use std::string::FromUtf8Error;
 
+#[derive(Debug)]
 pub enum AsmErr {
     ContentReadErr(io::Error),
     IllegalArgument(String),

@@ -5,6 +5,7 @@ use crate::err::{AsmErr, AsmResult};
 use crate::jvms::element::{Attribute, AttributeInfo, ClassFile, Const, CPInfo, ExceptionTable, FieldInfo, MethodInfo, StackMapFrame, VerificationTypeInfo};
 use crate::jvms::frame::Frame;
 use crate::jvms::read::bytes_reader::{FromReadContext, ReadContext};
+use crate::jvms::read::transforms::transform_class_file;
 
 pub struct JvmsClassReader {}
 
@@ -17,8 +18,14 @@ impl JvmsClassReader {
             return Err(AsmErr::ContentReadErr(e));
         };
         let bytes = str.as_bytes();
+        Self::read_class_bytes(bytes)
+    }
+
+    pub fn read_class_bytes(bytes: &[u8]) -> AsmResult<ClassFile> {
         let index = &mut 0;
-        ClassFile::from_context(&mut ReadContext { bytes, index })
+        let raw_file = ClassFile::from_context(&mut ReadContext { bytes, index })?;
+        let transformed = transform_class_file(raw_file)?;
+        Ok(transformed)
     }
 }
 
@@ -149,6 +156,7 @@ impl Const {
         }
 
         let info = match_context! {
+            CONSTANT_Invalid => Invalid {},
             CONSTANT_Class => Class { name_index },
             // refs
             CONSTANT_Fieldref => Field { class_index, name_and_type_index },
@@ -167,6 +175,8 @@ impl Const {
             CONSTANT_InvokeDynamic => InvokeDynamic { bootstrap_method_attr_index, name_and_type_index },
             CONSTANT_Module => Module { name_index },
             CONSTANT_Package => Package { name_index },
+            // string
+            CONSTANT_String => String { string_index },
         };
         Ok(info)
     }

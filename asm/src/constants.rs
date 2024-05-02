@@ -36,6 +36,7 @@ impl Constants {
     pub const RECORD: &'static str = "Record";
 
     // CP const
+    pub const CONSTANT_Invalid: u8 = 0;
     pub const CONSTANT_Utf8: u8 = 1;
     pub const CONSTANT_Integer: u8 = 3;
     pub const CONSTANT_Float: u8 = 4;
