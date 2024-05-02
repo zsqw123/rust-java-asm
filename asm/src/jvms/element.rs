@@ -18,6 +18,7 @@
 // }
 
 /// [JVMS4](https://docs.oracle.com/javase/specs/jvms/se9/html/jvms-4.html)
+#[derive(Clone)]
 pub struct ClassFile {
     pub magic: u32,
     pub minor_version: u16,
@@ -41,11 +42,13 @@ pub struct ClassFile {
 //     u1 tag;
 //     u1 info[];
 // }
+#[derive(Clone)]
 pub struct CPInfo {
     pub tag: u8,
     pub info: Const,
 }
 
+#[derive(Clone)]
 pub enum Const {
     // CONSTANT_Class_info {
     //     u1 tag;
@@ -133,6 +136,7 @@ pub enum Const {
 //     u2             attributes_count;
 //     attribute_info attributes[attributes_count];
 // }
+#[derive(Clone)]
 pub struct FieldInfo {
     pub access_flags: u16,
     pub name_index: u16,
@@ -148,6 +152,7 @@ pub struct FieldInfo {
 //     u2             attributes_count;
 //     attribute_info attributes[attributes_count];
 // }
+#[derive(Clone)]
 pub struct MethodInfo {
     pub access_flags: u16,
     pub name_index: u16,
@@ -161,12 +166,14 @@ pub struct MethodInfo {
 //     u4 attribute_length;
 //     u1 info[attribute_length];
 // }
+#[derive(Clone)]
 pub struct AttributeInfo {
     pub attribute_name_index: u16,
     pub attribute_length: u32,
     pub info: Attribute,
 }
 
+#[derive(Clone)]
 pub enum Attribute {
     Custom(Vec<u8>),
     // ConstantValue_attribute {
@@ -228,6 +235,7 @@ pub enum Attribute {
 //     Object_variable_info; // ITEM_Object
 //     Uninitialized_variable_info; // ITEM_Uninitialized
 // }
+#[derive(Clone, Copy)]
 pub enum VerificationTypeInfo {
     Top { tag: u8 },
     Integer { tag: u8 },
@@ -249,6 +257,7 @@ pub enum VerificationTypeInfo {
 //     append_frame; // APPEND; /* 252-254 */
 //     full_frame; // FULL_FRAME; /* 255 */
 // }
+#[derive(Clone)]
 pub enum StackMapFrame {
     SameFrame { frame_type: u8 },
     SameLocals1StackItemFrame {
@@ -283,6 +292,7 @@ pub enum StackMapFrame {
 //     u2 handler_pc;
 //     u2 catch_type;
 // }
+#[derive(Clone, Copy)]
 pub struct ExceptionTable {
     pub start_pc: u16,
     pub end_pc: u16,
