@@ -10,11 +10,6 @@ impl WriteContext {
     pub fn push<T: FromWriteContext<T>>(&mut self, from: T) -> AsmResult<()> {
         T::from_context(self, from)
     }
-
-    pub fn push_vec<T: FromWriteContext<T>>(&mut self, from: Vec<T>) -> AsmResult<()> {
-        for item in from { self.push(item)?; }
-        Ok(())
-    }
 }
 
 pub(crate) trait FromWriteContext<T> {
@@ -23,7 +18,8 @@ pub(crate) trait FromWriteContext<T> {
 
 impl<T: FromWriteContext<T>> FromWriteContext<Vec<T>> for Vec<T> {
     fn from_context(context: &mut WriteContext, from: Vec<T>) -> AsmResult<()> {
-        context.push_vec(from)
+        for item in from { context.push(item)?; };
+        Ok(())
     }
 }
 
