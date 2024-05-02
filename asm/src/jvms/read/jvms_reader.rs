@@ -2,7 +2,7 @@ use crate::constants::Constants;
 use crate::err::{AsmErr, AsmResult};
 use crate::jvms::element::{Attribute, AttributeInfo, ClassFile, Const, CPInfo, ExceptionTable, FieldInfo, MethodInfo, StackMapFrame, VerificationTypeInfo};
 use crate::jvms::frame::Frame;
-use crate::jvms::read::bytes_reader::{FromReadContext, ReadContext};
+use crate::jvms::read::bytes::{FromReadContext, ReadContext};
 
 impl FromReadContext<ClassFile> for ClassFile {
     fn from_context(context: &mut ReadContext) -> AsmResult<ClassFile> {
