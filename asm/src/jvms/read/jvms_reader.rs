@@ -3,7 +3,6 @@ use std::io::{BufReader, Read};
 use crate::constants::Constants;
 use crate::err::{AsmErr, AsmResult};
 use crate::jvms::element::{Attribute, AttributeInfo, ClassFile, Const, CPInfo, ExceptionTable, FieldInfo, MethodInfo, StackMapFrame, VerificationTypeInfo};
-use crate::jvms::element::Const::Utf8;
 use crate::jvms::frame::Frame;
 use crate::jvms::read::bytes_reader::{FromReadContext, ReadContext};
 
@@ -15,7 +14,7 @@ impl JvmsClassReader {
         let mut str = String::new();
         let read_result = reader.read_to_string(&mut str);
         if let Err(e) = read_result {
-            return Err(AsmErr::ContentReadErr { io_error: e });
+            return Err(AsmErr::ContentReadErr(e));
         };
         let bytes = str.as_bytes();
         let index = &mut 0;
@@ -140,7 +139,7 @@ impl Const {
                     },)*
                     Constants::CONSTANT_Utf8 => {
                         let length = context.read()?;
-                        Utf8 { length, bytes: context.read_vec(length as usize)? }
+                        Const::Utf8 { length, bytes: context.read_vec(length as usize)? }
                     }
                     _ => return Err(AsmErr::IllegalArgument(
                         format!("unknown const tag in const pool: {}", tag),

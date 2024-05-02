@@ -26,8 +26,7 @@ impl ReadContext<'_> {
     }
 
     pub fn read_vec<T: FromReadContext<T>>(&mut self, vec_size: usize) -> AsmResult<Vec<T>> {
-        let mut vec = Vec::<T>::new();
-        vec.reserve(vec_size);
+        let mut vec = Vec::<T>::with_capacity(vec_size);
         for i in 0..vec_size {
             vec[i] = self.copy().read()?;
         }
