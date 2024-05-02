@@ -11,4 +11,4 @@ version = "0.0.1"
 authors = ["zsqw123"]
 edition = "2021"
 description = "Java bytecode reader & writer in rust"
-documentation = "https://example.com/bar" # todo need changes
+documentation = "https://github.com/zsqw123/rust-java-asm"
