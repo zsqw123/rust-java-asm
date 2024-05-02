@@ -61,14 +61,10 @@ fn transform_attr(attribute_info: &AttributeInfo, cp: &Vec<CPInfo>) -> AsmResult
     let attr = match utf8.as_str() {
         Constants::CONSTANT_VALUE => {
             Attribute::ConstantValue {
-                attribute_name_index: context.read()?,
-                attribute_length: context.read()?,
                 constantvalue_index: context.read()?,
             }
         },
         Constants::CODE => {
-            let attribute_name_index: u16 = context.read()?;
-            let attribute_length: u32 = context.read()?;
             let max_stack: u16 = context.read()?;
             let max_locals: u16 = context.read()?;
             let code_length: u32 = context.read()?;
@@ -79,7 +75,6 @@ fn transform_attr(attribute_info: &AttributeInfo, cp: &Vec<CPInfo>) -> AsmResult
             let mut attributes: Vec<AttributeInfo> = context.read_vec(attributes_count as usize)?;
             transform_attrs(&mut attributes, cp)?;
             Attribute::Code {
-                attribute_name_index, attribute_length,
                 max_stack, max_locals,
                 code_length, code,
                 exception_table_length, exception_table,
@@ -87,12 +82,9 @@ fn transform_attr(attribute_info: &AttributeInfo, cp: &Vec<CPInfo>) -> AsmResult
             }
         },
         Constants::STACK_MAP_TABLE => {
-            let attribute_name_index: u16 = context.read()?;
-            let attribute_length: u32 = context.read()?;
             let number_of_entries: u16 = context.read()?;
             let entries: Vec<StackMapFrame> = context.read_vec(number_of_entries as usize)?;
             Attribute::StackMapTable {
-                attribute_name_index, attribute_length,
                 number_of_entries, entries,
             }
         }

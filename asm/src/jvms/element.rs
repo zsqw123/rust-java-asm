@@ -183,7 +183,7 @@ pub enum Attribute {
     //     u4 attribute_length;
     //     u2 constantvalue_index; // index of const pool
     // }
-    ConstantValue { attribute_name_index: u16, attribute_length: u32, constantvalue_index: u16 },
+    ConstantValue { constantvalue_index: u16 },
     // Code_attribute {
     //     u2 attribute_name_index;
     //     u4 attribute_length;
@@ -201,8 +201,6 @@ pub enum Attribute {
     //     attribute_info attributes[attributes_count];
     // }
     Code {
-        attribute_name_index: u16,
-        attribute_length: u32,
         max_stack: u16,
         max_locals: u16,
         code_length: u32,
@@ -219,8 +217,6 @@ pub enum Attribute {
     //     stack_map_frame entries[number_of_entries];
     // }
     StackMapTable {
-        attribute_name_index: u16,
-        attribute_length: u32,
         number_of_entries: u16,
         entries: Vec<StackMapFrame>,
     },

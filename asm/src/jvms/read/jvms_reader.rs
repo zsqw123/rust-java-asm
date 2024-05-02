@@ -36,7 +36,7 @@ impl FromReadContext<ClassFile> for ClassFile {
         let minor_version: u16 = context.read()?;
         let major_version: u16 = context.read()?;
         let constant_pool_count: u16 = context.read()?;
-        let constant_pool: Vec<CPInfo> = context.read_vec(constant_pool_count as usize)?;
+        let constant_pool: Vec<CPInfo> = cp_infos_from_context(context, constant_pool_count as usize)?;
         let access_flags: u16 = context.read()?;
         let this_class: u16 = context.read()?;
         let super_class: u16 = context.read()?;
@@ -61,12 +61,25 @@ impl FromReadContext<ClassFile> for ClassFile {
     }
 }
 
-impl FromReadContext<CPInfo> for CPInfo {
-    fn from_context(context: &mut ReadContext) -> AsmResult<CPInfo> {
+/// due to [Const::Double] & [Const::Long] occupy 2 slots to store.
+/// special treated for reading[Vec<CPInfo>]
+fn cp_infos_from_context(context: &mut ReadContext, max_len: usize) -> AsmResult<Vec<CPInfo>> {
+    let mut max_len = max_len;
+    let mut result = Vec::with_capacity(max_len);
+    result.push(CPInfo { tag: 0, info: Const::Invalid });
+    max_len -= 1;
+    while max_len > 0 {
         let tag: u8 = context.read()?;
         let info: Const = Const::from_context(context, tag)?;
-        Ok(CPInfo { tag, info })
-    }
+        match tag {
+            Constants::CONSTANT_Long | Constants::CONSTANT_Double => {
+                max_len -= 2;
+            },
+            _ => { max_len -= 1; }
+        }
+        result.push(CPInfo { tag, info });
+    };
+    Ok(result)
 }
 
 struct MemberInfo {
@@ -142,10 +155,10 @@ impl Const {
             },)*} => {
                 match tag {
                     $(Constants::$constName => Const::$constType {
-                            $($fieldIdent: context.read()?,)*
+                        $($fieldIdent: context.read()?,)*
                     },)*
                     Constants::CONSTANT_Utf8 => {
-                        let length = context.read()?;
+                        let length: u16 = context.read()?;
                         Const::Utf8 { length, bytes: context.read_vec(length as usize)? }
                     }
                     _ => return Err(AsmErr::IllegalArgument(
