@@ -1,5 +1,5 @@
 use crate::err::{AsmErr, AsmResult};
-use crate::jvms::attrs::{ExceptionTable, StackMapFrame, VerificationTypeInfo};
+use crate::jvms::attr::{ExceptionTable, StackMapFrame, VerificationTypeInfo};
 use crate::jvms::frame::Frame;
 use crate::jvms::read::bytes::{FromReadContext, ReadContext};
 

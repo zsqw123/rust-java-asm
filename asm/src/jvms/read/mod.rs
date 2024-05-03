@@ -2,11 +2,11 @@ use std::io::{BufReader, Read};
 use crate::err::{AsmErr, AsmResult};
 use crate::jvms::element::ClassFile;
 use crate::jvms::read::bytes::{FromReadContext, ReadContext};
-use crate::jvms::read::transforms::transform_class_file;
+use crate::jvms::read::transform::transform_class_file;
 
 mod jvms_reader;
 mod bytes;
-mod transforms;
+mod transform;
 mod attrs;
 pub mod util;
 
