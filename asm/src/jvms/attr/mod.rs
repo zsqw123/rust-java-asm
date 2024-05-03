@@ -185,11 +185,11 @@ pub enum Attribute {
     },
     RuntimeVisibleTypeAnnotations {
         num_parameters: u16,
-        type_annotation: Vec<TypeAnnotation>,
+        annotations: Vec<TypeAnnotation>,
     },
     RuntimeInvisibleTypeAnnotations {
         num_parameters: u16,
-        type_annotation: Vec<TypeAnnotation>,
+        annotations: Vec<TypeAnnotation>,
     },
     AnnotationDefault {
         default_value: AnnotationElementValueInfo,
@@ -270,7 +270,7 @@ pub enum Attribute {
         opens: Vec<ModuleOpens>,
         uses_count: u16,
         uses_index: Vec<u16>,
-        provides_count: Vec<u16>,
+        provides_count: u16,
         provides: Vec<ModuleProvides>,
     },
     // ModulePackages_attribute {

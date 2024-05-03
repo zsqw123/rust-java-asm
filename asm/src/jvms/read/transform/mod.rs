@@ -3,6 +3,7 @@ use crate::jvms::element::{AttributeInfo, ClassFile, CPInfo, FieldInfo, MethodIn
 use crate::jvms::read::transform::attr::transform_attr;
 
 mod attr;
+mod impls;
 
 pub(crate) fn transform_class_file(origin: ClassFile) -> AsmResult<ClassFile> {
     let mut new_file = origin.clone();

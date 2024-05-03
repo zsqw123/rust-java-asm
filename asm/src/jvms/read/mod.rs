@@ -7,7 +7,6 @@ use crate::jvms::read::transform::transform_class_file;
 mod jvms_reader;
 mod bytes;
 mod transform;
-mod attrs;
 pub mod util;
 
 pub struct JvmsClassReader {}
