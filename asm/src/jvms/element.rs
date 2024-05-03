@@ -16,7 +16,7 @@
 //     u2             attributes_count;
 //     attribute_info attributes[attributes_count];
 // }
-use crate::jvms::attrs::Attribute;
+use crate::jvms::attr::Attribute;
 
 /// [JVMS4](https://docs.oracle.com/javase/specs/jvms/se9/html/jvms-4.html)
 #[derive(Clone, Debug)]

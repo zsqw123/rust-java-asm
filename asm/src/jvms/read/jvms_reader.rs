@@ -1,6 +1,6 @@
 use crate::constants::Constants;
 use crate::err::{AsmErr, AsmResult};
-use crate::jvms::attrs::Attribute;
+use crate::jvms::attr::Attribute;
 use crate::jvms::element::{AttributeInfo, ClassFile, Const, CPInfo, FieldInfo, MethodInfo};
 use crate::jvms::read::bytes::{FromReadContext, ReadContext};
 

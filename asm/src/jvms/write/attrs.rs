@@ -1,5 +1,6 @@
 use crate::err::AsmResult;
-use crate::jvms::attrs::{Attribute, ExceptionTable, StackMapFrame, VerificationTypeInfo};
+use crate::jvms::attr::Attribute;
+use crate::jvms::attrs::{ExceptionTable, StackMapFrame, VerificationTypeInfo};
 use crate::jvms::write::bytes::{FromWriteContext, WriteContext};
 use crate::jvms::write::{push_enum, push_items};
 
