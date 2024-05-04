@@ -111,8 +111,6 @@ pub(crate) fn transform_attr(attribute_info: &AttributeInfo, cp: &Vec<CPInfo>) -
         },
         Constants::ANNOTATION_DEFAULT => Attribute::AnnotationDefault { default_value: context.read()? },
         Constants::BOOTSTRAP_METHODS => {
-            let attribute_name_index = context.read()?;
-            let attribute_length = context.read()?;
             let num_bootstrap_methods = context.read()?;
             let bootstrap_methods = context.read_vec(num_bootstrap_methods as usize)?;
             Attribute::BootstrapMethods {
