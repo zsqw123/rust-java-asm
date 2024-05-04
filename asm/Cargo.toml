@@ -6,6 +6,7 @@ edition.workspace = true
 description.workspace = true
 license.workspace = true
 documentation.workspace = true
+readme.workspace = true
 
 [dependencies]
 java_asm_internal = { workspace = true }
