@@ -49,3 +49,16 @@ fn transform_attrs(attributes: &mut Vec<AttributeInfo>, cp: &Vec<CPInfo>) -> Asm
     Ok(())
 }
 
+macro_rules! generate_from {
+    (
+        $contextExpr:expr, $typePath:ident, $($fieldIdent:ident $(,)?)*
+    ) => {
+        Ok(
+            $typePath {
+                $($fieldIdent: $contextExpr.read()?,)*
+            }
+        )
+    };
+}
+
+pub(crate) use generate_from;

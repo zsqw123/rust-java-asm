@@ -224,34 +224,34 @@ pub enum Attribute {
     // Module_attribute {
     //     u2 attribute_name_index;
     //     u4 attribute_length;
-    // 
-    //     u2 module_name_index; // CONSTANT_Module_info 
+    //
+    //     u2 module_name_index; // CONSTANT_Module_info
     //     u2 module_flags;
-    //     u2 module_version_index; // CONSTANT_Utf8_info 
-    // 
+    //     u2 module_version_index; // CONSTANT_Utf8_info
+    //
     //     u2 requires_count;
     //     {   u2 requires_index; // CONSTANT_Module_info
     //         u2 requires_flags;
     //         u2 requires_version_index; // CONSTANT_Utf8_info
     //     } requires[requires_count];
-    // 
+    //
     //     u2 exports_count;
     //     {   u2 exports_index; // CONSTANT_Package_info
     //         u2 exports_flags;
     //         u2 exports_to_count;
     //         u2 exports_to_index[exports_to_count]; // CONSTANT_Module_info
     //     } exports[exports_count];
-    // 
+    //
     //     u2 opens_count;
-    //     {   u2 opens_index; // CONSTANT_Package_info 
+    //     {   u2 opens_index; // CONSTANT_Package_info
     //         u2 opens_flags;
     //         u2 opens_to_count;
     //         u2 opens_to_index[opens_to_count]; // CONSTANT_Module_info
     //     } opens[opens_count];
-    // 
+    //
     //     u2 uses_count;
     //     u2 uses_index[uses_count]; // CONSTANT_Class_info
-    // 
+    //
     //     u2 provides_count;
     //     {   u2 provides_index; // CONSTANT_Class_info
     //         u2 provides_with_count;
@@ -303,7 +303,7 @@ pub enum Attribute {
     //     u2 attribute_name_index;
     //     u4 attribute_length;
     //     u2 number_of_classes;
-    //     u2 classes[number_of_classes]; // CONSTANT_Class_info 
+    //     u2 classes[number_of_classes]; // CONSTANT_Class_info
     // }
     NestMembers {
         number_of_classes: u16,
@@ -465,10 +465,10 @@ pub struct ExceptionTable {
     pub catch_type: u16,
 }
 
-// {   
+// {
 //     u2 bootstrap_method_ref; // CONSTANT_MethodHandle_info
 //     u2 num_bootstrap_arguments;
-//     u2 bootstrap_arguments[num_bootstrap_arguments];  // valid index in const_pool 
+//     u2 bootstrap_arguments[num_bootstrap_arguments];  // valid index in const_pool
 // }
 #[derive(Clone, Debug)]
 pub struct BootstrapMethod {
@@ -477,7 +477,7 @@ pub struct BootstrapMethod {
     pub bootstrap_arguments: Vec<u16>,
 }
 
-// {   
+// {
 //     u2 name_index;
 //     u2 access_flags;
 // }
