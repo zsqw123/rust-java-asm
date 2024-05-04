@@ -1,8 +1,8 @@
 use java_asm_internal::err::{AsmErr, AsmResult};
 use java_asm_internal::read::jvms::{FromReadContext, ReadContext};
-use crate::jvms::attr::annotation::{AnnotationElement, AnnotationElementValue, AnnotationElementValueInfo, AnnotationInfo};
-use crate::jvms::attr::annotation::type_annotation::{TypeAnnotation, TypeAnnotationTargetInfo, TypeAnnotationTargetInfoLocalVarTable, TypeAnnotationTargetPath, TypeAnnotationTargetPathInfo};
-use crate::jvms::read::transform::generate_from;
+
+use crate::jvms::attr::annotation::{AnnotationElementValue, AnnotationElementValueInfo, AnnotationInfo};
+use crate::jvms::attr::annotation::type_annotation::{TypeAnnotation, TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
 
 impl FromReadContext<AnnotationInfo> for AnnotationInfo {
     fn from_context(context: &mut ReadContext) -> AsmResult<AnnotationInfo> {
@@ -13,20 +13,8 @@ impl FromReadContext<AnnotationInfo> for AnnotationInfo {
     }
 }
 
-impl FromReadContext<AnnotationElement> for AnnotationElement {
-    fn from_context(context: &mut ReadContext) -> AsmResult<AnnotationElement> {
-        generate_from! { context, AnnotationElement, element_name_index, value }
-    }
-}
-
 impl FromReadContext<AnnotationElementValueInfo> for AnnotationElementValueInfo {
     fn from_context(context: &mut ReadContext) -> AsmResult<AnnotationElementValueInfo> {
-        generate_from! { context, AnnotationElementValueInfo, tag, value }
-    }
-}
-
-impl FromReadContext<AnnotationElementValue> for AnnotationElementValue {
-    fn from_context(context: &mut ReadContext) -> AsmResult<AnnotationElementValue> {
         let tag = context.read()?;
         let value = match tag {
             // byte, char, double, float, int, long, short, boolean, String
@@ -49,9 +37,10 @@ impl FromReadContext<AnnotationElementValue> for AnnotationElementValue {
                 AnnotationElementValue::Array { num_values, values }
             },
         };
-        Ok(value)
+        Ok(AnnotationElementValueInfo { tag, value })
     }
 }
+
 
 // ---------------------------
 // type annotations impls
@@ -90,23 +79,11 @@ impl FromReadContext<TypeAnnotation> for TypeAnnotation {
     }
 }
 
-impl FromReadContext<TypeAnnotationTargetInfoLocalVarTable> for TypeAnnotationTargetInfoLocalVarTable {
-    fn from_context(context: &mut ReadContext) -> AsmResult<TypeAnnotationTargetInfoLocalVarTable> {
-        generate_from! { context, TypeAnnotationTargetInfoLocalVarTable, start_pc, length, index }
-    }
-}
-
 impl FromReadContext<TypeAnnotationTargetPath> for TypeAnnotationTargetPath {
     fn from_context(context: &mut ReadContext) -> AsmResult<TypeAnnotationTargetPath> {
         let path_length = context.read()?;
         let path = context.read_vec(path_length as usize)?;
         Ok(TypeAnnotationTargetPath { path_length, path })
-    }
-}
-
-impl FromReadContext<TypeAnnotationTargetPathInfo> for TypeAnnotationTargetPathInfo {
-    fn from_context(context: &mut ReadContext) -> AsmResult<TypeAnnotationTargetPathInfo> {
-        generate_from! { context, TypeAnnotationTargetPathInfo, type_path_kind, type_argument_index }
     }
 }
 

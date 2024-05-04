@@ -1,10 +1,9 @@
 use java_asm_internal::err::{AsmErr, AsmResult};
 use java_asm_internal::read::jvms::{FromReadContext, ReadContext};
 
-use crate::jvms::attr::{BootstrapMethod, ExceptionTable, InnerClassInfo, LineNumberTableInfo, LocalVariableTableInfo, LocalVariableTypeTableInfo, MethodParameter, RecordComponentInfo, StackMapFrame, VerificationTypeInfo};
+use crate::jvms::attr::{BootstrapMethod, RecordComponentInfo, StackMapFrame, VerificationTypeInfo};
 use crate::jvms::element::AttributeInfo;
 use crate::jvms::frame::Frame;
-use crate::jvms::read::transform::generate_from;
 
 impl FromReadContext<VerificationTypeInfo> for VerificationTypeInfo {
     fn from_context(context: &mut ReadContext) -> AsmResult<VerificationTypeInfo> {
@@ -24,41 +23,6 @@ impl FromReadContext<VerificationTypeInfo> for VerificationTypeInfo {
             ))
         };
         Ok(type_info)
-    }
-}
-
-impl FromReadContext<InnerClassInfo> for InnerClassInfo {
-    fn from_context(context: &mut ReadContext) -> AsmResult<InnerClassInfo> {
-        generate_from! { context, InnerClassInfo,
-            inner_class_info_index,
-            outer_class_info_index,
-            inner_name_index,
-            inner_class_access_flags,
-        }
-    }
-}
-
-impl FromReadContext<LineNumberTableInfo> for LineNumberTableInfo {
-    fn from_context(context: &mut ReadContext) -> AsmResult<LineNumberTableInfo> {
-        generate_from! { context, LineNumberTableInfo,
-            start_pc, line_number,
-        }
-    }
-}
-
-impl FromReadContext<LocalVariableTableInfo> for LocalVariableTableInfo {
-    fn from_context(context: &mut ReadContext) -> AsmResult<LocalVariableTableInfo> {
-        generate_from! { context, LocalVariableTableInfo,
-            start_pc, length, name_index, descriptor_index, index,
-        }
-    }
-}
-
-impl FromReadContext<LocalVariableTypeTableInfo> for LocalVariableTypeTableInfo {
-    fn from_context(context: &mut ReadContext) -> AsmResult<LocalVariableTypeTableInfo> {
-        generate_from! { context, LocalVariableTypeTableInfo,
-            start_pc, length, name_index, signature_index, index,
-        }
     }
 }
 
@@ -108,14 +72,6 @@ impl FromReadContext<StackMapFrame> for StackMapFrame {
     }
 }
 
-impl FromReadContext<ExceptionTable> for ExceptionTable {
-    fn from_context(context: &mut ReadContext) -> AsmResult<ExceptionTable> {
-        generate_from!(context, ExceptionTable,
-            start_pc, end_pc, handler_pc, catch_type,
-        )
-    }
-}
-
 impl FromReadContext<BootstrapMethod> for BootstrapMethod {
     fn from_context(context: &mut ReadContext) -> AsmResult<BootstrapMethod> {
         let bootstrap_method_ref: u16 = context.read()?;
@@ -123,14 +79,6 @@ impl FromReadContext<BootstrapMethod> for BootstrapMethod {
         let bootstrap_arguments: Vec<u16> = context.read_vec(num_bootstrap_arguments as usize)?;
         let method = BootstrapMethod { bootstrap_method_ref, num_bootstrap_arguments, bootstrap_arguments };
         Ok(method)
-    }
-}
-
-impl FromReadContext<MethodParameter> for MethodParameter {
-    fn from_context(context: &mut ReadContext) -> AsmResult<MethodParameter> {
-        generate_from!(context, MethodParameter,
-            name_index, access_flags,
-        )
     }
 }
 

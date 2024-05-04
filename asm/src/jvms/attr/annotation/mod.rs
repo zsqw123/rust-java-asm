@@ -1,3 +1,5 @@
+use java_asm_internal::read::jvms::FromReadContext;
+
 pub mod type_annotation;
 
 // annotation {
@@ -18,7 +20,7 @@ pub struct AnnotationInfo {
 //     u2            element_name_index;
 //     element_value value;
 // } 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, FromReadContext)]
 pub struct AnnotationElement {
     pub element_name_index: u16,
     pub value: AnnotationElementValueInfo,

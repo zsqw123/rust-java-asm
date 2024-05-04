@@ -16,6 +16,8 @@ impl ReadContext<'_> {
     }
 }
 
+pub use java_asm_macro::FromReadContext;
+
 pub trait FromReadContext<T> {
     fn from_context(context: &mut ReadContext) -> AsmResult<T>;
 }

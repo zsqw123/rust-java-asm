@@ -1,3 +1,5 @@
+use java_asm_internal::read::jvms::FromReadContext;
+
 // type_annotation {
 //     u1 target_type;
 //     union {
@@ -45,7 +47,7 @@ pub enum TypeAnnotationTargetInfo {
 //     u2 length;
 //     u2 index;
 // }
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, FromReadContext)]
 pub struct TypeAnnotationTargetInfoLocalVarTable {
     pub start_pc: u16,
     pub length: u16,
@@ -68,7 +70,7 @@ pub struct TypeAnnotationTargetPath {
 //     u1 type_path_kind;
 //     u1 type_argument_index;
 // }
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, FromReadContext)]
 pub struct TypeAnnotationTargetPathInfo {
     pub type_path_kind: u8,
     pub type_argument_index: u8,

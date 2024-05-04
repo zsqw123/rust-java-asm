@@ -2,6 +2,7 @@ use crate::jvms::attr::annotation::{AnnotationElementValueInfo, AnnotationInfo, 
 use crate::jvms::attr::annotation::type_annotation::TypeAnnotation;
 use crate::jvms::attr::module::{ModuleExports, ModuleOpens, ModuleProvides, ModuleRequires};
 use crate::jvms::element::AttributeInfo;
+use java_asm_internal::read::jvms::FromReadContext;
 
 pub mod annotation;
 mod module;
@@ -337,7 +338,7 @@ pub enum Attribute {
 //     u2 inner_name_index;
 //     u2 inner_class_access_flags;
 // }
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, FromReadContext)]
 pub struct InnerClassInfo {
     pub inner_class_info_index: u16,
     pub outer_class_info_index: u16,
@@ -349,7 +350,7 @@ pub struct InnerClassInfo {
 //     u2 start_pc;
 //     u2 line_number;
 // }
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, FromReadContext)]
 pub struct LineNumberTableInfo {
     pub start_pc: u16,
     pub line_number: u16,
@@ -362,7 +363,7 @@ pub struct LineNumberTableInfo {
 //     u2 descriptor_index;
 //     u2 index;
 // }
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, FromReadContext)]
 pub struct LocalVariableTableInfo {
     pub start_pc: u16,
     pub length: u16,
@@ -379,7 +380,7 @@ pub struct LocalVariableTableInfo {
 //     u2 signature_index;
 //     u2 index;
 // }
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, FromReadContext)]
 pub struct LocalVariableTypeTableInfo {
     pub start_pc: u16,
     pub length: u16,
@@ -457,7 +458,7 @@ pub enum StackMapFrame {
 //     u2 handler_pc;
 //     u2 catch_type;
 // }
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, FromReadContext)]
 pub struct ExceptionTable {
     pub start_pc: u16,
     pub end_pc: u16,
@@ -481,7 +482,7 @@ pub struct BootstrapMethod {
 //     u2 name_index;
 //     u2 access_flags;
 // }
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, FromReadContext)]
 pub struct MethodParameter {
     pub name_index: u16,
     pub access_flags: u16,
