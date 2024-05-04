@@ -1,12 +1,20 @@
 # java-asm
 
-Java bytecode reader & writer, a rust implementation for [ASM](https://gitlab.ow2.org/asm/asm)
+Java bytecode reader & writer, maybe a rust implementation for [ASM](https://gitlab.ow2.org/asm/asm)
 
-There are some similar projects in GitHub, but they didn't actually implement all ASM nodes/features in rust. 
-So I want to build this library to fully read Java bytecode information.
+There are some similar projects in GitHub, but they didn't actually implement all JVM Bytecode format, and also not
+implements all ASM nodes/features in rust. 
+So I want to build this library to fully read and write Java bytecode information.
 
 This project supports much newer Java version(Java 21 currently) than other rust implementations. Only supports 
 `asm-tree` api currently, not supports visitor api because Tree API is much easier to use than visitor api.
+
+## Current Stage
+
+- [x] Implement **Read** Java class file with **[JVMS](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)** format
+- [x] Implement **Write** Java class file with **[JVMS](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)** format
+- [ ] [WIP] Implement ASM nodes
+- [ ] [WIP] Implement ASM features (eg. auto calculate frame/stack etc.)
 
 ---
 
