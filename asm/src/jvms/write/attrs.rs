@@ -20,6 +20,11 @@ impl FromWriteContext<Attribute> for Attribute {
                 number_of_entries,
                 entries,
             };
+            Attribute::Exceptions {
+                number_of_exceptions,
+                exception_index_table,
+            };
+            
         );
         Ok(())
     }

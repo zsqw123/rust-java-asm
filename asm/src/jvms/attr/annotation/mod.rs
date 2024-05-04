@@ -9,10 +9,11 @@ pub mod type_annotation;
 //         element_value value;
 //     } element_value_pairs[num_element_value_pairs];
 // }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, FromReadContext)]
 pub struct AnnotationInfo {
     pub type_index: u16,
     pub num_element_value_pairs: u16,
+    #[index(num_element_value_pairs)]
     pub element_value_pairs: Vec<AnnotationElement>,
 }
 
@@ -78,8 +79,9 @@ pub enum AnnotationElementValue {
 //     u2         num_annotations;
 //     annotation annotations[num_annotations];
 // }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, FromReadContext)]
 pub struct ParameterAnnotationInfo {
     pub num_annotations: u16,
+    #[index(num_annotations)]
     pub annotations: Vec<AnnotationInfo>,
 }

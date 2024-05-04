@@ -5,7 +5,7 @@ use crate::jvms::element::AttributeInfo;
 use java_asm_internal::read::jvms::FromReadContext;
 
 pub mod annotation;
-mod module;
+pub mod module;
 
 #[derive(Clone, Debug)]
 pub enum Attribute {
@@ -471,10 +471,11 @@ pub struct ExceptionTable {
 //     u2 num_bootstrap_arguments;
 //     u2 bootstrap_arguments[num_bootstrap_arguments];  // valid index in const_pool
 // }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, FromReadContext)]
 pub struct BootstrapMethod {
     pub bootstrap_method_ref: u16,
     pub num_bootstrap_arguments: u16,
+    #[index(num_bootstrap_arguments)]
     pub bootstrap_arguments: Vec<u16>,
 }
 
@@ -494,10 +495,11 @@ pub struct MethodParameter {
 //     u2             attributes_count;
 //     attribute_info attributes[attributes_count];
 // }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, FromReadContext)]
 pub struct RecordComponentInfo {
     pub name_index: u16,
     pub descriptor_index: u16,
     pub attributes_count: u16,
+    #[index(attributes_count)]
     pub attributes: Vec<AttributeInfo>,
 }

@@ -1,3 +1,4 @@
+use java_asm_macro::FromReadContext;
 // ClassFile {
 //     u4             magic;
 //     u2             minor_version;
@@ -139,12 +140,13 @@ pub enum Const {
 //     u2             attributes_count;
 //     attribute_info attributes[attributes_count];
 // }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, FromReadContext)]
 pub struct FieldInfo {
     pub access_flags: u16,
     pub name_index: u16,
     pub descriptor_index: u16,
     pub attributes_count: u16,
+    #[index(attributes_count)]
     pub attributes: Vec<AttributeInfo>,
 }
 
@@ -155,12 +157,13 @@ pub struct FieldInfo {
 //     u2             attributes_count;
 //     attribute_info attributes[attributes_count];
 // }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, FromReadContext)]
 pub struct MethodInfo {
     pub access_flags: u16,
     pub name_index: u16,
     pub descriptor_index: u16,
     pub attributes_count: u16,
+    #[index(attributes_count)]
     pub attributes: Vec<AttributeInfo>,
 }
 

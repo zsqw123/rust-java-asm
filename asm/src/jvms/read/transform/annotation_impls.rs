@@ -1,17 +1,8 @@
 use java_asm_internal::err::{AsmErr, AsmResult};
 use java_asm_internal::read::jvms::{FromReadContext, ReadContext};
 
-use crate::jvms::attr::annotation::{AnnotationElementValue, AnnotationElementValueInfo, AnnotationInfo};
-use crate::jvms::attr::annotation::type_annotation::{TypeAnnotation, TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
-
-impl FromReadContext<AnnotationInfo> for AnnotationInfo {
-    fn from_context(context: &mut ReadContext) -> AsmResult<AnnotationInfo> {
-        let type_index = context.read()?;
-        let num_element_value_pairs = context.read()?;
-        let element_value_pairs = context.read_vec(num_element_value_pairs as usize)?;
-        Ok(AnnotationInfo { type_index, num_element_value_pairs, element_value_pairs })
-    }
-}
+use crate::jvms::attr::annotation::{AnnotationElementValue, AnnotationElementValueInfo};
+use crate::jvms::attr::annotation::type_annotation::{TypeAnnotation, TypeAnnotationTargetInfo};
 
 impl FromReadContext<AnnotationElementValueInfo> for AnnotationElementValueInfo {
     fn from_context(context: &mut ReadContext) -> AsmResult<AnnotationElementValueInfo> {
@@ -36,11 +27,13 @@ impl FromReadContext<AnnotationElementValueInfo> for AnnotationElementValueInfo 
                 let values = context.read_vec(num_values as usize)?;
                 AnnotationElementValue::Array { num_values, values }
             },
+            _ => return Err(AsmErr::IllegalArgument(
+                format!("unknown tag `{}` when reading an annotation element value.", tag))
+            ),
         };
         Ok(AnnotationElementValueInfo { tag, value })
     }
 }
-
 
 // ---------------------------
 // type annotations impls
@@ -78,12 +71,3 @@ impl FromReadContext<TypeAnnotation> for TypeAnnotation {
         Ok(TypeAnnotation { target_type, target_info, target_path })
     }
 }
-
-impl FromReadContext<TypeAnnotationTargetPath> for TypeAnnotationTargetPath {
-    fn from_context(context: &mut ReadContext) -> AsmResult<TypeAnnotationTargetPath> {
-        let path_length = context.read()?;
-        let path = context.read_vec(path_length as usize)?;
-        Ok(TypeAnnotationTargetPath { path_length, path })
-    }
-}
-

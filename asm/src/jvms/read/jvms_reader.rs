@@ -57,55 +57,6 @@ fn cp_infos_from_context(context: &mut ReadContext, max_len: usize) -> AsmResult
     Ok(result)
 }
 
-struct MemberInfo {
-    access_flags: u16,
-    name_index: u16,
-    descriptor_index: u16,
-    attributes_count: u16,
-    attributes: Vec<AttributeInfo>,
-}
-
-fn member_from_context(context: &mut ReadContext) -> AsmResult<MemberInfo> {
-    let access_flags: u16 = context.read()?;
-    let name_index: u16 = context.read()?;
-    let descriptor_index: u16 = context.read()?;
-    let attributes_count: u16 = context.read()?;
-    let attributes: Vec<AttributeInfo> = context.read_vec(attributes_count as usize)?;
-    let member = MemberInfo {
-        access_flags, name_index, descriptor_index,
-        attributes_count, attributes,
-    };
-    Ok(member)
-}
-
-impl FromReadContext<FieldInfo> for FieldInfo {
-    fn from_context(context: &mut ReadContext) -> AsmResult<FieldInfo> {
-        let MemberInfo {
-            access_flags, name_index, descriptor_index,
-            attributes_count, attributes,
-        } = member_from_context(context)?;
-        let field = FieldInfo {
-            access_flags, name_index, descriptor_index,
-            attributes_count, attributes,
-        };
-        Ok(field)
-    }
-}
-
-impl FromReadContext<MethodInfo> for MethodInfo {
-    fn from_context(context: &mut ReadContext) -> AsmResult<MethodInfo> {
-        let MemberInfo {
-            access_flags, name_index, descriptor_index,
-            attributes_count, attributes,
-        } = member_from_context(context)?;
-        let method = MethodInfo {
-            access_flags, name_index, descriptor_index,
-            attributes_count, attributes,
-        };
-        Ok(method)
-    }
-}
-
 impl FromReadContext<AttributeInfo> for AttributeInfo {
     /// Returns raw attributes in this section,
     /// All attributes will be treated at [Attribute::Custom]

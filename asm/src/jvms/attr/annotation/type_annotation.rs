@@ -60,9 +60,10 @@ pub struct TypeAnnotationTargetInfoLocalVarTable {
 //         u1 type_argument_index;
 //     } path[path_length];
 // }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, FromReadContext)]
 pub struct TypeAnnotationTargetPath {
     pub path_length: u8,
+    #[index(path_length)]
     pub path: Vec<TypeAnnotationTargetPathInfo>,
 }
 

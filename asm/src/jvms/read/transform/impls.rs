@@ -1,8 +1,7 @@
 use java_asm_internal::err::{AsmErr, AsmResult};
 use java_asm_internal::read::jvms::{FromReadContext, ReadContext};
 
-use crate::jvms::attr::{BootstrapMethod, RecordComponentInfo, StackMapFrame, VerificationTypeInfo};
-use crate::jvms::element::AttributeInfo;
+use crate::jvms::attr::{StackMapFrame, VerificationTypeInfo};
 use crate::jvms::frame::Frame;
 
 impl FromReadContext<VerificationTypeInfo> for VerificationTypeInfo {
@@ -71,25 +70,3 @@ impl FromReadContext<StackMapFrame> for StackMapFrame {
         Ok(frame)
     }
 }
-
-impl FromReadContext<BootstrapMethod> for BootstrapMethod {
-    fn from_context(context: &mut ReadContext) -> AsmResult<BootstrapMethod> {
-        let bootstrap_method_ref: u16 = context.read()?;
-        let num_bootstrap_arguments: u16 = context.read()?;
-        let bootstrap_arguments: Vec<u16> = context.read_vec(num_bootstrap_arguments as usize)?;
-        let method = BootstrapMethod { bootstrap_method_ref, num_bootstrap_arguments, bootstrap_arguments };
-        Ok(method)
-    }
-}
-
-impl FromReadContext<RecordComponentInfo> for RecordComponentInfo {
-    fn from_context(context: &mut ReadContext) -> AsmResult<RecordComponentInfo> {
-        let name_index: u16 = context.read()?;
-        let descriptor_index: u16 = context.read()?;
-        let attributes_count: u16 = context.read()?;
-        let attributes: Vec<AttributeInfo> = context.read_vec(attributes_count as usize)?;
-        let component_info = RecordComponentInfo { name_index, descriptor_index, attributes_count, attributes };
-        Ok(component_info)
-    }
-}
-

@@ -7,6 +7,7 @@ name = "java_asm"
 version = "0.0.1"
 dependencies = [
  "java_asm_internal",
+ "java_asm_macro",
 ]
 
 [[package]]

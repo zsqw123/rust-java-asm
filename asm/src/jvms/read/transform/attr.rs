@@ -134,7 +134,7 @@ pub(crate) fn transform_attr(attribute_info: &AttributeInfo, cp: &Vec<CPInfo>) -
             let exports_count: u16 = context.read()?;
             let exports = context.read_vec(exports_count as usize)?;
             let opens_count: u16 = context.read()?;
-            let opens = context.read_vec()?;
+            let opens = context.read_vec(opens_count as usize)?;
             let uses_count: u16 = context.read()?;
             let uses_index: Vec<u16> = context.read_vec(uses_count as usize)?;
             let provides_count: u16 = context.read()?;
