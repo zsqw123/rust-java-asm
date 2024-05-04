@@ -1,5 +1,7 @@
 # java-asm
 
+![Crates.io Version](https://img.shields.io/crates/v/java_asm)
+
 Java bytecode reader & writer, maybe a rust implementation for [ASM](https://gitlab.ow2.org/asm/asm)
 
 There are some similar projects in GitHub, but they didn't actually implement all JVM Bytecode format, and also not
