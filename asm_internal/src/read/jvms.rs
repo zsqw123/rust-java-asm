@@ -1,6 +1,6 @@
 use crate::err::AsmResult;
 
-pub(crate) struct ReadContext<'a> {
+pub struct ReadContext<'a> {
     pub bytes: &'a [u8],
     pub index: &'a mut usize,
 }
@@ -16,7 +16,7 @@ impl ReadContext<'_> {
     }
 }
 
-pub(crate) trait FromReadContext<T> {
+pub trait FromReadContext<T> {
     fn from_context(context: &mut ReadContext) -> AsmResult<T>;
 }
 

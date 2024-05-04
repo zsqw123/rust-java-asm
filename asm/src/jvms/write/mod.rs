@@ -1,6 +1,6 @@
 use std::io::{BufWriter, Write};
 
-use crate::err::{AsmErr, AsmResult};
+use java_asm_internal::err::{AsmErr, AsmResult};
 use crate::jvms::element::ClassFile;
 use crate::jvms::write::bytes::WriteContext;
 

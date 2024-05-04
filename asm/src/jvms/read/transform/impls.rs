@@ -1,8 +1,9 @@
-use crate::err::{AsmErr, AsmResult};
+use java_asm_internal::err::{AsmErr, AsmResult};
+use java_asm_internal::read::jvms::{FromReadContext, ReadContext};
+
 use crate::jvms::attr::{BootstrapMethod, ExceptionTable, InnerClassInfo, LineNumberTableInfo, LocalVariableTableInfo, LocalVariableTypeTableInfo, MethodParameter, RecordComponentInfo, StackMapFrame, VerificationTypeInfo};
 use crate::jvms::element::AttributeInfo;
 use crate::jvms::frame::Frame;
-use crate::jvms::read::bytes::{FromReadContext, ReadContext};
 use crate::jvms::read::transform::generate_from;
 
 impl FromReadContext<VerificationTypeInfo> for VerificationTypeInfo {

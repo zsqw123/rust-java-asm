@@ -1,4 +1,4 @@
-use crate::err::AsmResult;
+use java_asm_internal::err::AsmResult;
 use crate::jvms::attr::Attribute;
 use crate::jvms::attr::{ExceptionTable, StackMapFrame, VerificationTypeInfo};
 use crate::jvms::write::bytes::{FromWriteContext, WriteContext};

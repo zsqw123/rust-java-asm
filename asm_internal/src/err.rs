@@ -9,4 +9,4 @@ pub enum AsmErr {
     ReadUTF8(FromUtf8Error),
 }
 
-pub(crate) type AsmResult<T> = Result<T, AsmErr>;
+pub type AsmResult<T> = Result<T, AsmErr>;

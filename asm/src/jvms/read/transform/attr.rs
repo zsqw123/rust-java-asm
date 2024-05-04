@@ -1,8 +1,9 @@
+use java_asm_internal::err::AsmResult;
+use java_asm_internal::read::jvms::ReadContext;
+
 use crate::constants::Constants;
-use crate::err::AsmResult;
 use crate::jvms::attr::{Attribute, ExceptionTable, StackMapFrame};
 use crate::jvms::element::{AttributeInfo, CPInfo};
-use crate::jvms::read::bytes::ReadContext;
 use crate::jvms::read::transform::transform_attrs;
 use crate::jvms::read::util::read_utf8_from_cp;
 

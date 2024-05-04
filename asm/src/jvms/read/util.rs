@@ -1,5 +1,5 @@
 use crate::constants::Constants;
-use crate::err::{AsmErr, AsmResult};
+use java_asm_internal::err::{AsmErr, AsmResult};
 use crate::jvms::element::{Const, CPInfo};
 
 pub fn read_utf8_from_cp(index: usize, cp: &Vec<CPInfo>) -> AsmResult<String> {

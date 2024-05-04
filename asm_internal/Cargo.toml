@@ -1,0 +1,15 @@
+[package]
+name = "java_asm_internal"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description.workspace = true
+documentation.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+java_asm_macro = { path = "../asm_macro" }
+
+[lib]
+doctest = false

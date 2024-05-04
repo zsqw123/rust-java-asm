@@ -1,7 +1,7 @@
-use crate::err::{AsmErr, AsmResult};
+use java_asm_internal::err::{AsmErr, AsmResult};
+use java_asm_internal::read::jvms::{FromReadContext, ReadContext};
 use crate::jvms::attr::annotation::{AnnotationElement, AnnotationElementValue, AnnotationElementValueInfo, AnnotationInfo};
 use crate::jvms::attr::annotation::type_annotation::{TypeAnnotation, TypeAnnotationTargetInfo, TypeAnnotationTargetInfoLocalVarTable, TypeAnnotationTargetPath, TypeAnnotationTargetPathInfo};
-use crate::jvms::read::bytes::{FromReadContext, ReadContext};
 use crate::jvms::read::transform::generate_from;
 
 impl FromReadContext<AnnotationInfo> for AnnotationInfo {

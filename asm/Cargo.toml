@@ -1,7 +1,11 @@
 [package]
-name = "java-asm"
+name = "java_asm"
 version.workspace =  true
+authors.workspace = true
 edition.workspace = true
+
+[dependencies]
+java_asm_internal = { path = "../asm_internal" }
 
 [lib]
 doctest = false

@@ -10,7 +10,6 @@ pub mod handle;
 pub mod type_path;
 pub mod constant_dynamic;
 pub mod constants;
-mod err;
 pub mod asm_type;
 
 /// jvms api for read & write bytecode.

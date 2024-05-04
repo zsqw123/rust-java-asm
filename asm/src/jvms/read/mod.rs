@@ -1,11 +1,12 @@
 use std::io::{BufReader, Read};
-use crate::err::{AsmErr, AsmResult};
+
+use java_asm_internal::err::{AsmErr, AsmResult};
+use java_asm_internal::read::jvms::{FromReadContext, ReadContext};
+
 use crate::jvms::element::ClassFile;
-use crate::jvms::read::bytes::{FromReadContext, ReadContext};
 use crate::jvms::read::transform::transform_class_file;
 
 mod jvms_reader;
-mod bytes;
 mod transform;
 pub mod util;
 

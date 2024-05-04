@@ -1,4 +1,4 @@
-use crate::err::AsmResult;
+use java_asm_internal::err::AsmResult;
 
 pub(crate) struct WriteContext {
     pub bytes: Vec<u8>,

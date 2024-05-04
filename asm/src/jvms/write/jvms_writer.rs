@@ -1,4 +1,4 @@
-use crate::err::AsmResult;
+use java_asm_internal::err::AsmResult;
 use crate::jvms::element::{AttributeInfo, ClassFile, Const, CPInfo, FieldInfo, MethodInfo};
 use crate::jvms::write::bytes::{FromWriteContext, WriteContext};
 use crate::jvms::write::push_items;

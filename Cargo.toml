@@ -2,7 +2,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "asm",
+    "asm", "asm_macro", "asm_internal",
 #    "asm-tree" # merged in asm module
 ]
 
