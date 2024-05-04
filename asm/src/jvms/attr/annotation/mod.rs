@@ -67,6 +67,7 @@ pub struct AnnotationElementValueInfo {
 pub enum AnnotationElementValue {
     Const { const_value_index: u16 },
     EnumConst { type_name_index: u16, const_name_index: u16 },
+    Class { class_info_index: u16 },
     Annotation { annotation_value: AnnotationInfo },
     Array { num_values: u16, values: Vec<AnnotationElementValueInfo> },
 }

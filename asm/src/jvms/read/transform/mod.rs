@@ -4,6 +4,7 @@ use crate::jvms::read::transform::attr::transform_attr;
 
 mod attr;
 mod impls;
+mod annotation_impls;
 
 pub(crate) fn transform_class_file(origin: ClassFile) -> AsmResult<ClassFile> {
     let mut new_file = origin.clone();
