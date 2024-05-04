@@ -1,5 +1,6 @@
 pub struct Frame {}
 
+#[allow(non_upper_case_globals)]
 impl Frame {
     pub const ITEM_Top: u8 = 0;
     pub const ITEM_Integer: u8 = 1;

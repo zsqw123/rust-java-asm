@@ -1,4 +1,5 @@
 use java_asm_internal::read::jvms::FromReadContext;
+use java_asm_internal::write::jvms::IntoWriteContext;
 
 // type_annotation {
 //     u1 target_type;
@@ -21,14 +22,14 @@ use java_asm_internal::read::jvms::FromReadContext;
 //         element_value value;
 //     } element_value_pairs[num_element_value_pairs];
 // }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, IntoWriteContext)]
 pub struct TypeAnnotation {
     pub target_type: u8,
     pub target_info: TypeAnnotationTargetInfo,
     pub target_path: TypeAnnotationTargetPath,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, IntoWriteContext)]
 pub enum TypeAnnotationTargetInfo {
     TypeParameter { type_parameter_index: u8 },
     SuperType { supertype_index: u16 },
@@ -47,7 +48,7 @@ pub enum TypeAnnotationTargetInfo {
 //     u2 length;
 //     u2 index;
 // }
-#[derive(Clone, Copy, Debug, FromReadContext)]
+#[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
 pub struct TypeAnnotationTargetInfoLocalVarTable {
     pub start_pc: u16,
     pub length: u16,
@@ -60,7 +61,7 @@ pub struct TypeAnnotationTargetInfoLocalVarTable {
 //         u1 type_argument_index;
 //     } path[path_length];
 // }
-#[derive(Clone, Debug, FromReadContext)]
+#[derive(Clone, Debug, FromReadContext, IntoWriteContext)]
 pub struct TypeAnnotationTargetPath {
     pub path_length: u8,
     #[index(path_length)]
@@ -71,7 +72,7 @@ pub struct TypeAnnotationTargetPath {
 //     u1 type_path_kind;
 //     u1 type_argument_index;
 // }
-#[derive(Clone, Copy, Debug, FromReadContext)]
+#[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
 pub struct TypeAnnotationTargetPathInfo {
     pub type_path_kind: u8,
     pub type_argument_index: u8,

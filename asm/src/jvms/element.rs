@@ -1,4 +1,6 @@
-use java_asm_macro::FromReadContext;
+use java_asm_internal::read::jvms::FromReadContext;
+use java_asm_internal::write::jvms::IntoWriteContext;
+
 // ClassFile {
 //     u4             magic;
 //     u2             minor_version;
@@ -20,7 +22,7 @@ use java_asm_macro::FromReadContext;
 use crate::jvms::attr::Attribute;
 
 /// [JVMS4](https://docs.oracle.com/javase/specs/jvms/se9/html/jvms-4.html)
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, IntoWriteContext)]
 pub struct ClassFile {
     pub magic: u32,
     pub minor_version: u16,
@@ -44,13 +46,13 @@ pub struct ClassFile {
 //     u1 tag;
 //     u1 info[];
 // }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, IntoWriteContext)]
 pub struct CPInfo {
     pub tag: u8,
     pub info: Const,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, IntoWriteContext)]
 pub enum Const {
     // invalid const's tag is 0
     Invalid,
@@ -140,7 +142,7 @@ pub enum Const {
 //     u2             attributes_count;
 //     attribute_info attributes[attributes_count];
 // }
-#[derive(Clone, Debug, FromReadContext)]
+#[derive(Clone, Debug, FromReadContext, IntoWriteContext)]
 pub struct FieldInfo {
     pub access_flags: u16,
     pub name_index: u16,
@@ -157,7 +159,7 @@ pub struct FieldInfo {
 //     u2             attributes_count;
 //     attribute_info attributes[attributes_count];
 // }
-#[derive(Clone, Debug, FromReadContext)]
+#[derive(Clone, Debug, FromReadContext, IntoWriteContext)]
 pub struct MethodInfo {
     pub access_flags: u16,
     pub name_index: u16,
@@ -172,7 +174,7 @@ pub struct MethodInfo {
 //     u4 attribute_length;
 //     u1 info[attribute_length];
 // }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, IntoWriteContext)]
 pub struct AttributeInfo {
     pub attribute_name_index: u16,
     pub attribute_length: u32,

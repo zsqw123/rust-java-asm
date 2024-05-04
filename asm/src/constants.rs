@@ -1,5 +1,6 @@
 pub struct Constants;
 
+#[allow(non_upper_case_globals)]
 impl Constants {
     // The ClassFile attribute names, in the order they are defined in
     // https://docs.oracle.com/javase/specs/jvms/se11/html/jvms-4.html#jvms-4.7-300.

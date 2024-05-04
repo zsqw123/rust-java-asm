@@ -1,4 +1,5 @@
 use java_asm_internal::read::jvms::FromReadContext;
+use java_asm_internal::write::jvms::IntoWriteContext;
 
 pub mod type_annotation;
 
@@ -9,7 +10,7 @@ pub mod type_annotation;
 //         element_value value;
 //     } element_value_pairs[num_element_value_pairs];
 // }
-#[derive(Clone, Debug, FromReadContext)]
+#[derive(Clone, Debug, FromReadContext, IntoWriteContext)]
 pub struct AnnotationInfo {
     pub type_index: u16,
     pub num_element_value_pairs: u16,
@@ -21,7 +22,7 @@ pub struct AnnotationInfo {
 //     u2            element_name_index;
 //     element_value value;
 // } 
-#[derive(Clone, Debug, FromReadContext)]
+#[derive(Clone, Debug, FromReadContext, IntoWriteContext)]
 pub struct AnnotationElement {
     pub element_name_index: u16,
     pub value: AnnotationElementValueInfo,
@@ -45,7 +46,7 @@ pub struct AnnotationElement {
 //         } array_value;
 //     } value;
 // }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, IntoWriteContext)]
 pub struct AnnotationElementValueInfo {
     pub tag: u8,
     pub value: AnnotationElementValue,
@@ -66,7 +67,7 @@ pub struct AnnotationElementValueInfo {
 //         element_value values[num_values];
 //     } array_value;
 // } value;
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, IntoWriteContext)]
 pub enum AnnotationElementValue {
     Const { const_value_index: u16 },
     EnumConst { type_name_index: u16, const_name_index: u16 },
@@ -79,7 +80,7 @@ pub enum AnnotationElementValue {
 //     u2         num_annotations;
 //     annotation annotations[num_annotations];
 // }
-#[derive(Clone, Debug, FromReadContext)]
+#[derive(Clone, Debug, FromReadContext, IntoWriteContext)]
 pub struct ParameterAnnotationInfo {
     pub num_annotations: u16,
     #[index(num_annotations)]
