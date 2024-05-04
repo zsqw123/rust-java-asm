@@ -1,12 +1,11 @@
 use java_asm_internal::err::AsmResult;
 use crate::jvms::attr::Attribute;
 use crate::jvms::attr::{ExceptionTable, StackMapFrame, VerificationTypeInfo};
-use crate::jvms::write::bytes::{FromWriteContext, WriteContext};
+use java_asm_internal::write::jvms::{IntoWriteContext, WriteContext};
 use crate::jvms::write::{push_enum, push_items};
 
-
-impl FromWriteContext<Attribute> for Attribute {
-    fn from_context(context: &mut WriteContext, from: Attribute) -> AsmResult<()> {
+impl IntoWriteContext<Attribute> for Attribute {
+    fn into_context(context: &mut WriteContext, from: Attribute) -> AsmResult<()> {
         push_enum!(context, from;
             @Attribute::Custom { vec };
             Attribute::ConstantValue { constantvalue_index };
@@ -30,8 +29,8 @@ impl FromWriteContext<Attribute> for Attribute {
     }
 }
 
-impl FromWriteContext<ExceptionTable> for ExceptionTable {
-    fn from_context(context: &mut WriteContext, from: ExceptionTable) -> AsmResult<()> {
+impl IntoWriteContext<ExceptionTable> for ExceptionTable {
+    fn into_context(context: &mut WriteContext, from: ExceptionTable) -> AsmResult<()> {
         push_items!(
             context, from;
             start_pc, end_pc, handler_pc, catch_type,
@@ -40,8 +39,8 @@ impl FromWriteContext<ExceptionTable> for ExceptionTable {
     }
 }
 
-impl FromWriteContext<StackMapFrame> for StackMapFrame {
-    fn from_context(context: &mut WriteContext, from: StackMapFrame) -> AsmResult<()> {
+impl IntoWriteContext<StackMapFrame> for StackMapFrame {
+    fn into_context(context: &mut WriteContext, from: StackMapFrame) -> AsmResult<()> {
         push_enum!(
             context, from;
             StackMapFrame::SameFrame { frame_type };
@@ -62,8 +61,8 @@ impl FromWriteContext<StackMapFrame> for StackMapFrame {
     }
 }
 
-impl FromWriteContext<VerificationTypeInfo> for VerificationTypeInfo {
-    fn from_context(context: &mut WriteContext, from: VerificationTypeInfo) -> AsmResult<()> {
+impl IntoWriteContext<VerificationTypeInfo> for VerificationTypeInfo {
+    fn into_context(context: &mut WriteContext, from: VerificationTypeInfo) -> AsmResult<()> {
         push_enum!(
             context, from;
             VerificationTypeInfo::Top { tag };

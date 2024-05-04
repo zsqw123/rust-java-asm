@@ -2,10 +2,9 @@ use std::io::{BufWriter, Write};
 
 use java_asm_internal::err::{AsmErr, AsmResult};
 use crate::jvms::element::ClassFile;
-use crate::jvms::write::bytes::WriteContext;
+use java_asm_internal::write::jvms::WriteContext;
 
 mod jvms_writer;
-mod bytes;
 mod attrs;
 
 pub struct JvmsClassWriter {}
