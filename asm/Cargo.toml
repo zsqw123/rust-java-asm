@@ -3,9 +3,12 @@ name = "java_asm"
 version.workspace =  true
 authors.workspace = true
 edition.workspace = true
+description.workspace = true
+license.workspace = true
+documentation.workspace = true
 
 [dependencies]
-java_asm_internal = { path = "../asm_internal" }
+java_asm_internal = { workspace = true }
 
 [lib]
 doctest = false
