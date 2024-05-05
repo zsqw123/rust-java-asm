@@ -19,7 +19,7 @@ pub struct AnnotationInfo {
 }
 
 // {   
-//     u2            element_name_index;
+//     u2            element_name_index; // CONSTANT_Utf8_info
 //     element_value value;
 // } 
 #[derive(Clone, Debug, FromReadContext, IntoWriteContext)]

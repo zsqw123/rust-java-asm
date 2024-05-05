@@ -68,6 +68,12 @@ impl FromReadContext<TypeAnnotation> for TypeAnnotation {
             ),
         };
         let target_path = context.read()?;
-        Ok(TypeAnnotation { target_type, target_info, target_path })
+        let type_index = context.read()?;
+        let num_element_value_pairs = context.read()?;
+        let element_value_pairs = context.read_vec(num_element_value_pairs as usize)?;
+        Ok(TypeAnnotation { 
+            target_type, target_info, target_path,
+            type_index, num_element_value_pairs, element_value_pairs
+        })
     }
 }

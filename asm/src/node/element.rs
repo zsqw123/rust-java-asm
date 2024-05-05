@@ -1,4 +1,6 @@
 use crate::asm_type::Type;
+use crate::jvms::attr::annotation::type_annotation::{TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
+use crate::node::values::AnnotationValue;
 use crate::opcodes::Opcodes;
 
 #[derive(Clone, Debug)]
@@ -122,7 +124,7 @@ pub struct MethodNode {
     pub attrs: Vec<Attribute>,
 
     /// The default value of this annotation interface method
-    pub annotation_default: Option<AnnotationDefaultValueNode>,
+    pub annotation_default: Option<AnnotationValue>,
 
     pub instructions: Vec<InsnNode>,
 
@@ -134,10 +136,54 @@ pub struct MethodNode {
 }
 
 #[derive(Clone, Debug)]
-pub enum AnnotationDefaultValueNode {}
+pub struct InnerClassNode {}
 
 #[derive(Clone, Debug)]
-pub struct TryCatchBlockNode {}
+pub struct RecordComponentNode {}
+
+#[derive(Clone, Debug)]
+pub struct ParameterNode {
+    /// The parameter's name. May be [None].
+    pub name: Option<String>,
+
+    /// The parameter's access flags. Valid values are [Opcodes::ACC_FINAL], [Opcodes::ACC_SYNTHETIC]
+    pub access: u32,
+}
+
+#[derive(Clone, Debug)]
+pub struct FieldNode {}
+
+#[derive(Clone, Debug)]
+pub struct ModuleNode {}
+
+#[derive(Clone, Debug)]
+pub struct TypeAnnotationNode {
+    pub target_info: TypeAnnotationTargetInfo,
+    pub target_path: TypeAnnotationTargetPath,
+    pub annotation_node: AnnotationNode,
+}
+
+#[derive(Clone, Debug)]
+pub struct AnnotationNode {
+    pub visible: bool,
+    pub desc: String,
+    // attribute -> value pairs
+    pub values: Vec<(String, AnnotationValue)>,
+}
+#[derive(Clone, Debug)]
+pub struct TryCatchBlockNode {
+    /// The beginning of the exception handler's scope (inclusive).
+    pub start: LabelNode,
+    /// The end of the exception handler's scope (exclusive).
+    pub end: LabelNode,
+    /// The beginning of the exception handler's code.
+    pub handler: LabelNode,
+    /// The internal name of the type of exceptions handled by the exception handler, 
+    /// or [None] to catch any exceptions (for "finally" blocks).
+    pub catch_type: Option<String>,
+    /// type annotations on the exception handler type.
+    pub type_annotations: Vec<TypeAnnotationNode>,
+}
 
 #[derive(Clone, Debug)]
 pub struct LocalVariableNode {}
@@ -154,36 +200,6 @@ pub struct LocalVariableAnnotationNode {
     pub index: u32,
 }
 
-#[derive(Clone, Debug)]
-pub struct ParameterNode {
-    /// The parameter's name. May be [None].
-    pub name: Option<String>,
-
-    /// The parameter's access flags. Valid values are [Opcodes::ACC_FINAL], [Opcodes::ACC_SYNTHETIC]
-    pub access: u32,
-}
-
-#[derive(Clone, Debug)]
-pub struct FieldNode {}
-
-#[derive(Clone, Debug)]
-pub struct ModuleNode {
-    
-}
-
-#[derive(Clone, Debug)]
-pub struct TypeAnnotationNode {}
-
-#[derive(Clone, Debug)]
-pub struct AnnotationNode {
-    pub visible: bool,
-}
-
-#[derive(Clone, Debug)]
-pub struct InnerClassNode {}
-
-#[derive(Clone, Debug)]
-pub struct RecordComponentNode {}
 
 #[derive(Clone, Debug)]
 pub enum InsnNode {

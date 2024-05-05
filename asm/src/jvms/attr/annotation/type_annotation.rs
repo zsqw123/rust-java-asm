@@ -1,5 +1,6 @@
 use java_asm_internal::read::jvms::FromReadContext;
 use java_asm_internal::write::jvms::IntoWriteContext;
+use crate::jvms::attr::annotation::AnnotationElement;
 
 // type_annotation {
 //     u1 target_type;
@@ -27,6 +28,9 @@ pub struct TypeAnnotation {
     pub target_type: u8,
     pub target_info: TypeAnnotationTargetInfo,
     pub target_path: TypeAnnotationTargetPath,
+    pub type_index: u16,
+    pub num_element_value_pairs: u16,
+    pub element_value_pairs: Vec<AnnotationElement>,
 }
 
 #[derive(Clone, Debug, IntoWriteContext)]
