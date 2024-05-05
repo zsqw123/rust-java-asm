@@ -1,15 +1,7 @@
-use crate::constant_dynamic::ConstantDynamic;
-
-pub struct ClassReaderOption<'a> {
-    header: u32,
-    constant_pool_offsets: &'a Vec<u32>,
-    constant_utf8_values: Vec<String>,
-    max_string_length: u32,
-    constant_dynamic_values: Option<Vec<ConstantDynamic<'a>>>,
-}
+pub struct ClassReaderOption {}
 
 /// consts for [ClassReader]
-impl ClassReaderOption<'_> {
+impl ClassReaderOption {
     /// A flag to skip the Code attributes. If this flag is set the Code attributes are neither parsed
     /// nor visited.
     const SKIP_CODE: u16 = 1;
@@ -50,8 +42,4 @@ impl ClassReaderOption<'_> {
 
     /// The size of the temporary byte array used to read class input streams chunk by chunk.
     const INPUT_STREAM_DATA_CHUNK_SIZE: u16 = 4096;
-}
-
-impl ClassReaderOption<'_> {
-    
 }

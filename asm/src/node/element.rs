@@ -333,7 +333,11 @@ pub struct LocalVariableNode {
 }
 
 #[derive(Clone, Debug)]
-pub struct Attribute {}
+pub struct Attribute {
+    pub name: String,
+    pub info: Vec<u8>,
+    pub index: u16, // index of the attribute in attributes table
+}
 
 // each label contains a unique id in the method scope.
 #[derive(Clone, Debug)]
