@@ -1,6 +1,6 @@
 use crate::asm_type::Type;
 use crate::jvms::attr::annotation::type_annotation::{TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
-use crate::node::values::AnnotationValue;
+use crate::node::values::{AnnotationValue, FieldInitialValue};
 use crate::opcodes::Opcodes;
 
 #[derive(Clone, Debug)]
@@ -173,7 +173,30 @@ pub struct ParameterNode {
 }
 
 #[derive(Clone, Debug)]
-pub struct FieldNode {}
+pub struct FieldNode {
+    /// The field's access flags (see [Opcodes]).
+    pub access: u16,
+
+    /// The field's name.
+    pub name: String,
+
+    /// The field's descriptor (see [Type::get_descriptor]).
+    pub desc: String,
+
+    /// The field's signature. May be [None].
+    pub signature: Option<String>,
+
+    /// The field's initial value. This field, which may be [None] if the field does not have an initial value, 
+    /// must be an Integer, a Float, a Long, a Double or a String.
+    pub value: Option<FieldInitialValue>,
+
+    pub annotations: Vec<AnnotationNode>,
+
+    pub type_annotations: Vec<TypeAnnotationNode>,
+
+    /// The non-standard attributes of this field.
+    pub attrs: Vec<Attribute>,
+}
 
 #[derive(Clone, Debug)]
 pub struct ModuleNode {

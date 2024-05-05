@@ -16,3 +16,12 @@ pub enum AnnotationValue {
     Annotation(Box<AnnotationValue>),
     Array(Vec<AnnotationValue>),
 }
+
+#[derive(Clone, Debug)]
+pub enum FieldInitialValue {
+    Integer(i32),
+    Float(f32),
+    Long(i64),
+    Double(f64),
+    String(String),
+}
