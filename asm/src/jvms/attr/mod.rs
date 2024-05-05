@@ -378,8 +378,8 @@ pub struct LocalVariableTableInfo {
 // {
 //     u2 start_pc;
 //     u2 length;
-//     u2 name_index;
-//     u2 signature_index;
+//     u2 name_index; // CONSTANT_Utf8_info
+//     u2 signature_index; // CONSTANT_Utf8_info
 //     u2 index;
 // }
 #[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]

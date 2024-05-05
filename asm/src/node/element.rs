@@ -131,15 +131,37 @@ pub struct MethodNode {
     pub try_catch_blocks: Vec<TryCatchBlockNode>,
 
     pub local_variables: Vec<LocalVariableNode>,
-
-    pub local_variable_annotations: Vec<Vec<LocalVariableAnnotationNode>>,
 }
 
 #[derive(Clone, Debug)]
-pub struct InnerClassNode {}
+pub struct InnerClassNode {
+    /// The internal name of an inner class (see [Type::get_internal_name]).
+    pub name: String,
+
+    /// The internal name of the class to which the inner class belongs (see [Type::get_internal_name]).
+    pub outer_name: Option<String>,
+
+    /// The simple name of the inner class inside its enclosing class.
+    pub inner_name: String,
+
+    /// The access flags of the inner class as originally declared in the enclosing class.
+    pub access: u16,
+}
 
 #[derive(Clone, Debug)]
-pub struct RecordComponentNode {}
+pub struct RecordComponentNode {
+    /// The record component's name.
+    pub name: String,
+
+    /// The record component's descriptor (see [Type::get_descriptor]).
+    pub desc: String,
+
+    /// The record component's signature. May be [None].
+    pub signature: Option<String>,
+
+    pub annotations: Vec<AnnotationNode>,
+    pub type_annotations: Vec<TypeAnnotationNode>,
+}
 
 #[derive(Clone, Debug)]
 pub struct ParameterNode {
@@ -154,7 +176,88 @@ pub struct ParameterNode {
 pub struct FieldNode {}
 
 #[derive(Clone, Debug)]
-pub struct ModuleNode {}
+pub struct ModuleNode {
+    /// The name of the module.
+    pub name: String,
+
+    /// The access flags of the module, valid values are [Opcodes::ACC_OPEN], [Opcodes::ACC_SYNTHETIC], [Opcodes::ACC_MANDATED]
+    pub access: u16,
+
+    /// The version of the module. May be [None].
+    pub version: Option<String>,
+
+    /// The main class of the module. May be [None].
+    pub main_class: Option<String>,
+
+    /// The packages of the module.
+    pub packages: Vec<String>,
+    
+    /// The dependencies of this module.
+    pub requires: Vec<ModuleRequireNode>,
+    
+    /// The packages exported by this module
+    pub exports: Vec<ModuleExportNode>,
+    
+    /// The packages opened by this module.
+    pub opens: Vec<ModuleOpenNode>,
+    
+    /// The internal names of the services used by this module (see [Type::get_internal_name]).
+    pub uses: Vec<String>,
+    
+    // The services provided by this module.
+    pub provides: Vec<ModuleProvides>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ModuleRequireNode {
+    /// The fully qualified name (using dots) of the dependence.
+    pub module: String,
+
+    /// The access flags of the required module, valid values are [Opcodes::ACC_TRANSITIVE], 
+    /// [Opcodes::ACC_STATIC_PHASE], [Opcodes::ACC_SYNTHETIC], [Opcodes::ACC_MANDATED]
+    pub access: u16,
+
+    /// The version of the required module. May be [None].
+    pub version: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ModuleExportNode {
+    /// The internal name of the exported package. (see [Type::get_internal_name]).
+    pub package: String,
+
+    /// The access flags of the exported package, valid values are [Opcodes::ACC_SYNTHETIC], 
+    /// [Opcodes::ACC_MANDATED]
+    pub access: u16,
+
+    /// The list of modules that can access this exported package, 
+    /// specified with fully qualified names (using dots)
+    pub modules: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ModuleOpenNode {
+    /// The internal name of the opened package. (see [Type::get_internal_name]).
+    pub package: String,
+
+    /// The access flags of the opened package, valid values are [Opcodes::ACC_SYNTHETIC], 
+    /// [Opcodes::ACC_MANDATED]
+    pub access: u16,
+
+    /// The list of modules that can access this opened package, 
+    /// specified with fully qualified names (using dots)
+    pub modules: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ModuleProvides {
+    /// The internal name of the service interface. (see [Type::get_internal_name]).
+    pub service: String,
+
+    /// The internal names of the implementations of the service interface.
+    pub providers: Vec<String>,
+}
+
 
 #[derive(Clone, Debug)]
 pub struct TypeAnnotationNode {
@@ -186,11 +289,14 @@ pub struct TryCatchBlockNode {
 }
 
 #[derive(Clone, Debug)]
-pub struct LocalVariableNode {}
-
-#[derive(Clone, Debug)]
-pub struct LocalVariableAnnotationNode {
-    /// The fist instructions corresponding to the continuous ranges 
+pub struct LocalVariableNode {
+    /// The name of a local variable.
+    pub name: String,
+    /// The type descriptor of this local variable.
+    pub desc: String,
+    /// The signature of this local variable. May be [None].
+    pub signature: Option<String>,
+    /// The first instructions corresponding to the continuous ranges 
     /// that make the scope of this local variable (inclusive)
     pub start: LabelNode,
     /// The last instructions corresponding to the continuous ranges 
@@ -198,6 +304,8 @@ pub struct LocalVariableAnnotationNode {
     pub end: LabelNode,
     /// The local variable's index.
     pub index: u32,
+    /// type annotations on the local variable type.
+    pub type_annotations: Vec<TypeAnnotationNode>,
 }
 
 
