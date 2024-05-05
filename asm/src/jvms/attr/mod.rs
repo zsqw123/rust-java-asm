@@ -400,7 +400,7 @@ pub struct LocalVariableTypeTableInfo {
 //     Double_variable_info; // ITEM_Double
 //     Null_variable_info; // ITEM_Null
 //     UninitializedThis_variable_info; // ITEM_UninitializedThis
-//     Object_variable_info; // ITEM_Object
+//     Object_variable_info; // ITEM_Object CONSTANT_Class_info
 //     Uninitialized_variable_info; // ITEM_Uninitialized
 // }
 #[derive(Clone, Copy, Debug, IntoWriteContext)]

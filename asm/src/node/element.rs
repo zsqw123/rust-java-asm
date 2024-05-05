@@ -1,5 +1,6 @@
 use crate::asm_type::Type;
 use crate::jvms::attr::annotation::type_annotation::{TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
+use crate::node::insn::InsnNode;
 use crate::node::values::{AnnotationValue, FieldInitialValue};
 use crate::opcodes::Opcodes;
 
@@ -329,12 +330,6 @@ pub struct LocalVariableNode {
     pub index: u32,
     /// type annotations on the local variable type.
     pub type_annotations: Vec<TypeAnnotationNode>,
-}
-
-
-#[derive(Clone, Debug)]
-pub enum InsnNode {
-    
 }
 
 #[derive(Clone, Debug)]

@@ -1,5 +1,4 @@
 pub mod opcodes;
-pub(crate) mod internal;
 pub mod constants;
 pub mod asm_type;
 
