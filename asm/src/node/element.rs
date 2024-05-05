@@ -49,17 +49,9 @@ pub struct ClassNode {
     /// or class variable initializer).
     pub outer_method_desc: Option<String>,
 
-    /// The runtime visible annotations of this class.
-    pub visible_annotations: Vec<AnnotationNode>,
+    pub annotations: Vec<AnnotationNode>,
 
-    /// The runtime invisible annotations of this class.
-    pub invisible_annotations: Vec<AnnotationNode>,
-
-    /// The runtime visible type annotations of this class.
-    pub visible_type_annotations: Vec<TypeAnnotationNode>,
-
-    /// The runtime invisible type annotations of this class.
-    pub invisible_type_annotations: Vec<TypeAnnotationNode>,
+    pub type_annotations: Vec<TypeAnnotationNode>,
 
     /// The non-standard attributes of this class.
     pub attrs: Vec<Attribute>,
@@ -88,6 +80,93 @@ pub struct ClassNode {
 }
 
 #[derive(Clone, Debug)]
+pub struct MethodNode {
+    /// The method's access flags (see [Opcodes]).
+    pub access: u16,
+
+    /// The method's name.
+    pub name: String,
+
+    /// The method's descriptor (see [Type::get_method_descriptor]).
+    pub desc: String,
+
+    /// The method's signature. May be [None].
+    pub signature: Option<String>,
+
+    /// The internal names of the method's exceptions (see [Type::get_internal_name]).
+    pub exceptions: Vec<String>,
+
+    /// The method parameter info.
+    pub parameters: Vec<ParameterNode>,
+
+    pub annotations: Vec<AnnotationNode>,
+
+    pub type_annotations: Vec<TypeAnnotationNode>,
+
+    /// The i'th entry in the parameter_annotations table may, but is not required to, 
+    /// correspond to the i'th parameter descriptor in the method descriptor (§4.3.3).
+    /// 
+    /// For example, a compiler may choose to create entries in the table corresponding 
+    /// only to those parameter descriptors which represent explicitly declared parameters 
+    /// in source code. In the Java programming language, a constructor of an inner 
+    /// class is specified to have an implicitly declared parameter before its explicitly 
+    /// declared parameters (JLS §8.8.1), so the corresponding <init> method in a class 
+    /// file has a parameter descriptor representing the implicitly declared parameter 
+    /// before any parameter descriptors representing explicitly declared parameters. 
+    /// If the first explicitly declared parameter is annotated in source code, then 
+    /// a compiler may create parameter_annotation at index 0 to store annotations 
+    /// corresponding to the second parameter descriptor.
+    pub parameter_annotations: Vec<Vec<AnnotationNode>>,
+
+    /// The non-standard attributes of this method.
+    pub attrs: Vec<Attribute>,
+
+    /// The default value of this annotation interface method
+    pub annotation_default: Option<AnnotationDefaultValueNode>,
+
+    pub instructions: Vec<InsnNode>,
+
+    pub try_catch_blocks: Vec<TryCatchBlockNode>,
+
+    pub local_variables: Vec<LocalVariableNode>,
+
+    pub local_variable_annotations: Vec<Vec<LocalVariableAnnotationNode>>,
+}
+
+#[derive(Clone, Debug)]
+pub enum AnnotationDefaultValueNode {}
+
+#[derive(Clone, Debug)]
+pub struct TryCatchBlockNode {}
+
+#[derive(Clone, Debug)]
+pub struct LocalVariableNode {}
+
+#[derive(Clone, Debug)]
+pub struct LocalVariableAnnotationNode {
+    /// The fist instructions corresponding to the continuous ranges 
+    /// that make the scope of this local variable (inclusive)
+    pub start: LabelNode,
+    /// The last instructions corresponding to the continuous ranges 
+    /// that make the scope of this local variable (exclusive).
+    pub end: LabelNode,
+    /// The local variable's index.
+    pub index: u32,
+}
+
+#[derive(Clone, Debug)]
+pub struct ParameterNode {
+    /// The parameter's name. May be [None].
+    pub name: Option<String>,
+
+    /// The parameter's access flags. Valid values are [Opcodes::ACC_FINAL], [Opcodes::ACC_SYNTHETIC]
+    pub access: u32,
+}
+
+#[derive(Clone, Debug)]
+pub struct FieldNode {}
+
+#[derive(Clone, Debug)]
 pub struct ModuleNode {
     
 }
@@ -96,16 +175,12 @@ pub struct ModuleNode {
 pub struct TypeAnnotationNode {}
 
 #[derive(Clone, Debug)]
-pub struct AnnotationNode {}
+pub struct AnnotationNode {
+    pub visible: bool,
+}
 
 #[derive(Clone, Debug)]
 pub struct InnerClassNode {}
-
-#[derive(Clone, Debug)]
-pub struct MethodNode {}
-
-#[derive(Clone, Debug)]
-pub struct FieldNode {}
 
 #[derive(Clone, Debug)]
 pub struct RecordComponentNode {}
@@ -118,4 +193,6 @@ pub enum InsnNode {
 #[derive(Clone, Debug)]
 pub struct Attribute {}
 
-
+// each label contains a unique id in the method scope.
+#[derive(Clone, Debug)]
+pub struct LabelNode(pub u32);
