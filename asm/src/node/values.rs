@@ -1,4 +1,37 @@
+use std::rc::Rc;
 use crate::asm_type::Type;
+
+#[derive(Clone, Debug)]
+pub enum ConstValue {
+    Invalid,
+    Class(Rc<InternalName>),
+    Member {
+        class: Rc<InternalName>,
+        name: Rc<String>,
+        desc: Rc<Descriptor>,
+    },
+    String(Rc<String>),
+    Integer(i32),
+    Float(f32),
+    Long(i64),
+    Double(f64),
+    NameAndType {
+        name: Rc<String>,
+        desc: Rc<Descriptor>,
+    },
+    MethodHandle {
+        reference_kind: u8,
+        reference_index: u16,
+    },
+    MethodType(Rc<Descriptor>),
+    Dynamic {
+        bootstrap_method_attr_index: u16,
+        name: Rc<String>,
+        desc: Rc<Descriptor>,
+    },
+    Module(Rc<String>),
+    Package(Rc<String>),
+}
 
 #[derive(Clone, Debug)]
 pub enum AnnotationValue {
@@ -86,3 +119,11 @@ pub struct ConstDynamic {
     bsm: Handle,
     bsm_args: Vec<BootstrapMethodArgument>,
 }
+
+/// eg: java/lang/Class
+pub type InternalName = String;
+
+/// eg: java.lang.Class
+pub type QualifiedName = String;
+
+pub type Descriptor = String;

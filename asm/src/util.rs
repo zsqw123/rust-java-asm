@@ -103,6 +103,14 @@ pub fn mutf8_to_utf8(mutf8: &[u8]) -> AsmResult<Vec<u8>> {
     Ok(utf8)
 }
 
+pub fn mutf8_to_string(mutf8: &[u8]) -> AsmResult<String> {
+    let utf8 = mutf8_to_utf8(mutf8)?;
+    match String::from_utf8(utf8) {
+        Ok(str) => Ok(str),
+        Err(e) => Err(AsmErr::ReadUTF8(e.to_string())),
+    }
+}
+
 pub fn utf8_to_mutf8(utf8: &[u8]) -> AsmResult<Vec<u8>> {
     let len = utf8.len();
     let mut mutf8 = Vec::with_capacity(len);
