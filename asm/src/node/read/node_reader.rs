@@ -33,6 +33,10 @@ pub(crate) struct ClassNodeContext {
 }
 
 impl ClassNodeContext {
+    pub fn new(jvms_file: Rc<ClassFile>) -> Self {
+        Self { jvms_file, cp_cache: HashMap::new() }
+    }
+    
     pub fn read_utf8(&mut self, index: u16) -> AsmResult<Rc<String>> {
         let constant = self.read_const(index)?;
         let ConstValue::String(s) = constant.as_ref() else {
@@ -129,7 +133,7 @@ impl ClassNodeContext {
     }
 }
 
-pub(crate) struct MethodNodeContext<'a> {
-    pub jvms_file: &'a ClassFile,
-    pub method_info: &'a MethodInfo,
+pub(crate) struct MethodNodeContext {
+    pub jvms_file: Rc<ClassFile>,
+    pub method_info: Rc<MethodInfo>,
 }
