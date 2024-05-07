@@ -1,6 +1,7 @@
 use crate::constants::Constants;
 use java_asm_internal::err::{AsmErr, AsmResult};
 use crate::jvms::element::{Const, CPInfo};
+use crate::util::mutf8_to_utf8;
 
 pub fn read_utf8_from_cp(index: usize, cp: &Vec<CPInfo>) -> AsmResult<String> {
     let cp_info = &cp[index];
@@ -12,9 +13,10 @@ pub fn read_utf8_from_cp(index: usize, cp: &Vec<CPInfo>) -> AsmResult<String> {
         ));
     };
     if let Const::Utf8 { bytes, .. } = info {
-        return match String::from_utf8(bytes.clone()) {
+        let utf8 = mutf8_to_utf8(bytes)?;
+        return match String::from_utf8(utf8) {
             Ok(str) => Ok(str),
-            Err(e) => Err(AsmErr::ReadUTF8(e)),
+            Err(e) => Err(AsmErr::ReadUTF8(e.to_string())),
         };
     };
     Err(AsmErr::IllegalArgument(

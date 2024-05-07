@@ -1,12 +1,18 @@
 use std::io;
-use std::string::FromUtf8Error;
 
 #[derive(Debug)]
 pub enum AsmErr {
     ContentReadErr(io::Error),
     ContentWriteErr(io::Error),
     IllegalArgument(String),
-    ReadUTF8(FromUtf8Error),
+    ReadMUTF8(String),
+    ReadUTF8(String),
+}
+
+impl AsmErr {
+    pub fn e<T>(self) -> AsmResult<T> {
+        Err(self)
+    }
 }
 
 pub type AsmResult<T> = Result<T, AsmErr>;

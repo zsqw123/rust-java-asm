@@ -6,12 +6,12 @@ use crate::opcodes::Opcodes;
 
 #[derive(Clone, Debug)]
 pub struct ClassNode {
-    /// The class version. The minor version is stored in the 16 most significant bits, and the major
-    /// version in the 16 least significant bits.
-    pub version: u32,
+    /// The class version.
+    pub minor_version: u16,
+    pub major_version: u16,
 
     /// The class's access flags (see [Opcodes]).
-    pub access: u32,
+    pub access: u16,
 
     /// The internal name of this class (see [Type::get_internal_name]).
     pub name: String,

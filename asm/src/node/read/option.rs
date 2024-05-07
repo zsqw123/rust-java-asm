@@ -37,9 +37,6 @@ impl ClassReaderOption {
     /// goto_w in ClassWriter cannot occur.
     pub const EXPAND_ASM_INSNS: u16 = 256;
 
-    /// The maximum size of array to allocate.
-    const MAX_BUFFER_SIZE: u32 = 1024 * 1024;
-
     /// The size of the temporary byte array used to read class input streams chunk by chunk.
     const INPUT_STREAM_DATA_CHUNK_SIZE: u16 = 4096;
 }
