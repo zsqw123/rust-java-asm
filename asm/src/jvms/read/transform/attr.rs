@@ -113,10 +113,7 @@ pub(crate) fn transform_attr(attribute_info: &AttributeInfo, cp: &Vec<CPInfo>) -
         Constants::BOOTSTRAP_METHODS => {
             let num_bootstrap_methods = context.read()?;
             let bootstrap_methods = context.read_vec(num_bootstrap_methods as usize)?;
-            Attribute::BootstrapMethods {
-                attribute_name_index, attribute_length, 
-                num_bootstrap_methods, bootstrap_methods, 
-            }
+            Attribute::BootstrapMethods { num_bootstrap_methods, bootstrap_methods }
         },
         Constants::METHOD_PARAMETERS => {
             let parameters_count = context.read()?;

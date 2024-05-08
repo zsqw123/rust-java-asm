@@ -207,8 +207,6 @@ pub enum Attribute {
     //     } bootstrap_methods[num_bootstrap_methods];
     // }
     BootstrapMethods {
-        attribute_name_index: u16,
-        attribute_length: u32,
         num_bootstrap_methods: u16,
         bootstrap_methods: Vec<BootstrapMethod>,
     },
@@ -335,9 +333,9 @@ pub enum Attribute {
 }
 
 // {
-//     u2 inner_class_info_index;
-//     u2 outer_class_info_index;
-//     u2 inner_name_index;
+//     u2 inner_class_info_index; // CONSTANT_Class_info
+//     u2 outer_class_info_index; // CONSTANT_Class_info
+//     u2 inner_name_index; // CONSTANT_Utf8_info
 //     u2 inner_class_access_flags;
 // }
 #[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
@@ -458,7 +456,7 @@ pub enum StackMapFrame {
 //     u2 start_pc;
 //     u2 end_pc;
 //     u2 handler_pc;
-//     u2 catch_type;
+//     u2 catch_type; // CONSTANT_Class_info
 // }
 #[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
 pub struct ExceptionTable {

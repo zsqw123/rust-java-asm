@@ -1,8 +1,10 @@
 use std::rc::Rc;
+
 use crate::asm_type::Type;
 use crate::jvms::attr::annotation::type_annotation::{TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
+use crate::jvms::attr::StackMapFrame;
 use crate::node::insn::InsnNode;
-use crate::node::values::{AnnotationValue, Descriptor, FieldInitialValue, InternalName, QualifiedName};
+use crate::node::values::{AnnotationValue, ConstValue, Descriptor, FieldInitialValue, InternalName, QualifiedName};
 use crate::opcodes::Opcodes;
 
 #[derive(Clone, Debug)]
@@ -58,7 +60,7 @@ pub struct ClassNode {
     pub type_annotations: Vec<TypeAnnotationNode>,
 
     /// The non-standard attributes of this class.
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<UnknownAttribute>,
 
     /// The inner classes of this class.
     pub inner_classes: Vec<InnerClassNode>,
@@ -123,7 +125,7 @@ pub struct MethodNode {
     pub parameter_annotations: Vec<Vec<AnnotationNode>>,
 
     /// The non-standard attributes of this method.
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<UnknownAttribute>,
 
     /// The default value of this annotation interface method
     pub annotation_default: Option<AnnotationValue>,
@@ -197,7 +199,7 @@ pub struct FieldNode {
     pub type_annotations: Vec<TypeAnnotationNode>,
 
     /// The non-standard attributes of this field.
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<UnknownAttribute>,
 }
 
 #[derive(Clone, Debug)]
@@ -334,10 +336,76 @@ pub struct LocalVariableNode {
 }
 
 #[derive(Clone, Debug)]
-pub struct Attribute {
+pub struct UnknownAttribute {
     pub name: Rc<String>,
     pub info: Vec<u8>,
     pub index: u16, // index of the attribute in attributes table
+}
+
+#[derive(Clone, Debug)]
+pub enum Attribute {
+    ConstantValue(ConstValue),
+    Code {
+        max_stack: u16,
+        max_locals: u16,
+        code: Vec<u8>,
+        exception_table: Vec<ExceptionTable>,
+        attributes: Vec<Attribute>,
+    },
+    StackMapTable(Vec<StackMapFrame>),
+    Exceptions(Vec<Rc<InternalName>>),
+    InnerClasses(Vec<InnerClassNode>),
+    EnclosingMethod {
+        class: Rc<InternalName>,
+        method_name: Rc<String>,
+        method_desc: Rc<Descriptor>,
+    },
+    Synthetic,
+    Signature(Rc<String>),
+    SourceFile(Rc<String>),
+    SourceDebugExtension(Vec<u8>),
+    LineNumberTable(Vec<LineNumberNode>),
+    LocalVariableTable(Vec<Rc<LocalVariableNode>>),
+    LocalVariableTypeTable(Vec<Rc<LocalVariableNode>>),
+    Deprecated,
+    // annotations
+    RuntimeVisibleAnnotations(Vec<AnnotationNode>),
+    RuntimeInvisibleAnnotations(Vec<AnnotationNode>),
+    RuntimeVisibleParameterAnnotations(Vec<Vec<AnnotationNode>>),
+    RuntimeInvisibleParameterAnnotations(Vec<Vec<AnnotationNode>>),
+    RuntimeVisibleTypeAnnotations(Vec<TypeAnnotationNode>),
+    RuntimeInvisibleTypeAnnotations(Vec<TypeAnnotationNode>),
+    AnnotationDefault(AnnotationValue),
+    // 
+    BootstrapMethods(Vec<BootstrapMethodNode>),
+    MethodParameters(Vec<ParameterNode>),
+    Module(Rc<ModuleNode>),
+    ModulePackages(Vec<Rc<String>>),
+    ModuleMainClass(Rc<InternalName>),
+    NestHost(Rc<InternalName>),
+    NestMembers(Vec<Rc<InternalName>>),
+    Record(Rc<RecordComponentNode>),
+    PermittedSubclasses(Vec<Rc<InternalName>>),
+}
+
+#[derive(Clone, Debug)]
+pub struct ExceptionTable {
+    pub start: LabelNode, // [start_pc, end_pc)
+    pub end: LabelNode,
+    pub handler: LabelNode,
+    pub catch_type: Option<Rc<InternalName>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LineNumberNode {
+    pub start: LabelNode,
+    pub line: u32,
+}
+
+#[derive(Clone, Debug)]
+pub struct BootstrapMethodNode {
+    pub method_handle: Rc<ConstValue>, // ConstValue::MethodHandle
+    pub arguments: Vec<Rc<ConstValue>>,
 }
 
 // each label contains a unique id in the method scope.

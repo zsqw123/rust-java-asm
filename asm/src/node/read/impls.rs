@@ -12,6 +12,7 @@ impl ClassNodeFactory {
     pub fn from_jvms(jvms_file: ClassFile) -> AsmResult<ClassNode> {
         let jvms_file = Rc::new(jvms_file);
         let mut class_context = ClassNodeContext::new(Rc::clone(&jvms_file));
+        let attrs = &jvms_file.attributes;
         let class_node = ClassNode {
             minor_version: jvms_file.minor_version,
             major_version: jvms_file.major_version,

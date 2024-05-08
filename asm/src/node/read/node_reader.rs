@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::io::Read;
+use std::iter::Map;
 use std::rc::Rc;
 
 use java_asm_internal::err::{AsmErr, AsmResult};
@@ -36,7 +37,7 @@ impl ClassNodeContext {
     pub fn new(jvms_file: Rc<ClassFile>) -> Self {
         Self { jvms_file, cp_cache: HashMap::new() }
     }
-    
+
     pub fn read_utf8(&mut self, index: u16) -> AsmResult<Rc<String>> {
         let constant = self.read_const(index)?;
         let ConstValue::String(s) = constant.as_ref() else {
@@ -131,6 +132,10 @@ impl ClassNodeContext {
     fn put_const_cache(&mut self, index: u16, constant: Rc<ConstValue>) {
         self.cp_cache.insert(index, constant);
     }
+}
+
+fn attr_map() -> Map<String, > {
+    
 }
 
 pub(crate) struct MethodNodeContext {
