@@ -2,9 +2,9 @@ use std::rc::Rc;
 
 use crate::asm_type::Type;
 use crate::jvms::attr::annotation::type_annotation::{TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
-use crate::jvms::attr::StackMapFrame;
+use crate::jvms::attr::{LineNumberTableInfo, StackMapFrame};
 use crate::node::insn::InsnNode;
-use crate::node::values::{AnnotationValue, ConstValue, Descriptor, FieldInitialValue, InternalName, QualifiedName};
+use crate::node::values::{AnnotationValue, ConstValue, Descriptor, FieldInitialValue, InternalName, LocalVariableInfo, LocalVariableTypeInfo, QualifiedName};
 use crate::opcodes::Opcodes;
 
 #[derive(Clone, Debug)]
@@ -296,7 +296,7 @@ pub struct TypeAnnotationNode {
 #[derive(Clone, Debug)]
 pub struct AnnotationNode {
     pub visible: bool,
-    pub desc: Rc<Descriptor>,
+    pub type_name: Rc<InternalName>,
     // attribute -> value pairs
     pub values: Vec<(Rc<String>, AnnotationValue)>,
 }
@@ -344,13 +344,14 @@ pub struct UnknownAttribute {
 
 #[derive(Clone, Debug)]
 pub enum Attribute {
+    Custom(Vec<u8>),
     ConstantValue(ConstValue),
     Code {
         max_stack: u16,
         max_locals: u16,
         code: Vec<u8>,
         exception_table: Vec<ExceptionTable>,
-        attributes: Vec<Attribute>,
+        attributes: Vec<Rc<Attribute>>,
     },
     StackMapTable(Vec<StackMapFrame>),
     Exceptions(Vec<Rc<InternalName>>),
@@ -365,8 +366,8 @@ pub enum Attribute {
     SourceFile(Rc<String>),
     SourceDebugExtension(Vec<u8>),
     LineNumberTable(Vec<LineNumberNode>),
-    LocalVariableTable(Vec<Rc<LocalVariableNode>>),
-    LocalVariableTypeTable(Vec<Rc<LocalVariableNode>>),
+    LocalVariableTable(Vec<LocalVariableInfo>),
+    LocalVariableTypeTable(Vec<LocalVariableTypeInfo>),
     Deprecated,
     // annotations
     RuntimeVisibleAnnotations(Vec<AnnotationNode>),
@@ -396,11 +397,7 @@ pub struct ExceptionTable {
     pub catch_type: Option<Rc<InternalName>>,
 }
 
-#[derive(Clone, Debug)]
-pub struct LineNumberNode {
-    pub start: LabelNode,
-    pub line: u32,
-}
+pub type LineNumberNode = LineNumberTableInfo;
 
 #[derive(Clone, Debug)]
 pub struct BootstrapMethodNode {
@@ -409,5 +406,4 @@ pub struct BootstrapMethodNode {
 }
 
 // each label contains a unique id in the method scope.
-#[derive(Clone, Debug)]
-pub struct LabelNode(pub u32);
+pub type LabelNode = u16;

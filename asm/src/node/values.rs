@@ -1,5 +1,6 @@
 use std::rc::Rc;
 use crate::asm_type::Type;
+use crate::node::element::{AnnotationNode, LabelNode};
 
 #[derive(Clone, Debug)]
 pub enum ConstValue {
@@ -35,18 +36,10 @@ pub enum ConstValue {
 
 #[derive(Clone, Debug)]
 pub enum AnnotationValue {
-    Byte(u8),
-    Boolean(bool),
-    Char(char),
-    Short(i16),
-    Int(i32),
-    Long(i64),
-    Float(f32),
-    Double(f64),
-    String(String),
-    Class(Type),
-    Enum(String, String),
-    Annotation(Box<AnnotationValue>),
+    Const(Rc<ConstValue>),
+    Enum(Rc<String>, Rc<String>),
+    Class(Rc<InternalName>),
+    Annotation(AnnotationNode),
     Array(Vec<AnnotationValue>),
 }
 
@@ -91,13 +84,13 @@ pub struct Handle {
     /// [Opcodes::H_GETFIELD], [Opcodes::H_GETSTATIC], [Opcodes::H_PUTFIELD], [Opcodes::H_PUTSTATIC],
     /// [Opcodes::H_INVOKEVIRTUAL], [Opcodes::H_INVOKESTATIC], [Opcodes::H_INVOKESPECIAL],
     /// [Opcodes::H_NEWINVOKESPECIAL], [Opcodes::H_INVOKEINTERFACE].
-    tag: u8,
+    pub tag: u8,
     // The internal name of the class to which the field or method belongs.
-    owner: String,
-    name: String,
+    pub owner: String,
+    pub name: String,
     // The descriptor of the field or method.
-    desc: String,
-    is_interface: bool,
+    pub desc: String,
+    pub is_interface: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -114,10 +107,28 @@ pub enum LdcConst {
 
 #[derive(Clone, Debug)]
 pub struct ConstDynamic {
-    name: String,
-    desc: String,
-    bsm: Handle,
-    bsm_args: Vec<BootstrapMethodArgument>,
+    pub name: String,
+    pub desc: String,
+    pub bsm: Handle,
+    pub bsm_args: Vec<BootstrapMethodArgument>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LocalVariableInfo {
+    pub start: LabelNode,
+    pub length: u16,
+    pub name: Rc<String>,
+    pub desc: Rc<Descriptor>,
+    pub index: u16,
+}
+
+#[derive(Clone, Debug)]
+pub struct LocalVariableTypeInfo {
+    pub start: LabelNode,
+    pub length: u16,
+    pub name: Rc<String>,
+    pub signature: Rc<String>,
+    pub index: u16,
 }
 
 /// eg: java/lang/Class
