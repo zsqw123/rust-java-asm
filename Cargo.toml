@@ -6,7 +6,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.3" # JAVA_ASM_VERSION
+version = "0.0.4" # JAVA_ASM_VERSION
 authors = ["zsqw123"]
 edition = "2021"
 license = "Apache-2.0"
@@ -16,5 +16,5 @@ repository = "https://github.com/zsqw123/rust-java-asm"
 readme = "README.md"
 
 [workspace.dependencies]
-java_asm_macro = { path = "asm_macro", version = "0.0.3" } # JAVA_ASM_VERSION
-java_asm_internal = { path = "asm_internal", version = "0.0.3" } # JAVA_ASM_VERSION
+java_asm_macro = { path = "asm_macro", version = "0.0.4" } # JAVA_ASM_VERSION
+java_asm_internal = { path = "asm_internal", version = "0.0.4" } # JAVA_ASM_VERSION
