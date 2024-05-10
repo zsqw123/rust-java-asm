@@ -85,53 +85,53 @@ impl ClassNodeContext {
         if let Some(constant) = self.read_const_cache(index) {
             return Ok(constant);
         }
-        let raw_const = &self.jvms_file.constant_pool[index as usize].info;
+        let raw_const = self.jvms_file.constant_pool[index as usize].info.clone();
         let const_value = match raw_const {
             Const::Invalid => { ConstValue::Invalid },
             Const::Class { name_index } => {
-                ConstValue::Class(self.read_utf8(*name_index)?)
+                ConstValue::Class(self.read_utf8(name_index)?)
             },
             Const::Field { class_index, name_and_type_index }
             | Const::Method { class_index, name_and_type_index }
             | Const::InterfaceMethod { class_index, name_and_type_index } => {
-                let class = self.read_class_info(*class_index)?;
-                let (name, desc) = self.read_name_and_type(*name_and_type_index)?;
+                let class = self.read_class_info(class_index)?;
+                let (name, desc) = self.read_name_and_type(name_and_type_index)?;
                 ConstValue::Member { class, name, desc }
             },
             Const::String { string_index } => {
-                ConstValue::String(self.read_utf8(*string_index)?)
+                ConstValue::String(self.read_utf8(string_index)?)
             },
-            Const::Integer { bytes } => ConstValue::Integer(*bytes as i32),
-            Const::Float { bytes } => ConstValue::Float(f32::from_bits(*bytes)),
+            Const::Integer { bytes } => ConstValue::Integer(bytes as i32),
+            Const::Float { bytes } => ConstValue::Float(f32::from_bits(bytes)),
             Const::Long { high_bytes, low_bytes } => {
-                let value = ((*high_bytes as u64) << 32) | (*low_bytes as u64);
+                let value = ((high_bytes as u64) << 32) | (low_bytes as u64);
                 ConstValue::Long(value as i64)
             },
             Const::Double { high_bytes, low_bytes } => {
-                let value = ((*high_bytes as u64) << 32) | (*low_bytes as u64);
+                let value = ((high_bytes as u64) << 32) | (low_bytes as u64);
                 ConstValue::Double(f64::from_bits(value))
             },
             Const::NameAndType { name_index, descriptor_index } => {
-                let name = self.read_utf8(*name_index)?;
-                let desc = self.read_utf8(*descriptor_index)?;
+                let name = self.read_utf8(name_index)?;
+                let desc = self.read_utf8(descriptor_index)?;
                 ConstValue::NameAndType { name, desc }
             },
             Const::Utf8 { bytes, .. } => {
-                ConstValue::String(mutf8_to_string(bytes)?.rc())
+                ConstValue::String(mutf8_to_string(&bytes)?.rc())
             },
             Const::MethodHandle { reference_kind, reference_index } => {
-                ConstValue::MethodHandle { reference_kind: *reference_kind, reference_index: *reference_index }
+                ConstValue::MethodHandle { reference_kind, reference_index }
             },
             Const::MethodType { descriptor_index } => {
-                ConstValue::MethodType(self.read_utf8(*descriptor_index)?)
+                ConstValue::MethodType(self.read_utf8(descriptor_index)?)
             },
             Const::Dynamic { bootstrap_method_attr_index, name_and_type_index }
             | Const::InvokeDynamic { bootstrap_method_attr_index, name_and_type_index } => {
-                let (name, desc) = self.read_name_and_type(*name_and_type_index)?;
-                ConstValue::Dynamic { bootstrap_method_attr_index: *bootstrap_method_attr_index, name, desc }
+                let (name, desc) = self.read_name_and_type(name_and_type_index)?;
+                ConstValue::Dynamic { bootstrap_method_attr_index, name, desc }
             },
-            Const::Module { name_index } => ConstValue::Module(self.read_utf8(*name_index)?),
-            Const::Package { name_index } => ConstValue::Package(self.read_utf8(*name_index)?),
+            Const::Module { name_index } => ConstValue::Module(self.read_utf8(name_index)?),
+            Const::Package { name_index } => ConstValue::Package(self.read_utf8(name_index)?),
         };
         let const_value = const_value.rc();
         self.put_const_cache(index, Rc::clone(&const_value));
@@ -150,15 +150,16 @@ impl ClassNodeContext {
         if let Some(attr) = self.read_attr_cache(index) {
             return Ok(attr);
         };
-        let attribute_info = self.jvms_file.attributes.get(index as usize)
-            .ok_or_else(|| self.err(format!("cannot find attribute info, index: {}", index)))?;
-        let node_attribute = self.read_attr(attribute_info)?;
+        let attribute_info = self.jvms_file.attributes.get(index as usize);
+        let Some(attribute_info) = attribute_info else {
+            return Err(self.err(format!("cannot find attribute info, index: {}", index)));
+        };
+        let node_attribute = self.read_attr(&attribute_info.clone())?;
         self.put_attr_cache(index, Rc::clone(&node_attribute));
         Ok(node_attribute)
     }
 
     pub fn read_attr(&mut self, attribute_info: &AttributeInfo) -> AsmResult<Rc<NodeAttribute>> {
-        let name = self.read_utf8(attribute_info.attribute_name_index)?;
         let attr = match &attribute_info.info {
             JvmsAttribute::Custom(bytes) => NodeAttribute::Custom(bytes.clone()),
             JvmsAttribute::Code { max_stack, max_locals, code, exception_table, attributes, .. } => {
@@ -261,6 +262,8 @@ impl ClassNodeContext {
                     self.read_type_annotation(false, annotation))?;
                 NodeAttribute::RuntimeInvisibleTypeAnnotations(annotations)
             },
+            // todo supports more
+            _ => return Err(self.err(format!("unsupported attribute: {:?}", attribute_info))),
         };
         Ok(attr.rc())
     }
@@ -342,20 +345,20 @@ impl<T> ToRc<T> for T {
 }
 
 trait VecEx<T> {
-    fn mapping_res<R>(&self, f: impl Fn(&T) -> AsmResult<R>) -> AsmResult<Vec<R>>;
-    fn mapping<R>(&self, f: impl Fn(&T) -> R) -> Vec<R>;
+    fn mapping_res<R>(&self, f: impl FnMut(&T) -> AsmResult<R>) -> AsmResult<Vec<R>>;
+    fn mapping<R>(&self, f: impl FnMut(&T) -> R) -> Vec<R>;
 }
 
 impl<T> VecEx<T> for Vec<T> {
     #[inline]
-    fn mapping_res<R>(&self, f: impl Fn(&T) -> AsmResult<R>) -> AsmResult<Vec<R>> {
+    fn mapping_res<R>(&self, mut f: impl FnMut(&T) -> AsmResult<R>) -> AsmResult<Vec<R>> {
         let mut new = Vec::with_capacity(self.len());
         for item in self { new.push(f(item)?); }
         Ok(new)
     }
 
     #[inline]
-    fn mapping<R>(&self, f: impl Fn(&T) -> R) -> Vec<R> {
+    fn mapping<R>(&self, mut f: impl FnMut(&T) -> R) -> Vec<R> {
         let mut new = Vec::with_capacity(self.len());
         for item in self { new.push(f(item)); }
         new
