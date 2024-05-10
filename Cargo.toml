@@ -12,6 +12,7 @@ edition = "2021"
 license = "Apache-2.0"
 description = "Java bytecode reader & writer in rust"
 documentation = "https://github.com/zsqw123/rust-java-asm"
+repository = "https://github.com/zsqw123/rust-java-asm"
 readme = "README.md"
 
 [workspace.dependencies]
