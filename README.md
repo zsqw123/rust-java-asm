@@ -15,8 +15,15 @@ This project supports much newer Java version(Java 21 currently) than other rust
 
 - [x] Implement **Read** Java class file with **[JVMS](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)** format
 - [x] Implement **Write** Java class file with **[JVMS](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)** format
-- [ ] [WIP] Implement ASM nodes
-- [ ] [WIP] Implement ASM features (eg. auto calculate frame/stack etc.)
+- [ ] **WIP**, ASM nodes reader
+  - [x] Constant pool
+  - [x] Attributes
+  - [ ] Class / Field / Method metadata
+  - [ ] Method instructions
+  - [ ] Method frames
+  - [ ] Method local variables / stacks / try-catches
+- [ ] **Not Start**, Nodes writer
+- [ ] **Not Start**, Implement ASM features (eg. auto calculate frame/stack etc.)
 
 ---
 
