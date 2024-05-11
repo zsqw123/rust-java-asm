@@ -165,6 +165,9 @@ pub struct RecordComponentNode {
 
     pub annotations: Vec<AnnotationNode>,
     pub type_annotations: Vec<TypeAnnotationNode>,
+
+    /// The non-standard attributes of this class.
+    pub attrs: Vec<UnknownAttribute>,
 }
 
 #[derive(Clone, Debug)]
@@ -288,7 +291,8 @@ pub struct LocalVariableNode {
 pub struct UnknownAttribute {
     pub name: Rc<String>,
     pub info: Vec<u8>,
-    pub index: u16, // index of the attribute in attributes table
+    // index of the attribute in attributes container
+    pub index: u16, 
 }
 
 #[derive(Clone, Debug)]
@@ -334,7 +338,7 @@ pub enum Attribute {
     ModuleMainClass(Rc<InternalName>),
     NestHost(Rc<InternalName>),
     NestMembers(Vec<Rc<InternalName>>),
-    Record(RecordComponentNode),
+    Record(Vec<RecordComponentNode>),
     PermittedSubclasses(Vec<Rc<InternalName>>),
 }
 

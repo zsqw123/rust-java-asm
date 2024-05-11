@@ -5,12 +5,12 @@ use std::rc::Rc;
 
 use java_asm_internal::err::{AsmErr, AsmResult};
 
+use crate::jvms::attr::{Attribute as JvmsAttribute, RecordComponentInfo};
 use crate::jvms::attr::annotation::{AnnotationElementValue, AnnotationInfo};
 use crate::jvms::attr::annotation::type_annotation::TypeAnnotation;
-use crate::jvms::attr::Attribute as JvmsAttribute;
 use crate::jvms::element::{AttributeInfo, ClassFile, MethodInfo};
 use crate::jvms::read::JvmsClassReader;
-use crate::node::element::{AnnotationNode, BootstrapMethodNode, ClassNode, ExceptionTable, InnerClassNode, ParameterNode, TypeAnnotationNode};
+use crate::node::element::{AnnotationNode, Attribute, BootstrapMethodNode, ClassNode, ExceptionTable, InnerClassNode, ParameterNode, RecordComponentNode, TypeAnnotationNode, UnknownAttribute};
 use crate::node::element::Attribute as NodeAttribute;
 use crate::node::read::impls::ClassNodeFactory;
 use crate::node::values::{AnnotationValue, ConstValue, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue};
@@ -219,6 +219,28 @@ impl ClassNodeContext {
                 };
                 NodeAttribute::Module(attr_value)
             }
+            JvmsAttribute::ModulePackages { package_index, .. } => {
+                let packages = package_index.mapping_res(|index| self.read_package(*index))?;
+                NodeAttribute::ModulePackages(packages)
+            },
+            JvmsAttribute::ModuleMainClass { main_class_index } => {
+                let main_class = self.read_class_info(*main_class_index)?;
+                NodeAttribute::ModuleMainClass(main_class)
+            },
+            JvmsAttribute::NestHost { host_class_index } => {
+                let host_class = self.read_class_info(*host_class_index)?;
+                NodeAttribute::NestHost(host_class)
+            },
+            JvmsAttribute::NestMembers { classes, .. } => {
+                let classes = classes.mapping_res(|index| self.read_class_info(*index))?;
+                NodeAttribute::NestMembers(classes)
+            },
+            JvmsAttribute::Record { components, .. } => {
+                let components = components.mapping_res(|component| {
+                    self.read_record(component)
+                })?;
+                NodeAttribute::Record(components)
+            },
             // todo supports more
             _ => return Err(self.err(format!("unsupported attribute: {:?}", attribute_info))),
         };
@@ -231,6 +253,33 @@ impl ClassNodeContext {
 
     fn put_attr_cache(&mut self, index: u16, attr: Rc<NodeAttribute>) {
         self.attr_cache.insert(index, attr);
+    }
+
+    fn read_record(&mut self, component: &RecordComponentInfo) -> AsmResult<RecordComponentNode> {
+        let name = self.read_utf8(component.name_index)?;
+        let desc = self.read_utf8(component.descriptor_index)?;
+        let mut signature = None;
+        let mut annotations = vec![];
+        let mut type_annotations = vec![];
+        let mut unknown_attrs = vec![];
+        for (index, attr_info) in component.attributes.iter().enumerate() {
+            let name = self.read_utf8(attr_info.attribute_name_index)?;
+            let attr = self.read_attr(attr_info)?;
+            match attr {
+                Attribute::Signature(s) => signature = Some(s.clone()),
+                Attribute::RuntimeVisibleAnnotations(s) => annotations = s.clone(),
+                Attribute::RuntimeInvisibleAnnotations(s) => annotations = s.clone(),
+                Attribute::RuntimeVisibleTypeAnnotations(s) => type_annotations = s.clone(),
+                Attribute::RuntimeInvisibleTypeAnnotations(s) => type_annotations = s.clone(),
+                Attribute::Custom(info) => unknown_attrs.push(UnknownAttribute { 
+                    name, info, index: index as u16, 
+                }),
+                _ => return Err(self.err(format!("unsupported record component attribute: {:?}", attr))),
+            }
+        }
+        Ok(RecordComponentNode {
+            name, desc, signature, annotations, type_annotations, attrs: unknown_attrs,
+        })
     }
 
     fn read_type_annotation(&mut self, visible: bool, type_annotation: &TypeAnnotation) -> AsmResult<TypeAnnotationNode> {
