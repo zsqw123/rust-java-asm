@@ -1,10 +1,10 @@
 use std::rc::Rc;
 
 use crate::asm_type::Type;
-use crate::jvms::attr::annotation::type_annotation::{TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
 use crate::jvms::attr::{LineNumberTableInfo, StackMapFrame};
+use crate::jvms::attr::annotation::type_annotation::{TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
 use crate::node::insn::InsnNode;
-use crate::node::values::{AnnotationValue, ConstValue, Descriptor, FieldInitialValue, InternalName, LocalVariableInfo, LocalVariableTypeInfo, QualifiedName};
+use crate::node::values::{AnnotationValue, ConstValue, Descriptor, FieldInitialValue, InternalName, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue, QualifiedName};
 use crate::opcodes::Opcodes;
 
 #[derive(Clone, Debug)]
@@ -173,7 +173,7 @@ pub struct ParameterNode {
     pub name: Option<Rc<String>>,
 
     /// The parameter's access flags. Valid values are [Opcodes::ACC_FINAL], [Opcodes::ACC_SYNTHETIC]
-    pub access: u32,
+    pub access: u16,
 }
 
 #[derive(Clone, Debug)]
@@ -220,71 +220,20 @@ pub struct ModuleNode {
     pub packages: Vec<Rc<String>>,
     
     /// The dependencies of this module.
-    pub requires: Vec<ModuleRequireNode>,
+    pub requires: Vec<ModuleRequireValue>,
     
     /// The packages exported by this module
-    pub exports: Vec<ModuleExportNode>,
+    pub exports: Vec<ModuleExportValue>,
     
     /// The packages opened by this module.
-    pub opens: Vec<ModuleOpenNode>,
+    pub opens: Vec<ModuleOpenValue>,
     
     /// The internal names of the services used by this module (see [Type::get_internal_name]).
     pub uses: Vec<Rc<InternalName>>,
     
     // The services provided by this module.
-    pub provides: Vec<ModuleProvides>,
+    pub provides: Vec<ModuleProvidesValue>,
 }
-
-#[derive(Clone, Debug)]
-pub struct ModuleRequireNode {
-    /// The fully qualified name (using dots) of the dependence.
-    pub module: Rc<QualifiedName>,
-
-    /// The access flags of the required module, valid values are [Opcodes::ACC_TRANSITIVE], 
-    /// [Opcodes::ACC_STATIC_PHASE], [Opcodes::ACC_SYNTHETIC], [Opcodes::ACC_MANDATED]
-    pub access: u16,
-
-    /// The version of the required module. May be [None].
-    pub version: Option<Rc<String>>,
-}
-
-#[derive(Clone, Debug)]
-pub struct ModuleExportNode {
-    /// The internal name of the exported package. (see [Type::get_internal_name]).
-    pub package: Rc<InternalName>,
-
-    /// The access flags of the exported package, valid values are [Opcodes::ACC_SYNTHETIC], 
-    /// [Opcodes::ACC_MANDATED]
-    pub access: u16,
-
-    /// The list of modules that can access this exported package, 
-    /// specified with fully qualified names (using dots)
-    pub modules: Vec<Rc<QualifiedName>>,
-}
-
-#[derive(Clone, Debug)]
-pub struct ModuleOpenNode {
-    /// The internal name of the opened package. (see [Type::get_internal_name]).
-    pub package: Rc<InternalName>,
-
-    /// The access flags of the opened package, valid values are [Opcodes::ACC_SYNTHETIC], 
-    /// [Opcodes::ACC_MANDATED]
-    pub access: u16,
-
-    /// The list of modules that can access this opened package, 
-    /// specified with fully qualified names (using dots)
-    pub modules: Vec<Rc<QualifiedName>>,
-}
-
-#[derive(Clone, Debug)]
-pub struct ModuleProvides {
-    /// The internal name of the service interface. (see [Type::get_internal_name]).
-    pub service: Rc<InternalName>,
-
-    /// The internal names of the implementations of the service interface.
-    pub providers: Vec<Rc<InternalName>>,
-}
-
 
 #[derive(Clone, Debug)]
 pub struct TypeAnnotationNode {
@@ -380,12 +329,12 @@ pub enum Attribute {
     // 
     BootstrapMethods(Vec<BootstrapMethodNode>),
     MethodParameters(Vec<ParameterNode>),
-    Module(Rc<ModuleNode>),
+    Module(ModuleAttrValue),
     ModulePackages(Vec<Rc<String>>),
     ModuleMainClass(Rc<InternalName>),
     NestHost(Rc<InternalName>),
     NestMembers(Vec<Rc<InternalName>>),
-    Record(Rc<RecordComponentNode>),
+    Record(RecordComponentNode),
     PermittedSubclasses(Vec<Rc<InternalName>>),
 }
 

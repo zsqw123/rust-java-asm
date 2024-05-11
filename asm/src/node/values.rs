@@ -1,6 +1,8 @@
 use std::rc::Rc;
+
 use crate::asm_type::Type;
 use crate::node::element::{AnnotationNode, LabelNode};
+use crate::opcodes::Opcodes;
 
 #[derive(Clone, Debug)]
 pub enum ConstValue {
@@ -130,6 +132,69 @@ pub struct LocalVariableTypeInfo {
     pub signature: Rc<String>,
     pub index: u16,
 }
+
+#[derive(Clone, Debug)]
+pub struct ModuleAttrValue {
+    pub name: Rc<String>,
+    pub access: u16,
+    pub version: Option<Rc<String>>,
+    pub requires: Vec<ModuleRequireValue>,
+    pub exports: Vec<ModuleExportValue>,
+    pub opens: Vec<ModuleOpenValue>,
+    pub uses: Vec<Rc<InternalName>>,
+    pub provides: Vec<ModuleProvidesValue>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ModuleRequireValue {
+    /// The fully qualified name (using dots) of the dependence.
+    pub module: Rc<QualifiedName>,
+
+    /// The access flags of the required module, valid values are [Opcodes::ACC_TRANSITIVE], 
+    /// [Opcodes::ACC_STATIC_PHASE], [Opcodes::ACC_SYNTHETIC], [Opcodes::ACC_MANDATED]
+    pub access: u16,
+
+    /// The version of the required module. May be [None].
+    pub version: Option<Rc<String>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ModuleExportValue {
+    /// The internal name of the exported package. (see [Type::get_internal_name]).
+    pub package: Rc<InternalName>,
+
+    /// The access flags of the exported package, valid values are [Opcodes::ACC_SYNTHETIC], 
+    /// [Opcodes::ACC_MANDATED]
+    pub access: u16,
+
+    /// The list of modules that can access this exported package, 
+    /// specified with fully qualified names (using dots)
+    pub modules: Vec<Rc<QualifiedName>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ModuleOpenValue {
+    /// The internal name of the opened package. (see [Type::get_internal_name]).
+    pub package: Rc<InternalName>,
+
+    /// The access flags of the opened package, valid values are [Opcodes::ACC_SYNTHETIC], 
+    /// [Opcodes::ACC_MANDATED]
+    pub access: u16,
+
+    /// The list of modules that can access this opened package, 
+    /// specified with fully qualified names (using dots)
+    pub modules: Vec<Rc<QualifiedName>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ModuleProvidesValue {
+    /// The internal name of the service interface. (see [Type::get_internal_name]).
+    pub service: Rc<InternalName>,
+
+    /// The internal names of the implementations of the service interface.
+    pub providers: Vec<Rc<InternalName>>,
+}
+
 
 /// eg: java/lang/Class
 pub type InternalName = String;

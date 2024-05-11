@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use java_asm_internal::err::{AsmErr, AsmResult};
 
 /// Java MUTF-8 has 2 differences from UTF-8:
@@ -164,4 +165,33 @@ pub fn utf8_to_mutf8(utf8: &[u8]) -> AsmResult<Vec<u8>> {
         return AsmErr::ReadUTF8(format!("unknown UTF-8 first byte: 0x{:X}", byte1)).e();
     };
     Ok(mutf8)
+}
+
+pub(crate) trait ToRc<T> {
+    fn rc(self) -> Rc<T>;
+}
+
+impl<T> ToRc<T> for T {
+    fn rc(self) -> Rc<T> { Rc::new(self) }
+}
+
+pub(crate) trait VecEx<T> {
+    fn mapping_res<R>(&self, f: impl FnMut(&T) -> AsmResult<R>) -> AsmResult<Vec<R>>;
+    fn mapping<R>(&self, f: impl FnMut(&T) -> R) -> Vec<R>;
+}
+
+impl<T> VecEx<T> for Vec<T> {
+    #[inline]
+    fn mapping_res<R>(&self, mut f: impl FnMut(&T) -> AsmResult<R>) -> AsmResult<Vec<R>> {
+        let mut new = Vec::with_capacity(self.len());
+        for item in self { new.push(f(item)?); }
+        Ok(new)
+    }
+
+    #[inline]
+    fn mapping<R>(&self, mut f: impl FnMut(&T) -> R) -> Vec<R> {
+        let mut new = Vec::with_capacity(self.len());
+        for item in self { new.push(f(item)); }
+        new
+    }
 }

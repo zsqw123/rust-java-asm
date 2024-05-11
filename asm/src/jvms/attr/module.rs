@@ -2,9 +2,9 @@ use java_asm_internal::read::jvms::FromReadContext;
 use java_asm_internal::write::jvms::IntoWriteContext;
 
 // {   
-//     u2 requires_index;
+//     u2 requires_index; // CONSTANT_Module_info
 //     u2 requires_flags;
-//     u2 requires_version_index;
+//     u2 requires_version_index; // CONSTANT_Utf8_info
 // }
 #[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
 pub struct ModuleRequires {
@@ -14,10 +14,10 @@ pub struct ModuleRequires {
 }
 
 // {   
-//     u2 exports_index;
+//     u2 exports_index; // CONSTANT_Package_info 
 //     u2 exports_flags;
 //     u2 exports_to_count;
-//     u2 exports_to_index[exports_to_count];
+//     u2 exports_to_index[exports_to_count]; // CONSTANT_Module_info
 // }
 #[derive(Clone, Debug, FromReadContext, IntoWriteContext)]
 pub struct ModuleExports {
