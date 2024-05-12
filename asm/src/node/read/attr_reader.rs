@@ -1,33 +1,28 @@
 use std::rc::Rc;
+
 use java_asm_internal::err::AsmResult;
+
 use crate::jvms::attr::annotation::{AnnotationElementValue, AnnotationInfo};
 use crate::jvms::attr::annotation::type_annotation::TypeAnnotation;
+use crate::jvms::attr::Attribute as JvmsAttribute;
 use crate::jvms::attr::RecordComponentInfo;
 use crate::jvms::element::AttributeInfo;
 use crate::node::element::{AnnotationNode, BootstrapMethodNode, ExceptionTable, InnerClassNode, ParameterNode, RecordComponentNode, TypeAnnotationNode, UnknownAttribute};
+use crate::node::element::Attribute as NodeAttribute;
 use crate::node::read::node_reader::ClassNodeContext;
 use crate::node::values::{AnnotationValue, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue};
-use crate::util::{ToRc, VecEx};
-use crate::jvms::attr::Attribute as JvmsAttribute;
-use crate::node::element::Attribute as NodeAttribute;
+use crate::util::{mutf8_to_string, ToRc, VecEx};
 
 impl ClassNodeContext{
-    pub fn read_attr_from_index(&mut self, index: u16) -> AsmResult<Rc<NodeAttribute>> {
-        if let Some(attr) = self.read_attr_cache(index) {
-            return Ok(attr);
-        };
-        let attribute_info = self.jvms_file.attributes.get(index as usize);
-        let Some(attribute_info) = attribute_info else {
-            return Err(self.err(format!("cannot find attribute info, index: {}", index)));
-        };
-        let node_attribute = self.read_attr(&attribute_info.clone())?.rc();
-        self.put_attr_cache(index, Rc::clone(&node_attribute));
-        Ok(node_attribute)
+    pub fn read_attrs(&mut self) -> AsmResult<Vec<(&AttributeInfo, Rc<NodeAttribute>)>> {
+        self.jvms_file.attributes.mapping_res(|attr_info| {
+            let attribute = self.read_attr(attr_info)?.rc();
+            Ok((attr_info, attribute))
+        })
     }
 
     pub fn read_attr(&mut self, attribute_info: &AttributeInfo) -> AsmResult<NodeAttribute> {
         let attr = match &attribute_info.info {
-            JvmsAttribute::Custom(bytes) => NodeAttribute::Custom(bytes.clone()),
             JvmsAttribute::Code { max_stack, max_locals, code, exception_table, attributes, .. } => {
                 let exception_table = exception_table.mapping(|et| {
                     ExceptionTable {
@@ -46,9 +41,7 @@ impl ClassNodeContext{
                     attributes,
                 }
             },
-            JvmsAttribute::StackMapTable { entries, .. } => {
-                NodeAttribute::StackMapTable(entries.clone())
-            },
+            JvmsAttribute::StackMapTable { entries, .. } => NodeAttribute::StackMapTable(entries.clone()),
             JvmsAttribute::Exceptions { exception_index_table, .. } => {
                 let exceptions = exception_index_table.mapping_res(|index| self.read_class_info(*index))?;
                 NodeAttribute::Exceptions(exceptions)
@@ -71,7 +64,9 @@ impl ClassNodeContext{
             JvmsAttribute::Synthetic => NodeAttribute::Synthetic,
             JvmsAttribute::Signature { signature_index } => NodeAttribute::Signature(self.read_utf8(*signature_index)?),
             JvmsAttribute::SourceFile { sourcefile_index } => NodeAttribute::SourceFile(self.read_utf8(*sourcefile_index)?),
-            JvmsAttribute::SourceDebugExtension { debug_extension } => NodeAttribute::SourceDebugExtension(debug_extension.clone()),
+            JvmsAttribute::SourceDebugExtension { debug_extension } => NodeAttribute::SourceDebugExtension(
+                mutf8_to_string(debug_extension)?.rc(),
+            ),
             JvmsAttribute::LineNumberTable { line_number_table, .. } => {
                 NodeAttribute::LineNumberTable(line_number_table.clone())
             },
@@ -210,17 +205,12 @@ impl ClassNodeContext{
                 let classes = classes.mapping_res(|index| self.read_class_info(*index))?;
                 NodeAttribute::PermittedSubclasses(classes)
             },
-            _ => return Err(self.err(format!("unsupported attribute: {:?}", attribute_info))),
+            _ => NodeAttribute::Unknown(UnknownAttribute {
+                name: self.read_utf8(attribute_info.attribute_name_index)?,
+                origin: attribute_info.info.clone(),
+            }),
         };
         Ok(attr)
-    }
-
-    fn read_attr_cache(&self, index: u16) -> Option<Rc<NodeAttribute>> {
-        self.attr_cache.get(&index).map(Rc::clone)
-    }
-
-    fn put_attr_cache(&mut self, index: u16, attr: Rc<NodeAttribute>) {
-        self.attr_cache.insert(index, attr);
     }
 
     fn read_record(&mut self, component: &RecordComponentInfo) -> AsmResult<RecordComponentNode> {
@@ -230,18 +220,15 @@ impl ClassNodeContext{
         let mut annotations = vec![];
         let mut type_annotations = vec![];
         let mut unknown_attrs = vec![];
-        for (index, attr_info) in component.attributes.iter().enumerate() {
-            let name = self.read_utf8(attr_info.attribute_name_index)?;
-            let attr = self.read_attr(attr_info)?;
+        for attr_info in component.attributes {
+            let attr = self.read_attr(&attr_info)?;
             match attr {
                 NodeAttribute::Signature(s) => signature = Some(s.clone()),
                 NodeAttribute::RuntimeVisibleAnnotations(s) => annotations = s.clone(),
                 NodeAttribute::RuntimeInvisibleAnnotations(s) => annotations = s.clone(),
                 NodeAttribute::RuntimeVisibleTypeAnnotations(s) => type_annotations = s.clone(),
                 NodeAttribute::RuntimeInvisibleTypeAnnotations(s) => type_annotations = s.clone(),
-                NodeAttribute::Custom(info) => unknown_attrs.push(UnknownAttribute {
-                    name, info, index: index as u16,
-                }),
+                NodeAttribute::Unknown(info) => unknown_attrs.push(info),
                 _ => return Err(self.err(format!("unsupported record component attribute: {:?}", attr))),
             }
         }
@@ -258,6 +245,7 @@ impl ClassNodeContext{
         };
         let annotation_node = self.read_annotation_info(visible, &annotation_attr)?;
         Ok(TypeAnnotationNode {
+            visible,
             target_info: type_annotation.target_info.clone(),
             target_path: type_annotation.target_path.clone(),
             annotation_node,

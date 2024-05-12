@@ -6,6 +6,7 @@ use crate::jvms::attr::annotation::type_annotation::{TypeAnnotationTargetInfo, T
 use crate::node::insn::InsnNode;
 use crate::node::values::{AnnotationValue, ConstValue, Descriptor, FieldInitialValue, InternalName, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue, QualifiedName};
 use crate::opcodes::Opcodes;
+use crate::jvms::attr::Attribute as JvmsAttribute
 
 #[derive(Clone, Debug)]
 pub struct ClassNode {
@@ -47,7 +48,7 @@ pub struct ClassNode {
     /// enclosing class, or is not enclosed in a method or constructor of its enclosing class (e.g. if
     /// it is enclosed in an instance initializer, static initializer, instance variable initializer,
     /// or class variable initializer).
-    pub outer_method: Option<Rc<String>>,
+    pub outer_method_name: Option<Rc<String>>,
 
     /// The descriptor of the method that contains the class, or [None] if the class has no
     /// enclosing class, or is not enclosed in a method or constructor of its enclosing class (e.g. if
@@ -240,6 +241,7 @@ pub struct ModuleNode {
 
 #[derive(Clone, Debug)]
 pub struct TypeAnnotationNode {
+    pub visible: bool,
     pub target_info: TypeAnnotationTargetInfo,
     pub target_path: TypeAnnotationTargetPath,
     pub annotation_node: AnnotationNode,
@@ -290,14 +292,12 @@ pub struct LocalVariableNode {
 #[derive(Clone, Debug)]
 pub struct UnknownAttribute {
     pub name: Rc<String>,
-    pub info: Vec<u8>,
-    // index of the attribute in attributes container
-    pub index: u16, 
+    pub origin: JvmsAttribute,
 }
 
 #[derive(Clone, Debug)]
 pub enum Attribute {
-    Custom(Vec<u8>),
+    Unknown(UnknownAttribute),
     ConstantValue(ConstValue),
     Code {
         max_stack: u16,
@@ -317,7 +317,7 @@ pub enum Attribute {
     Synthetic,
     Signature(Rc<String>),
     SourceFile(Rc<String>),
-    SourceDebugExtension(Vec<u8>),
+    SourceDebugExtension(Rc<String>),
     LineNumberTable(Vec<LineNumberNode>),
     LocalVariableTable(Vec<LocalVariableInfo>),
     LocalVariableTypeTable(Vec<LocalVariableTypeInfo>),

@@ -14,6 +14,10 @@ impl AsmErr {
     pub fn e<T>(self) -> AsmResult<T> {
         Err(self)
     }
+    
+    pub fn loge(self) {
+        eprintln!("{:?}", self);
+    }
 }
 
 pub type AsmResult<T> = Result<T, AsmErr>;

@@ -47,8 +47,8 @@ macro_rules! read_const_curly {
 
 /// impl for const reads
 impl ClassNodeContext {
-    pub fn name(&mut self) -> Option<Rc<String>> {
-        self.read_class_info(self.jvms_file.this_class).ok()
+    pub fn name(&mut self) -> AsmResult<Rc<String>> {
+        self.read_class_info(self.jvms_file.this_class)
     }
 
     read_const! {

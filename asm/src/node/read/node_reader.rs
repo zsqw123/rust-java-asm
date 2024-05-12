@@ -24,14 +24,13 @@ impl NodeReader {
     }
 
     pub fn from_jvms(jvms_file: ClassFile) -> AsmResult<ClassNode> {
-        ClassNodeFactory::from_jvms(jvms_file)
+        ClassNodeFactory::from_jvms(Rc::new(jvms_file))
     }
 }
 
 pub(crate) struct ClassNodeContext {
     pub jvms_file: Rc<ClassFile>,
     pub(crate) cp_cache: HashMap<u16, Rc<ConstValue>>,
-    pub(crate) attr_cache: HashMap<u16, Rc<NodeAttribute>>,
 }
 
 impl ClassNodeContext {
@@ -39,12 +38,11 @@ impl ClassNodeContext {
         Self {
             jvms_file,
             cp_cache: HashMap::new(),
-            attr_cache: HashMap::new(),
         }
     }
 
     pub fn err<D: Display>(&mut self, msg: D) -> AsmErr {
-        match self.name() {
+        match self.name().ok() {
             Some(name) => AsmErr::ResolveNode(format!("class: {}, {}", name, msg)),
             None => AsmErr::ResolveNode(msg.to_string()),
         }
