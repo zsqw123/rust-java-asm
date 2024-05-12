@@ -1,32 +1,11 @@
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::io::Read;
 use std::rc::Rc;
 
-use java_asm_internal::err::{AsmErr, AsmResult};
+use java_asm_internal::err::AsmErr;
 
 use crate::jvms::element::{ClassFile, MethodInfo};
-use crate::jvms::read::JvmsClassReader;
-use crate::node::element::Attribute as NodeAttribute;
-use crate::node::element::ClassNode;
-use crate::node::read::impls::ClassNodeFactory;
 use crate::node::values::ConstValue;
-
-pub struct NodeReader {}
-
-impl NodeReader {
-    pub fn read_class_file<T: Read>(read: T) -> AsmResult<ClassNode> {
-        Self::from_jvms(JvmsClassReader::read_class_file(read)?)
-    }
-
-    pub fn read_class_bytes(bytes: &[u8]) -> AsmResult<ClassNode> {
-        Self::from_jvms(JvmsClassReader::read_class_bytes(bytes)?)
-    }
-
-    pub fn from_jvms(jvms_file: ClassFile) -> AsmResult<ClassNode> {
-        ClassNodeFactory::from_jvms(Rc::new(jvms_file))
-    }
-}
 
 pub(crate) struct ClassNodeContext {
     pub jvms_file: Rc<ClassFile>,

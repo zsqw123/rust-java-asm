@@ -1,4 +1,0 @@
-trait NodeFromJvms<J, N> {
-    
-}
-
