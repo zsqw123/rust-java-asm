@@ -14,12 +14,17 @@ use crate::node::values::{AnnotationValue, LocalVariableInfo, LocalVariableTypeI
 use crate::util::{mutf8_to_string, ToRc, VecEx};
 
 impl ClassNodeContext{
-    pub fn read_attrs(&mut self) -> AsmResult<Vec<(&AttributeInfo, Rc<NodeAttribute>)>> {
-        self.jvms_file.attributes.mapping_res(|attr_info| {
+    pub fn read_class_attrs(&mut self) -> AsmResult<Vec<(&AttributeInfo, Rc<NodeAttribute>)>> {
+        self.read_attrs(&self.jvms_file.attributes)
+    }
+
+    pub fn read_attrs(&mut self, attrs: &Vec<AttributeInfo>) -> AsmResult<Vec<(&AttributeInfo, Rc<NodeAttribute>)>> {
+        attrs.mapping_res(|attr_info| {
             let attribute = self.read_attr(attr_info)?.rc();
             Ok((attr_info, attribute))
         })
     }
+
 
     pub fn read_attr(&mut self, attribute_info: &AttributeInfo) -> AsmResult<NodeAttribute> {
         let attr = match &attribute_info.info {

@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
-use java_asm_internal::err::AsmResult;
+use java_asm_internal::err::{AsmErr, AsmResult};
 
 use crate::jvms::element::{ClassFile, FieldInfo, MethodInfo};
 use crate::node::element::{Attribute, ClassNode, FieldNode, MethodNode, ModuleNode, UnknownAttribute};
 use crate::node::read::node_reader::{ClassNodeContext, MethodNodeContext};
-use crate::node::values::ModuleAttrValue;
+use crate::node::values::{ConstValue, FieldInitialValue, ModuleAttrValue};
 use crate::util::ToRc;
 
 pub struct ClassNodeFactory {}
@@ -39,7 +39,7 @@ impl ClassNodeFactory {
         let mut fields = Vec::with_capacity(jvms_file.fields_count as usize);
         let mut methods = Vec::with_capacity(jvms_file.methods_count as usize);
 
-        for (attribute_info, attribute) in class_context.read_attrs()? {
+        for (attribute_info, attribute) in class_context.read_class_attrs()? {
             match attribute.as_ref() {
                 Attribute::Signature(s) => signature = Some(Rc::clone(s)),
                 Attribute::SourceFile(s) => source_file = Some(Rc::clone(s)),
@@ -124,17 +124,50 @@ impl ClassNodeFactory {
 }
 
 fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: &FieldInfo) -> AsmResult<FieldNode> {
+    let name = class_context.read_utf8(field_info.name_index)?;
+    let access = field_info.access_flags;
+    let desc = class_context.read_utf8(field_info.descriptor_index)?;
+    let mut signature = None;
+    let mut value = None;
+    let mut annotations = vec![];
+    let mut type_annotations = vec![];
+    let mut attrs = vec![];
+    
+    for (attribute_info, attribute) in class_context.read_attrs(&field_info.attributes)? {
+        match attribute.as_ref() {
+            Attribute::Signature(s) => signature = Some(Rc::clone(s)),
+            Attribute::ConstantValue(v) => {
+                value = match v {
+                    ConstValue::Integer(i) => Some(FieldInitialValue::Integer(*i)),
+                    ConstValue::Float(f) => Some(FieldInitialValue::Float(*f)),
+                    ConstValue::Long(l) => Some(FieldInitialValue::Long(*l)),
+                    ConstValue::Double(d) => Some(FieldInitialValue::Double(*d)),
+                    ConstValue::String(s) => Some(FieldInitialValue::String(s.to_string())),
+                    _ => AsmErr::ResolveNode(
+                        format!("invalid constant value {:?} for field: {}", v, name)
+                    ).e()?,
+                }
+            },
+            Attribute::RuntimeVisibleAnnotations(an) => annotations.extend(an.clone()),
+            Attribute::RuntimeInvisibleAnnotations(an) => annotations.extend(an.clone()),
+            Attribute::RuntimeVisibleTypeAnnotations(tan) => type_annotations.extend(tan.clone()),
+            Attribute::RuntimeInvisibleTypeAnnotations(tan) => type_annotations.extend(tan.clone()),
+            Attribute::Unknown(v) => attrs.push(v.clone()),
+            _ => attrs.push(UnknownAttribute {
+                name: class_context.read_utf8(attribute_info.attribute_name_index)?,
+                origin: attribute_info.info.clone(),
+            }),
+        }
+    }
+    
     let field_node = FieldNode {
-        access: field_info.access_flags,
-        name: class_context.read_utf8(field_info.name_index)?,
-        desc: class_context.read_utf8(field_info.descriptor_index)?,
+        name, access, desc, signature, value, annotations, type_annotations, attrs,
     };
     Ok(field_node)
 }
 
 fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: Rc<MethodInfo>) -> AsmResult<MethodNode> {
     let jvms_file = Rc::clone(&class_context.jvms_file);
-    let method_info = Rc::clone(&method_info);
     let method_context = MethodNodeContext { jvms_file, method_info };
     let method_node = MethodNode {
         access: method_info.access_flags,
