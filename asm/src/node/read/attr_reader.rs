@@ -14,17 +14,24 @@ use crate::node::values::{AnnotationValue, LocalVariableInfo, LocalVariableTypeI
 use crate::util::{mutf8_to_string, ToRc, VecEx};
 
 impl ClassNodeContext{
-    pub fn read_class_attrs(&mut self) -> AsmResult<Vec<(&AttributeInfo, Rc<NodeAttribute>)>> {
-        self.read_attrs(&self.jvms_file.attributes)
+    pub fn read_class_attrs(&mut self) -> AsmResult<Vec<(AttributeInfo, NodeAttribute)>> {
+        let jvms_attrs = self.jvms_file.attributes.clone();
+        let attributes = self.read_attrs(jvms_attrs)?;
+        let mut result = Vec::with_capacity(attributes.len());
+        for (attr_info, attr) in attributes {
+            result.push((attr_info.clone(), attr));
+        }
+        Ok(result)
     }
 
-    pub fn read_attrs(&mut self, attrs: &Vec<AttributeInfo>) -> AsmResult<Vec<(&AttributeInfo, Rc<NodeAttribute>)>> {
-        attrs.mapping_res(|attr_info| {
-            let attribute = self.read_attr(attr_info)?.rc();
-            Ok((attr_info, attribute))
-        })
+    pub fn read_attrs(&mut self, attrs: Vec<AttributeInfo>) -> AsmResult<Vec<(AttributeInfo, NodeAttribute)>> {
+        let mut result = Vec::with_capacity(attrs.len());
+        for attr_info in attrs {
+            let attribute = self.read_attr(&attr_info)?;
+            result.push((attr_info, attribute));
+        };
+        Ok(result)
     }
-
 
     pub fn read_attr(&mut self, attribute_info: &AttributeInfo) -> AsmResult<NodeAttribute> {
         let attr = match &attribute_info.info {
@@ -225,8 +232,8 @@ impl ClassNodeContext{
         let mut annotations = vec![];
         let mut type_annotations = vec![];
         let mut unknown_attrs = vec![];
-        for attr_info in component.attributes {
-            let attr = self.read_attr(&attr_info)?;
+        for attr_info in &component.attributes {
+            let attr = self.read_attr(attr_info)?;
             match attr {
                 NodeAttribute::Signature(s) => signature = Some(s.clone()),
                 NodeAttribute::RuntimeVisibleAnnotations(s) => annotations = s.clone(),

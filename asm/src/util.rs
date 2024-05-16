@@ -175,21 +175,21 @@ impl<T> ToRc<T> for T {
     fn rc(self) -> Rc<T> { Rc::new(self) }
 }
 
-pub(crate) trait VecEx<T> {
-    fn mapping_res<R>(&self, f: impl FnMut(&T) -> AsmResult<R>) -> AsmResult<Vec<R>>;
-    fn mapping<R>(&self, f: impl FnMut(&T) -> R) -> Vec<R>;
+pub(crate) trait VecEx<'v, T> where T: 'v {
+    fn mapping_res<R>(&'v self, f: impl FnMut(&'v T) -> AsmResult<R>) -> AsmResult<Vec<R>>;
+    fn mapping<R>(&'v self, f: impl FnMut(&'v T) -> R) -> Vec<R>;
 }
 
-impl<T> VecEx<T> for Vec<T> {
+impl<'v, T> VecEx<'v, T> for Vec<T> where T: 'v {
     #[inline]
-    fn mapping_res<R>(&self, mut f: impl FnMut(&T) -> AsmResult<R>) -> AsmResult<Vec<R>> {
+    fn mapping_res<R>(&'v self, mut f: impl FnMut(&'v T) -> AsmResult<R>) -> AsmResult<Vec<R>> {
         let mut new = Vec::with_capacity(self.len());
         for item in self { new.push(f(item)?); }
         Ok(new)
     }
 
     #[inline]
-    fn mapping<R>(&self, mut f: impl FnMut(&T) -> R) -> Vec<R> {
+    fn mapping<R>(&'v self, mut f: impl FnMut(&'v T) -> R) -> Vec<R> {
         let mut new = Vec::with_capacity(self.len());
         for item in self { new.push(f(item)); }
         new

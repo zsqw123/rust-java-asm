@@ -6,7 +6,7 @@ use crate::jvms::attr::annotation::type_annotation::{TypeAnnotationTargetInfo, T
 use crate::node::insn::InsnNode;
 use crate::node::values::{AnnotationValue, ConstValue, Descriptor, FieldInitialValue, InternalName, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue, QualifiedName};
 use crate::opcodes::Opcodes;
-use crate::jvms::attr::Attribute as JvmsAttribute
+use crate::jvms::attr::Attribute as JvmsAttribute;
 
 #[derive(Clone, Debug)]
 pub struct ClassNode {
@@ -283,10 +283,10 @@ pub struct LocalVariableNode {
     /// The last instructions corresponding to the continuous ranges 
     /// that make the scope of this local variable (exclusive).
     pub end: LabelNode,
-    /// The local variable's index.
-    pub index: u32,
+    /// The local variable's index in current frame.
+    pub index: u16,
     /// type annotations on the local variable type.
-    pub type_annotations: Vec<TypeAnnotationNode>,
+    pub type_annotations: Rc<Vec<TypeAnnotationNode>>,
 }
 
 #[derive(Clone, Debug)]

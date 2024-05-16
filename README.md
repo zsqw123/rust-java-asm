@@ -8,7 +8,7 @@ There are some similar projects in GitHub, but they didn't actually implement al
 implements all ASM nodes/features in rust. 
 So I want to build this library to fully read and write Java bytecode information.
 
-This project supports much newer Java version(Java 21 currently) than other rust implementations. Only supports 
+This project supports much newer LTS Java version(Java 21 currently) than other rust implementations. Only supports 
 `asm-tree` api currently, not supports visitor api because Tree API is much easier to use than visitor api.
 
 ## Current Stage

@@ -1,17 +1,19 @@
+use std::collections::HashMap;
 use std::rc::Rc;
+
 use java_asm_internal::err::{AsmErr, AsmResult};
+use crate::jvms::attr::annotation::type_annotation::TypeAnnotationTargetInfo;
+
 use crate::jvms::element::{ClassFile, FieldInfo, MethodInfo};
-use crate::node::element::{Attribute, ClassNode, FieldNode, MethodNode, ModuleNode, UnknownAttribute};
+use crate::node::element::{Attribute, ClassNode, FieldNode, LocalVariableNode, MethodNode, ModuleNode, TypeAnnotationNode, UnknownAttribute};
 use crate::node::read::node_reader::{ClassNodeContext, MethodNodeContext};
-use crate::node::values::{ConstValue, FieldInitialValue, ModuleAttrValue};
+use crate::node::values::{ConstValue, FieldInitialValue, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue};
 use crate::util::ToRc;
 
-pub fn from_jvms_internal(jvms_file: Rc<ClassFile>) -> AsmResult<ClassNode> {
-    let mut class_context = ClassNodeContext::new(Rc::clone(&jvms_file));
-    let name = class_context.name()?;
+pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     let mut signature = None;
     let mut super_name = None;
-    let mut interfaces = Vec::with_capacity(jvms_file.interfaces_count as usize);
+    let mut interfaces = Vec::with_capacity(*&jvms_file.interfaces_count as usize);
     let mut source_file = None;
     let mut source_debug = None;
     // module stuff
@@ -31,38 +33,42 @@ pub fn from_jvms_internal(jvms_file: Rc<ClassFile>) -> AsmResult<ClassNode> {
     let mut nest_members = vec![];
     let mut permitted_subclasses = vec![];
     let mut record_components = vec![];
-    let mut fields = Vec::with_capacity(jvms_file.fields_count as usize);
-    let mut methods = Vec::with_capacity(jvms_file.methods_count as usize);
+    let mut fields = Vec::with_capacity(*&jvms_file.fields_count as usize);
+    let mut methods = Vec::with_capacity(*&jvms_file.methods_count as usize);
 
-    for (attribute_info, attribute) in class_context.read_class_attrs()? {
-        match attribute.as_ref() {
-            Attribute::Signature(s) => signature = Some(Rc::clone(s)),
-            Attribute::SourceFile(s) => source_file = Some(Rc::clone(s)),
-            Attribute::SourceDebugExtension(s) => source_debug = Some(Rc::clone(s)),
+    let jvms_file = Rc::new(jvms_file);
+    let mut class_context = ClassNodeContext::new(Rc::clone(&jvms_file));
+    let name = class_context.name()?;
+    let class_attrs = class_context.read_class_attrs()?;
+    for (attribute_info, attribute) in class_attrs {
+        match attribute {
+            Attribute::Signature(s) => signature = Some(s),
+            Attribute::SourceFile(s) => source_file = Some(s),
+            Attribute::SourceDebugExtension(s) => source_debug = Some(s),
             // module stuff
             Attribute::Module(a) => module_attr = Some(a),
-            Attribute::ModulePackages(packages) => module_packages = Some(packages.clone()),
-            Attribute::ModuleMainClass(main) => module_main = Some(main.clone()),
+            Attribute::ModulePackages(packages) => module_packages = Some(packages),
+            Attribute::ModuleMainClass(main) => module_main = Some(main),
 
             Attribute::EnclosingMethod { class, method_name, method_desc } => {
-                outer_class = Some(Rc::clone(class));
-                outer_method_name = Some(Rc::clone(method_name));
-                outer_method_desc = Some(Rc::clone(method_desc));
+                outer_class = Some(class);
+                outer_method_name = Some(method_name);
+                outer_method_desc = Some(method_desc);
             }
 
             // annotations
-            Attribute::RuntimeVisibleAnnotations(an) => annotations.extend(an.clone()),
-            Attribute::RuntimeInvisibleAnnotations(an) => annotations.extend(an.clone()),
-            Attribute::RuntimeVisibleTypeAnnotations(tan) => type_annotations.extend(tan.clone()),
-            Attribute::RuntimeInvisibleTypeAnnotations(tan) => type_annotations.extend(tan.clone()),
+            Attribute::RuntimeVisibleAnnotations(an) => annotations.extend(an),
+            Attribute::RuntimeInvisibleAnnotations(an) => annotations.extend(an),
+            Attribute::RuntimeVisibleTypeAnnotations(tan) => type_annotations.extend(tan),
+            Attribute::RuntimeInvisibleTypeAnnotations(tan) => type_annotations.extend(tan),
 
-            Attribute::InnerClasses(ic) => inner_classes.extend(ic.clone()),
-            Attribute::NestHost(nh) => nest_host_class = Some(Rc::clone(nh)),
-            Attribute::NestMembers(nm) => nest_members.extend(nm.clone()),
-            Attribute::PermittedSubclasses(ps) => permitted_subclasses.extend(ps.clone()),
-            Attribute::Record(rc) => record_components.extend(rc.clone()),
+            Attribute::InnerClasses(ic) => inner_classes.extend(ic),
+            Attribute::NestHost(nh) => nest_host_class = Some(nh),
+            Attribute::NestMembers(nm) => nest_members.extend(nm),
+            Attribute::PermittedSubclasses(ps) => permitted_subclasses.extend(ps),
+            Attribute::Record(rc) => record_components.extend(rc),
 
-            Attribute::Unknown(v) => attrs.push(v.clone()),
+            Attribute::Unknown(v) => attrs.push(v),
             _ => attrs.push(UnknownAttribute {
                 name: class_context.read_utf8(attribute_info.attribute_name_index)?,
                 origin: attribute_info.info.clone(),
@@ -77,16 +83,9 @@ pub fn from_jvms_internal(jvms_file: Rc<ClassFile>) -> AsmResult<ClassNode> {
                 requires, exports, opens,
                 uses, provides
             } = attr;
-            let name = Rc::clone(name);
-            let access = *access;
-            let version = if let Some(v) = version { Some(Rc::clone(v)) } else { None };
+            let version = if let Some(v) = version { Some(v) } else { None };
             let main_class = module_main;
             let packages = module_packages.unwrap_or_default();
-            let requires = requires.clone();
-            let exports = exports.clone();
-            let opens = opens.clone();
-            let uses = uses.clone();
-            let provides = provides.clone();
 
             Some(ModuleNode {
                 name, access, version, main_class,
@@ -95,20 +94,22 @@ pub fn from_jvms_internal(jvms_file: Rc<ClassFile>) -> AsmResult<ClassNode> {
         }
         None => None,
     };
-
-    for field_info in jvms_file.fields.iter() {
+    
+    // let jvms_file = &jvms_file;
+    for field_info in &jvms_file.fields {
+        let field_info = Rc::new(field_info.clone());
         fields.push(field_from_jvms(&mut class_context, field_info)?);
     }
 
-    for method_info in jvms_file.methods.iter() {
-        let method_info = method_info.clone().rc();
+    for method_info in &jvms_file.methods {
+        let method_info = Rc::new(method_info.clone());
         methods.push(method_from_jvms(&mut class_context, method_info)?);
     }
 
     let class_node = ClassNode {
-        minor_version: jvms_file.minor_version,
-        major_version: jvms_file.major_version,
-        access: jvms_file.access_flags,
+        minor_version: *&jvms_file.minor_version,
+        major_version: *&jvms_file.major_version,
+        access: *&jvms_file.access_flags,
         name, signature, super_name, interfaces, source_file, source_debug,
         module, outer_class, outer_method_name, outer_method_desc,
         annotations, type_annotations, inner_classes, nest_host_class, nest_members,
@@ -117,7 +118,7 @@ pub fn from_jvms_internal(jvms_file: Rc<ClassFile>) -> AsmResult<ClassNode> {
     Ok(class_node)
 }
 
-fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: &FieldInfo) -> AsmResult<FieldNode> {
+fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: Rc<FieldInfo>) -> AsmResult<FieldNode> {
     let name = class_context.read_utf8(field_info.name_index)?;
     let access = field_info.access_flags;
     let desc = class_context.read_utf8(field_info.descriptor_index)?;
@@ -126,34 +127,34 @@ fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: &FieldInfo)
     let mut annotations = vec![];
     let mut type_annotations = vec![];
     let mut attrs = vec![];
-    
-    for (attribute_info, attribute) in class_context.read_attrs(&field_info.attributes)? {
-        match attribute.as_ref() {
-            Attribute::Signature(s) => signature = Some(Rc::clone(s)),
+
+    for (attribute_info, attribute) in class_context.read_attrs(field_info.attributes.clone())? {
+        match attribute {
+            Attribute::Signature(s) => signature = Some(s),
             Attribute::ConstantValue(v) => {
                 value = match v {
-                    ConstValue::Integer(i) => Some(FieldInitialValue::Integer(*i)),
-                    ConstValue::Float(f) => Some(FieldInitialValue::Float(*f)),
-                    ConstValue::Long(l) => Some(FieldInitialValue::Long(*l)),
-                    ConstValue::Double(d) => Some(FieldInitialValue::Double(*d)),
+                    ConstValue::Integer(i) => Some(FieldInitialValue::Integer(i)),
+                    ConstValue::Float(f) => Some(FieldInitialValue::Float(f)),
+                    ConstValue::Long(l) => Some(FieldInitialValue::Long(l)),
+                    ConstValue::Double(d) => Some(FieldInitialValue::Double(d)),
                     ConstValue::String(s) => Some(FieldInitialValue::String(s.to_string())),
                     _ => AsmErr::ResolveNode(
                         format!("invalid constant value {:?} for field: {}", v, name)
                     ).e()?,
                 }
             },
-            Attribute::RuntimeVisibleAnnotations(an) => annotations.extend(an.clone()),
-            Attribute::RuntimeInvisibleAnnotations(an) => annotations.extend(an.clone()),
-            Attribute::RuntimeVisibleTypeAnnotations(tan) => type_annotations.extend(tan.clone()),
-            Attribute::RuntimeInvisibleTypeAnnotations(tan) => type_annotations.extend(tan.clone()),
-            Attribute::Unknown(v) => attrs.push(v.clone()),
+            Attribute::RuntimeVisibleAnnotations(an) => annotations.extend(an),
+            Attribute::RuntimeInvisibleAnnotations(an) => annotations.extend(an),
+            Attribute::RuntimeVisibleTypeAnnotations(tan) => type_annotations.extend(tan),
+            Attribute::RuntimeInvisibleTypeAnnotations(tan) => type_annotations.extend(tan),
+            Attribute::Unknown(v) => attrs.push(v),
             _ => attrs.push(UnknownAttribute {
                 name: class_context.read_utf8(attribute_info.attribute_name_index)?,
                 origin: attribute_info.info.clone(),
             }),
         }
     }
-    
+
     let field_node = FieldNode {
         name, access, desc, signature, value, annotations, type_annotations, attrs,
     };
@@ -161,12 +162,88 @@ fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: &FieldInfo)
 }
 
 fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: Rc<MethodInfo>) -> AsmResult<MethodNode> {
-    let jvms_file = Rc::clone(&class_context.jvms_file);
-    let method_context = MethodNodeContext { jvms_file, method_info };
+    let mut signature = None;
+    let mut exceptions = vec![];
+    let mut parameters = vec![];
+
+    let mut annotations = vec![];
+    let mut type_annotations = vec![];
+    let mut parameter_annotations = vec![];
+    let mut attrs = vec![];
+
+    let mut annotation_default = None;
+    let mut instructions = vec![];
+    let mut try_catch_blocks = vec![];
+    
+    let mut local_variable_infos = vec![];
+    let mut local_variable_type_infos = vec![];
+    
+    let name = class_context.read_utf8((&method_info.name_index).clone())?;
+    let all_attributes = class_context.read_attrs(method_info.attributes.clone())?;
+    for (attribute_info, attribute) in all_attributes {
+        match attribute {
+            Attribute::Signature(s) => signature = Some(s),
+            Attribute::Exceptions(ex) => exceptions = ex,
+            Attribute::MethodParameters(ps) => parameters = ps,
+            
+            Attribute::RuntimeVisibleAnnotations(an) => annotations.extend(an),
+            Attribute::RuntimeInvisibleAnnotations(an) => annotations.extend(an),
+            Attribute::RuntimeVisibleTypeAnnotations(tan) => type_annotations.extend(tan),
+            Attribute::RuntimeInvisibleTypeAnnotations(tan) => type_annotations.extend(tan),
+            Attribute::RuntimeVisibleParameterAnnotations(pan) => parameter_annotations.extend(pan),
+            Attribute::RuntimeInvisibleParameterAnnotations(pan) => parameter_annotations.extend(pan),
+            
+            Attribute::AnnotationDefault(v) => annotation_default = Some(v),
+            Attribute::LocalVariableTable(lv) => local_variable_infos = lv,
+            Attribute::LocalVariableTypeTable(lv) => local_variable_type_infos = lv,
+            
+            Attribute::Unknown(v) => attrs.push(v),
+            _ => attrs.push(UnknownAttribute {
+                name: class_context.read_utf8(attribute_info.attribute_name_index)?,
+                origin: attribute_info.info.clone(),
+            }),
+        }
+    }
+    
+    let method_info = Rc::clone(&method_info);
+    let access = method_info.access_flags;
+    let desc = class_context.read_utf8(method_info.descriptor_index)?;
+    let local_variables = merge_local_variables(
+        &local_variable_infos, &local_variable_type_infos, &type_annotations
+    );
     let method_node = MethodNode {
-        access: method_info.access_flags,
-        name: class_context.read_utf8(method_info.name_index)?,
-        desc: class_context.read_utf8(method_info.descriptor_index)?,
+        name, access, desc, signature, exceptions, parameters,
+        annotations, type_annotations, parameter_annotations, attrs,
+        annotation_default, instructions, try_catch_blocks, local_variables,
     };
     Ok(method_node)
+}
+
+fn merge_local_variables(
+    infos: &Vec<LocalVariableInfo>,
+    type_infos: &Vec<LocalVariableTypeInfo>,
+    type_annotations: &Vec<TypeAnnotationNode>,
+) -> Vec<LocalVariableNode> {
+    let mut local_variables = vec![];
+    let mut type_map = HashMap::with_capacity(type_infos.len());
+    for info in type_infos {
+        let LocalVariableTypeInfo { start, length, signature, index, .. } = info;
+        type_map.insert((*start, *length, *index), Rc::clone(signature));
+    }
+    let type_annotations = type_annotations.iter().filter_map(|tan| {
+        if let TypeAnnotationTargetInfo::LocalVar { .. } = &tan.target_info { Some(tan.clone()) } else { None }
+    }).collect();
+    let type_annotations = Rc::new(type_annotations);
+    
+    for info in infos {
+        let &LocalVariableInfo { start, length, index, .. } = info;
+        let name = Rc::clone(&info.name);
+        let desc = Rc::clone(&info.desc);
+        let signature = type_map.get(&(start, length, index)).cloned();
+        let type_annotations = Rc::clone(&type_annotations);
+        local_variables.push(LocalVariableNode {
+            name, desc, signature, start, end: start+length, index, type_annotations
+        });
+    }
+    local_variables
 }

@@ -9,7 +9,7 @@ use crate::node::values::ConstValue;
 
 pub(crate) struct ClassNodeContext {
     pub jvms_file: Rc<ClassFile>,
-    pub(crate) cp_cache: HashMap<u16, Rc<ConstValue>>,
+    pub cp_cache: HashMap<u16, Rc<ConstValue>>,
 }
 
 impl ClassNodeContext {

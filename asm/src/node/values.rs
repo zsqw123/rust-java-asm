@@ -121,6 +121,9 @@ pub struct LocalVariableInfo {
     pub length: u16,
     pub name: Rc<String>,
     pub desc: Rc<Descriptor>,
+    /// The value of the index item must be a valid index into the local variable array of the current frame. 
+    /// The given local variable is at index in the local variable array of the current frame.
+    /// If the given local variable is of type double or long, it occupies both index and index + 1.
     pub index: u16,
 }
 
@@ -130,6 +133,9 @@ pub struct LocalVariableTypeInfo {
     pub length: u16,
     pub name: Rc<String>,
     pub signature: Rc<String>,
+    /// The value of the index item must be a valid index into the local variable array of the current frame. 
+    /// The given local variable is at index in the local variable array of the current frame.
+    /// If the given local variable is of type double or long, it occupies both index and index + 1.
     pub index: u16,
 }
 
