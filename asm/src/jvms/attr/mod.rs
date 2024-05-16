@@ -5,6 +5,7 @@ use crate::jvms::attr::annotation::{AnnotationElementValueInfo, AnnotationInfo, 
 use crate::jvms::attr::annotation::type_annotation::TypeAnnotation;
 use crate::jvms::attr::module::{ModuleExports, ModuleOpens, ModuleProvides, ModuleRequires};
 use crate::jvms::element::AttributeInfo;
+use crate::node::element::LabelNode;
 
 pub mod annotation;
 pub mod module;
@@ -352,7 +353,7 @@ pub struct InnerClassInfo {
 // }
 #[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
 pub struct LineNumberTableInfo {
-    pub start_pc: u16,
+    pub start_pc: LabelNode,
     pub line_number: u16,
 }
 
@@ -365,7 +366,7 @@ pub struct LineNumberTableInfo {
 // }
 #[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
 pub struct LocalVariableTableInfo {
-    pub start_pc: u16,
+    pub start_pc: LabelNode,
     pub length: u16,
     pub name_index: u16,
     pub descriptor_index: u16,
@@ -382,7 +383,7 @@ pub struct LocalVariableTableInfo {
 // }
 #[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
 pub struct LocalVariableTypeTableInfo {
-    pub start_pc: u16,
+    pub start_pc: LabelNode,
     pub length: u16,
     pub name_index: u16,
     pub signature_index: u16,
@@ -460,9 +461,9 @@ pub enum StackMapFrame {
 // }
 #[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
 pub struct ExceptionTable {
-    pub start_pc: u16,
-    pub end_pc: u16,
-    pub handler_pc: u16,
+    pub start_pc: LabelNode,
+    pub end_pc: LabelNode,
+    pub handler_pc: LabelNode,
     pub catch_type: u16,
 }
 
