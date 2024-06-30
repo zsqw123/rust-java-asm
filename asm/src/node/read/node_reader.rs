@@ -20,7 +20,7 @@ impl ClassNodeContext {
         }
     }
 
-    pub fn err<D: Display>(&mut self, msg: D) -> AsmErr {
+    pub(crate) fn err<D: Display>(&mut self, msg: D) -> AsmErr {
         match self.name().ok() {
             Some(name) => AsmErr::ResolveNode(format!("class: {}, {}", name, msg)),
             None => AsmErr::ResolveNode(msg.to_string()),

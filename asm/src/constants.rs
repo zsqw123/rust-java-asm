@@ -55,6 +55,8 @@ impl Constants {
     pub const CONSTANT_InvokeDynamic: u8 = 18;
     pub const CONSTANT_Module: u8 = 19;
     pub const CONSTANT_Package: u8 = 20;
+    
+    pub const OBJECT_INTERNAL_NAME: &'static str = "java/lang/Object";
 
 
     pub const REF_getField: u8 = 1;

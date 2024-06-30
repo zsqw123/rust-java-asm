@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use java_asm_internal::err::{AsmErr, AsmResult};
 
+use crate::constants::Constants;
 use crate::jvms::element::Const;
 use crate::node::read::node_reader::ClassNodeContext;
 use crate::node::values::{ConstValue, Descriptor};
@@ -62,6 +63,12 @@ impl ClassNodeContext {
         read_name_and_type -> (Rc<String>, Rc<Descriptor>) {
             NameAndType { name, desc }
         }
+    }
+
+    #[inline]
+    pub fn read_class_info_or_default(&mut self, index: u16) -> Rc<String> {
+        self.read_class_info(index)
+            .unwrap_or_else(|_| Constants::OBJECT_INTERNAL_NAME.to_string().rc())
     }
 
     pub fn read_const(&mut self, index: u16) -> AsmResult<Rc<ConstValue>> {

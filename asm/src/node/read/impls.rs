@@ -2,18 +2,24 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use java_asm_internal::err::{AsmErr, AsmResult};
-use crate::jvms::attr::annotation::type_annotation::TypeAnnotationTargetInfo;
 
+use crate::jvms::attr::annotation::type_annotation::TypeAnnotationTargetInfo;
 use crate::jvms::element::{ClassFile, FieldInfo, MethodInfo};
 use crate::node::element::{Attribute, ClassNode, FieldNode, LocalVariableNode, MethodNode, ModuleNode, TypeAnnotationNode, UnknownAttribute};
-use crate::node::read::node_reader::{ClassNodeContext, MethodNodeContext};
+use crate::node::read::node_reader::ClassNodeContext;
 use crate::node::values::{ConstValue, FieldInitialValue, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue};
-use crate::util::ToRc;
 
 pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
+    let jvms_file = Rc::new(jvms_file);
+    let mut class_context = ClassNodeContext::new(Rc::clone(&jvms_file));
+
     let mut signature = None;
-    let mut super_name = None;
-    let mut interfaces = Vec::with_capacity(*&jvms_file.interfaces_count as usize);
+    let super_name = Some(class_context.read_class_info_or_default(jvms_file.super_class));
+    let interfaces = jvms_file.interfaces.iter().map(|&index| {
+        class_context.read_class_info_or_default(index)
+    }).collect();
+    
+    
     let mut source_file = None;
     let mut source_debug = None;
     // module stuff
@@ -36,10 +42,11 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     let mut fields = Vec::with_capacity(*&jvms_file.fields_count as usize);
     let mut methods = Vec::with_capacity(*&jvms_file.methods_count as usize);
 
-    let jvms_file = Rc::new(jvms_file);
-    let mut class_context = ClassNodeContext::new(Rc::clone(&jvms_file));
     let name = class_context.name()?;
+    // read raw class attributes
     let class_attrs = class_context.read_class_attrs()?;
+    // set node variable's value from attributes
+    // and put all unrecognized attributes into `attrs`
     for (attribute_info, attribute) in class_attrs {
         match attribute {
             Attribute::Signature(s) => signature = Some(s),
@@ -94,7 +101,7 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
         }
         None => None,
     };
-    
+
     // let jvms_file = &jvms_file;
     for field_info in &jvms_file.fields {
         let field_info = Rc::new(field_info.clone());
@@ -174,10 +181,10 @@ fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: Rc<Method
     let mut annotation_default = None;
     let mut instructions = vec![];
     let mut try_catch_blocks = vec![];
-    
+
     let mut local_variable_infos = vec![];
     let mut local_variable_type_infos = vec![];
-    
+
     let name = class_context.read_utf8((&method_info.name_index).clone())?;
     let all_attributes = class_context.read_attrs(method_info.attributes.clone())?;
     for (attribute_info, attribute) in all_attributes {
@@ -185,18 +192,18 @@ fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: Rc<Method
             Attribute::Signature(s) => signature = Some(s),
             Attribute::Exceptions(ex) => exceptions = ex,
             Attribute::MethodParameters(ps) => parameters = ps,
-            
+
             Attribute::RuntimeVisibleAnnotations(an) => annotations.extend(an),
             Attribute::RuntimeInvisibleAnnotations(an) => annotations.extend(an),
             Attribute::RuntimeVisibleTypeAnnotations(tan) => type_annotations.extend(tan),
             Attribute::RuntimeInvisibleTypeAnnotations(tan) => type_annotations.extend(tan),
             Attribute::RuntimeVisibleParameterAnnotations(pan) => parameter_annotations.extend(pan),
             Attribute::RuntimeInvisibleParameterAnnotations(pan) => parameter_annotations.extend(pan),
-            
+
             Attribute::AnnotationDefault(v) => annotation_default = Some(v),
             Attribute::LocalVariableTable(lv) => local_variable_infos = lv,
             Attribute::LocalVariableTypeTable(lv) => local_variable_type_infos = lv,
-            
+
             Attribute::Unknown(v) => attrs.push(v),
             _ => attrs.push(UnknownAttribute {
                 name: class_context.read_utf8(attribute_info.attribute_name_index)?,
@@ -204,7 +211,7 @@ fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: Rc<Method
             }),
         }
     }
-    
+
     let method_info = Rc::clone(&method_info);
     let access = method_info.access_flags;
     let desc = class_context.read_utf8(method_info.descriptor_index)?;
@@ -234,7 +241,7 @@ fn merge_local_variables(
         if let TypeAnnotationTargetInfo::LocalVar { .. } = &tan.target_info { Some(tan.clone()) } else { None }
     }).collect();
     let type_annotations = Rc::new(type_annotations);
-    
+
     for info in infos {
         let &LocalVariableInfo { start, length, index, .. } = info;
         let name = Rc::clone(&info.name);

@@ -1,15 +1,16 @@
 use std::io::Read;
-use std::rc::Rc;
+
 use java_asm_internal::err::AsmResult;
+
 use crate::jvms::element::ClassFile;
 use crate::jvms::read::JvmsClassReader;
 use crate::node::element::ClassNode;
-use crate::util::ToRc;
 
 pub mod option;
 pub(crate) mod node_reader;
 mod const_reader;
 mod attr_reader;
+mod attr;
 mod impls;
 
 impl ClassNode {
