@@ -39,8 +39,6 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     let mut nest_members = vec![];
     let mut permitted_subclasses = vec![];
     let mut record_components = vec![];
-    let mut fields = Vec::with_capacity(*&jvms_file.fields_count as usize);
-    let mut methods = Vec::with_capacity(*&jvms_file.methods_count as usize);
 
     let name = class_context.name()?;
     // read raw class attributes
@@ -101,13 +99,18 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
         }
         None => None,
     };
-
-    // let jvms_file = &jvms_file;
+    
+    // it's very stupid in rust that we can't use `?` in a closure
+    // such as `fields.iter().map(|f| foo(f)?);` is not allowed due to `?` is not allowed in closure.
+    // so here we use a for-in loop to construct the fields and methods.
+    // I must admit that I hate the `mut` but I have to use it here.
+    let mut fields = Vec::with_capacity(*&jvms_file.fields_count as usize);
     for field_info in &jvms_file.fields {
         let field_info = Rc::new(field_info.clone());
         fields.push(field_from_jvms(&mut class_context, field_info)?);
     }
-
+    
+    let mut methods = Vec::with_capacity(*&jvms_file.methods_count as usize);
     for method_info in &jvms_file.methods {
         let method_info = Rc::new(method_info.clone());
         methods.push(method_from_jvms(&mut class_context, method_info)?);
