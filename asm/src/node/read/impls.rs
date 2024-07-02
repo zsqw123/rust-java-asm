@@ -5,7 +5,7 @@ use java_asm_internal::err::{AsmErr, AsmResult};
 
 use crate::jvms::attr::annotation::type_annotation::TypeAnnotationTargetInfo;
 use crate::jvms::element::{ClassFile, FieldInfo, MethodInfo};
-use crate::node::element::{Attribute, ClassNode, FieldNode, LocalVariableNode, MethodNode, ModuleNode, TypeAnnotationNode, UnknownAttribute};
+use crate::node::element::{Attribute, ClassNode, ExceptionTable, FieldNode, LocalVariableNode, MethodNode, ModuleNode, TypeAnnotationNode, UnknownAttribute};
 use crate::node::read::node_reader::ClassNodeContext;
 use crate::node::values::{ConstValue, FieldInitialValue, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue};
 
@@ -205,6 +205,13 @@ fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: MethodInf
             Attribute::LocalVariableTable(lv) => local_variable_infos = lv,
             Attribute::LocalVariableTypeTable(lv) => local_variable_type_infos = lv,
 
+            Attribute::Code {
+                max_stack, max_locals, code, 
+                exception_table, attributes,
+            } => {
+                instructions = class_context.read_code(code)?;
+            }
+            
             Attribute::Unknown(v) => attrs.push(v),
             _ => attrs.push(UnknownAttribute {
                 name: class_context.read_utf8(attribute_info.attribute_name_index)?,

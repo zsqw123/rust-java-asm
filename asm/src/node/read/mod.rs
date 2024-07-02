@@ -10,8 +10,8 @@ pub mod option;
 pub(crate) mod node_reader;
 mod const_reader;
 mod attr_reader;
-mod attr;
 mod impls;
+pub(crate) mod code_reader;
 
 impl ClassNode {
     pub fn from_jvms(jvms_file: ClassFile) -> AsmResult<ClassNode> {

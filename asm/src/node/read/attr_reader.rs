@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use java_asm_internal::err::AsmResult;
 
 use crate::jvms::attr::annotation::{AnnotationElementValue, AnnotationInfo};
@@ -13,7 +11,7 @@ use crate::node::read::node_reader::ClassNodeContext;
 use crate::node::values::{AnnotationValue, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue};
 use crate::util::{mutf8_to_string, ToRc, VecEx};
 
-impl ClassNodeContext{
+impl ClassNodeContext {
     pub fn read_class_attrs(&mut self) -> AsmResult<Vec<(AttributeInfo, NodeAttribute)>> {
         let jvms_attrs = self.jvms_file.attributes.clone();
         let attributes = self.read_attrs(jvms_attrs)?;

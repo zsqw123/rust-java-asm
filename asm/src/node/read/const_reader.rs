@@ -63,6 +63,9 @@ impl ClassNodeContext {
         read_name_and_type -> (Rc<String>, Rc<Descriptor>) {
             NameAndType { name, desc }
         }
+        read_member -> (Rc<String>, Rc<String>, Rc<Descriptor>) {
+            Member { class, name, desc }
+        }
     }
 
     #[inline]
