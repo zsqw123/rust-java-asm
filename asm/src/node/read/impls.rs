@@ -99,21 +99,19 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
         }
         None => None,
     };
-    
+
     // it's very stupid in rust that we can't use `?` in a closure
     // such as `fields.iter().map(|f| foo(f)?);` is not allowed due to `?` is not allowed in closure.
     // so here we use a for-in loop to construct the fields and methods.
     // I must admit that I hate the `mut` but I have to use it here.
     let mut fields = Vec::with_capacity(*&jvms_file.fields_count as usize);
     for field_info in &jvms_file.fields {
-        let field_info = Rc::new(field_info.clone());
-        fields.push(field_from_jvms(&mut class_context, field_info)?);
+        fields.push(field_from_jvms(&mut class_context, field_info.clone())?);
     }
-    
+
     let mut methods = Vec::with_capacity(*&jvms_file.methods_count as usize);
     for method_info in &jvms_file.methods {
-        let method_info = Rc::new(method_info.clone());
-        methods.push(method_from_jvms(&mut class_context, method_info)?);
+        methods.push(method_from_jvms(&mut class_context, method_info.clone())?);
     }
 
     let class_node = ClassNode {
@@ -128,7 +126,7 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     Ok(class_node)
 }
 
-fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: Rc<FieldInfo>) -> AsmResult<FieldNode> {
+fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: FieldInfo) -> AsmResult<FieldNode> {
     let name = class_context.read_utf8(field_info.name_index)?;
     let access = field_info.access_flags;
     let desc = class_context.read_utf8(field_info.descriptor_index)?;
@@ -138,7 +136,7 @@ fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: Rc<FieldInf
     let mut type_annotations = vec![];
     let mut attrs = vec![];
 
-    for (attribute_info, attribute) in class_context.read_attrs(field_info.attributes.clone())? {
+    for (attribute_info, attribute) in class_context.read_attrs(field_info.attributes)? {
         match attribute {
             Attribute::Signature(s) => signature = Some(s),
             Attribute::ConstantValue(v) => {
@@ -171,7 +169,7 @@ fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: Rc<FieldInf
     Ok(field_node)
 }
 
-fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: Rc<MethodInfo>) -> AsmResult<MethodNode> {
+fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: MethodInfo) -> AsmResult<MethodNode> {
     let mut signature = None;
     let mut exceptions = vec![];
     let mut parameters = vec![];
@@ -188,7 +186,7 @@ fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: Rc<Method
     let mut local_variable_infos = vec![];
     let mut local_variable_type_infos = vec![];
 
-    let name = class_context.read_utf8((&method_info.name_index).clone())?;
+    let name = class_context.read_utf8(method_info.name_index)?;
     let all_attributes = class_context.read_attrs(method_info.attributes.clone())?;
     for (attribute_info, attribute) in all_attributes {
         match attribute {
@@ -215,7 +213,6 @@ fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: Rc<Method
         }
     }
 
-    let method_info = Rc::clone(&method_info);
     let access = method_info.access_flags;
     let desc = class_context.read_utf8(method_info.descriptor_index)?;
     let local_variables = merge_local_variables(
