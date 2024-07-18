@@ -105,41 +105,6 @@ impl Opcodes {
     pub const H_NEWINVOKESPECIAL: u8 = 8;
     pub const H_INVOKEINTERFACE: u8 = 9;
 
-    // ASM specific stack map frame types, used in {@link ClassVisitor#visitFrame}.
-
-    /** An expanded frame. See {@link ClassReader#EXPAND_FRAMES}. */
-    pub const F_NEW: i8 = -1;
-
-    /** A compressed frame with complete frame data. */
-    pub const F_FULL: i8 = 0;
-
-    /**
-     * A compressed frame where locals are the same as the locals in the previous frame, except that
-     * additional 1-3 locals are defined, and with an empty stack.
-     */
-    pub const F_APPEND: i8 = 1;
-
-    /**
-     * A compressed frame where locals are the same as the locals in the previous frame, except that
-     * the last 1-3 locals are absent and with an empty stack.
-     */
-    pub const F_CHOP: i8 = 2;
-
-    /**
-     * A compressed frame with exactly the same locals as the previous frame and with an empty stack.
-     */
-    pub const F_SAME: i8 = 3;
-
-    /**
-     * A compressed frame with exactly the same locals as the previous frame and with a single value
-     * on the stack.
-     */
-    pub const F_SAME1: i8 = 4;
-    
-    // Standard stack map frame element types, used in {@link ClassVisitor#visitFrame}.
-    // todo
-
-
     // The JVM opcode values (with the MethodVisitor method name used to visit them in comment, and
     // where '-' means 'same method name as on the previous line').
     // See https://docs.oracle.com/javase/specs/jvms/se9/html/jvms-6.html.

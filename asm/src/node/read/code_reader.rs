@@ -1,8 +1,10 @@
 use java_asm_internal::err::AsmResult;
+use crate::jvms::attr::StackMapFrame;
 
 use crate::node::insn::InsnNode;
 use crate::node::insn::InsnNode::FieldInsnNode;
 use crate::node::read::node_reader::ClassNodeContext;
+use crate::node::values::{FrameAttributeValue, FrameValue};
 use crate::opcodes::Opcodes;
 
 impl ClassNodeContext {
@@ -24,9 +26,15 @@ impl ClassNodeContext {
                     res.push(FieldInsnNode { opcode, owner, name, desc });
                     cur += 3;
                 }
+                
                 _ => {}
             }
         }
+        Ok(vec![])
+    }
+    
+    pub fn read_frames(&mut self, code: Vec<u8>) -> AsmResult<Vec<FrameAttributeValue>> {
+        // let 
         Ok(vec![])
     }
 

@@ -55,6 +55,37 @@ pub enum FieldInitialValue {
 }
 
 #[derive(Clone, Debug)]
+pub enum FrameAttributeValue {
+    SameFrame {
+        offset_delta: u8,
+    },
+    SameFrameExtended {
+        offset_delta: u16,
+    },
+    SameLocals1StackItemFrame {
+        offset_delta: u8,
+        stack: FrameValue,
+    },
+    SameLocals1StackItemFrameExtended {
+        offset_delta: u16,
+        stack: FrameValue,
+    },
+    ChopFrame {
+        chop_count: u8,
+        offset_delta: u16,
+    },
+    AppendFrame {
+        offset_delta: u16,
+        append_locals: Vec<FrameValue>,
+    },
+    FullFrame {
+        offset_delta: u16,
+        locals: Vec<FrameValue>,
+        stack: Vec<FrameValue>,
+    },
+}
+
+#[derive(Clone, Debug)]
 pub enum FrameValue {
     Top,
     Integer,

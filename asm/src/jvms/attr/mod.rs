@@ -427,6 +427,7 @@ pub enum VerificationTypeInfo {
 #[derive(Clone, Debug, IntoWriteContext)]
 pub enum StackMapFrame {
     SameFrame { frame_type: u8 },
+    SameFrameExtended { frame_type: u8, offset_delta: u16 },
     SameLocals1StackItemFrame {
         frame_type: u8,
         verification_type_info: VerificationTypeInfo,
@@ -437,7 +438,6 @@ pub enum StackMapFrame {
         verification_type_info: VerificationTypeInfo,
     },
     ChopFrame { frame_type: u8, offset_delta: u16 },
-    SameFrameExtended { frame_type: u8, offset_delta: u16 },
     AppendFrame {
         frame_type: u8,
         offset_delta: u16,

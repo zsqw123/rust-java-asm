@@ -1,6 +1,5 @@
 use crate::node::element::LabelNode;
-use crate::node::values::{ConstDynamic, FrameValue, LdcConst};
-use crate::opcodes::Opcodes;
+use crate::node::values::{ConstDynamic, LdcConst};
 
 //noinspection SpellCheckingInspection
 #[derive(Clone, Debug)]
@@ -10,14 +9,6 @@ pub enum InsnNode {
         owner: String, // internal name of the field's owner class
         name: String,
         desc: String,
-    },
-    FrameNode {
-        /// the type of frame, must be [Opcodes::F_NEW]  for expanded frames,
-        /// or [Opcodes::F_FULL], [Opcodes::F_APPEND], [Opcodes::F_CHOP],
-        /// [Opcodes::F_SAME] or [Opcodes::F_APPEND], [Opcodes::F_SAME1] for compressed frames.
-        frame_type: u8, // FULL, APPEND, CHOP, SAME, SAME1
-        locals: Vec<FrameValue>,
-        stack: Vec<FrameValue>,
     },
     IIncInsnNode {
         var: u8, // index of the local variable to be incremented
