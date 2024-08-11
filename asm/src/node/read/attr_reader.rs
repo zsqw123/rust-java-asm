@@ -1,7 +1,7 @@
 use java_asm_internal::err::AsmResult;
 
 use crate::jvms::attr::annotation::{AnnotationElementValue, AnnotationInfo};
-use crate::jvms::attr::annotation::type_annotation::TypeAnnotation;
+use crate::jvms::attr::type_annotation::TypeAnnotation;
 use crate::jvms::attr::Attribute as JvmsAttribute;
 use crate::jvms::attr::RecordComponentInfo;
 use crate::jvms::element::AttributeInfo;

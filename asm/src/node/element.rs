@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::asm_type::Type;
 use crate::jvms::attr::{LineNumberTableInfo, StackMapFrame};
-use crate::jvms::attr::annotation::type_annotation::{TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
+use crate::jvms::attr::type_annotation::{TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
 use crate::node::insn::InsnNode;
 use crate::node::values::{AnnotationValue, ConstValue, Descriptor, FieldInitialValue, InternalName, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue, QualifiedName};
 use crate::opcodes::Opcodes;

@@ -2,10 +2,10 @@ use java_asm_internal::err::AsmResult;
 use java_asm_internal::read::jvms::ReadContext;
 
 use crate::constants::Constants;
+use crate::impls::jvms::r::transform::transform_attrs;
+use crate::impls::jvms::r::util::read_utf8_from_cp;
 use crate::jvms::attr::{Attribute, ExceptionTable, StackMapFrame};
 use crate::jvms::element::{AttributeInfo, CPInfo};
-use crate::jvms::read::transform::transform_attrs;
-use crate::jvms::read::util::read_utf8_from_cp;
 
 pub(crate) fn transform_attr(attribute_info: &AttributeInfo, cp: &Vec<CPInfo>) -> AsmResult<AttributeInfo> {
     let attribute_name_index = attribute_info.attribute_name_index;

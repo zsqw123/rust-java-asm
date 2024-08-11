@@ -2,13 +2,14 @@ use java_asm_internal::read::jvms::FromReadContext;
 use java_asm_internal::write::jvms::IntoWriteContext;
 
 use crate::jvms::attr::annotation::{AnnotationElementValueInfo, AnnotationInfo, ParameterAnnotationInfo};
-use crate::jvms::attr::annotation::type_annotation::TypeAnnotation;
 use crate::jvms::attr::module::{ModuleExports, ModuleOpens, ModuleProvides, ModuleRequires};
+use crate::jvms::attr::type_annotation::TypeAnnotation;
 use crate::jvms::element::AttributeInfo;
 use crate::node::element::LabelNode;
 
 pub mod annotation;
 pub mod module;
+pub mod type_annotation;
 
 #[derive(Clone, Debug, IntoWriteContext)]
 pub enum Attribute {

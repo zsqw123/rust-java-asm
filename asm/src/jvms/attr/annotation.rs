@@ -1,8 +1,6 @@
 use java_asm_internal::read::jvms::FromReadContext;
 use java_asm_internal::write::jvms::IntoWriteContext;
 
-pub mod type_annotation;
-
 // annotation {
 //     u2 type_index;
 //     u2 num_element_value_pairs;
@@ -18,10 +16,10 @@ pub struct AnnotationInfo {
     pub element_value_pairs: Vec<AnnotationElement>,
 }
 
-// {   
+// {
 //     u2            element_name_index; // CONSTANT_Utf8_info
 //     element_value value;
-// } 
+// }
 #[derive(Clone, Debug, FromReadContext, IntoWriteContext)]
 pub struct AnnotationElement {
     pub element_name_index: u16,
@@ -32,15 +30,15 @@ pub struct AnnotationElement {
 //     u1 tag;
 //     union {
 //         u2 const_value_index;
-// 
+//
 //         {   u2 type_name_index;
 //             u2 const_name_index;
 //         } enum_const_value;
-// 
+//
 //         u2 class_info_index;
-// 
+//
 //         annotation annotation_value;
-// 
+//
 //         {   u2            num_values;
 //             element_value values[num_values];
 //         } array_value;
@@ -54,15 +52,15 @@ pub struct AnnotationElementValueInfo {
 
 // union {
 //     u2 const_value_index;
-// 
-//     {   u2 type_name_index; // CONSTANT_Utf8_info 
-//         u2 const_name_index; // CONSTANT_Utf8_info 
+//
+//     {   u2 type_name_index; // CONSTANT_Utf8_info
+//         u2 const_name_index; // CONSTANT_Utf8_info
 //     } enum_const_value;
-// 
-//     u2 class_info_index; // CONSTANT_Utf8_info 
-// 
+//
+//     u2 class_info_index; // CONSTANT_Utf8_info
+//
 //     annotation annotation_value;
-// 
+//
 //     {   u2            num_values;
 //         element_value values[num_values];
 //     } array_value;
@@ -76,7 +74,7 @@ pub enum AnnotationElementValue {
     Array { num_values: u16, values: Vec<AnnotationElementValueInfo> },
 }
 
-// {   
+// {
 //     u2         num_annotations;
 //     annotation annotations[num_annotations];
 // }

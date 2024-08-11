@@ -3,9 +3,9 @@ use std::rc::Rc;
 
 use java_asm_internal::err::{AsmErr, AsmResult};
 
-use crate::jvms::attr::annotation::type_annotation::TypeAnnotationTargetInfo;
+use crate::jvms::attr::type_annotation::TypeAnnotationTargetInfo;
 use crate::jvms::element::{ClassFile, FieldInfo, MethodInfo};
-use crate::node::element::{Attribute, ClassNode, ExceptionTable, FieldNode, LocalVariableNode, MethodNode, ModuleNode, TypeAnnotationNode, UnknownAttribute};
+use crate::node::element::{Attribute, ClassNode, FieldNode, LocalVariableNode, MethodNode, ModuleNode, TypeAnnotationNode, UnknownAttribute};
 use crate::node::read::node_reader::ClassNodeContext;
 use crate::node::values::{ConstValue, FieldInitialValue, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue};
 

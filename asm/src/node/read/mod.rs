@@ -3,7 +3,7 @@ use std::io::Read;
 use java_asm_internal::err::AsmResult;
 
 use crate::jvms::element::ClassFile;
-use crate::jvms::read::JvmsClassReader;
+use crate::jvms::JvmsClassReader;
 use crate::node::element::ClassNode;
 
 pub mod option;

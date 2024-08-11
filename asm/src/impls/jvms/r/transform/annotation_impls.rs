@@ -2,7 +2,7 @@ use java_asm_internal::err::{AsmErr, AsmResult};
 use java_asm_internal::read::jvms::{FromReadContext, ReadContext};
 
 use crate::jvms::attr::annotation::{AnnotationElementValue, AnnotationElementValueInfo};
-use crate::jvms::attr::annotation::type_annotation::{TypeAnnotation, TypeAnnotationTargetInfo};
+use crate::jvms::attr::type_annotation::{TypeAnnotation, TypeAnnotationTargetInfo};
 
 impl FromReadContext<AnnotationElementValueInfo> for AnnotationElementValueInfo {
     fn from_context(context: &mut ReadContext) -> AsmResult<AnnotationElementValueInfo> {
