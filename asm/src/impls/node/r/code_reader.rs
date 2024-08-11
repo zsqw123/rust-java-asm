@@ -1,10 +1,9 @@
 use java_asm_internal::err::AsmResult;
-use crate::jvms::attr::StackMapFrame;
 
+use crate::impls::node::r::node_reader::ClassNodeContext;
 use crate::node::insn::InsnNode;
 use crate::node::insn::InsnNode::FieldInsnNode;
-use crate::node::read::node_reader::ClassNodeContext;
-use crate::node::values::{FrameAttributeValue, FrameValue};
+use crate::node::values::FrameAttributeValue;
 use crate::opcodes::Opcodes;
 
 impl ClassNodeContext {

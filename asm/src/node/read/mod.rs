@@ -2,20 +2,16 @@ use std::io::Read;
 
 use java_asm_internal::err::AsmResult;
 
+use crate::impls::node::r::impls::from_jvms_internal;
 use crate::jvms::element::ClassFile;
 use crate::jvms::JvmsClassReader;
 use crate::node::element::ClassNode;
 
 pub mod option;
-pub(crate) mod node_reader;
-mod const_reader;
-mod attr_reader;
-mod impls;
-pub(crate) mod code_reader;
 
 impl ClassNode {
     pub fn from_jvms(jvms_file: ClassFile) -> AsmResult<ClassNode> {
-        impls::from_jvms_internal(jvms_file)
+        from_jvms_internal(jvms_file)
     }
 
     pub fn from_read<T: Read>(read: T) -> AsmResult<ClassNode> {
