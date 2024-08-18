@@ -1,46 +1,47 @@
 use std::rc::Rc;
 
 use crate::asm_type::Type;
+use crate::impls::jvms::r::util::ToRcRef;
 use crate::node::element::{AnnotationNode, LabelNode};
 use crate::opcodes::Opcodes;
 
 #[derive(Clone, Debug)]
 pub enum ConstValue {
     Invalid,
-    Class(Rc<InternalName>),
+    Class(InternalNameRef),
     Member {
-        class: Rc<InternalName>,
-        name: Rc<String>,
-        desc: Rc<Descriptor>,
+        class: InternalNameRef,
+        name: StrRef,
+        desc: DescriptorRef,
     },
-    String(Rc<String>),
+    String(StrRef),
     Integer(i32),
     Float(f32),
     Long(i64),
     Double(f64),
     NameAndType {
-        name: Rc<String>,
-        desc: Rc<Descriptor>,
+        name: StrRef,
+        desc: DescriptorRef,
     },
     MethodHandle {
         reference_kind: u8,
         reference_index: u16,
     },
-    MethodType(Rc<Descriptor>),
+    MethodType(DescriptorRef),
     Dynamic {
         bootstrap_method_attr_index: u16,
-        name: Rc<String>,
-        desc: Rc<Descriptor>,
+        name: StrRef,
+        desc: DescriptorRef,
     },
-    Module(Rc<String>),
-    Package(Rc<String>),
+    Module(StrRef),
+    Package(StrRef),
 }
 
 #[derive(Clone, Debug)]
 pub enum AnnotationValue {
     Const(Rc<ConstValue>),
-    Enum(Rc<String>, Rc<String>),
-    Class(Rc<InternalName>),
+    Enum(StrRef, StrRef),
+    Class(InternalNameRef),
     Annotation(AnnotationNode),
     Array(Vec<AnnotationValue>),
 }
@@ -150,8 +151,8 @@ pub struct ConstDynamic {
 pub struct LocalVariableInfo {
     pub start: LabelNode,
     pub length: u16,
-    pub name: Rc<String>,
-    pub desc: Rc<Descriptor>,
+    pub name: StrRef,
+    pub desc: DescriptorRef,
     /// The value of the index item must be a valid index into the local variable array of the current frame. 
     /// The given local variable is at index in the local variable array of the current frame.
     /// If the given local variable is of type double or long, it occupies both index and index + 1.
@@ -162,8 +163,8 @@ pub struct LocalVariableInfo {
 pub struct LocalVariableTypeInfo {
     pub start: LabelNode,
     pub length: u16,
-    pub name: Rc<String>,
-    pub signature: Rc<String>,
+    pub name: StrRef,
+    pub signature: StrRef,
     /// The value of the index item must be a valid index into the local variable array of the current frame. 
     /// The given local variable is at index in the local variable array of the current frame.
     /// If the given local variable is of type double or long, it occupies both index and index + 1.
@@ -172,33 +173,33 @@ pub struct LocalVariableTypeInfo {
 
 #[derive(Clone, Debug)]
 pub struct ModuleAttrValue {
-    pub name: Rc<String>,
+    pub name: StrRef,
     pub access: u16,
-    pub version: Option<Rc<String>>,
+    pub version: Option<StrRef>,
     pub requires: Vec<ModuleRequireValue>,
     pub exports: Vec<ModuleExportValue>,
     pub opens: Vec<ModuleOpenValue>,
-    pub uses: Vec<Rc<InternalName>>,
+    pub uses: Vec<InternalNameRef>,
     pub provides: Vec<ModuleProvidesValue>,
 }
 
 #[derive(Clone, Debug)]
 pub struct ModuleRequireValue {
     /// The fully qualified name (using dots) of the dependence.
-    pub module: Rc<QualifiedName>,
+    pub module: QualifiedNameRef,
 
     /// The access flags of the required module, valid values are [Opcodes::ACC_TRANSITIVE], 
     /// [Opcodes::ACC_STATIC_PHASE], [Opcodes::ACC_SYNTHETIC], [Opcodes::ACC_MANDATED]
     pub access: u16,
 
     /// The version of the required module. May be [None].
-    pub version: Option<Rc<String>>,
+    pub version: Option<StrRef>,
 }
 
 #[derive(Clone, Debug)]
 pub struct ModuleExportValue {
     /// The internal name of the exported package. (see [Type::get_internal_name]).
-    pub package: Rc<InternalName>,
+    pub package: InternalNameRef,
 
     /// The access flags of the exported package, valid values are [Opcodes::ACC_SYNTHETIC], 
     /// [Opcodes::ACC_MANDATED]
@@ -206,13 +207,13 @@ pub struct ModuleExportValue {
 
     /// The list of modules that can access this exported package, 
     /// specified with fully qualified names (using dots)
-    pub modules: Vec<Rc<QualifiedName>>,
+    pub modules: Vec<QualifiedNameRef>,
 }
 
 #[derive(Clone, Debug)]
 pub struct ModuleOpenValue {
     /// The internal name of the opened package. (see [Type::get_internal_name]).
-    pub package: Rc<InternalName>,
+    pub package: InternalNameRef,
 
     /// The access flags of the opened package, valid values are [Opcodes::ACC_SYNTHETIC], 
     /// [Opcodes::ACC_MANDATED]
@@ -220,23 +221,40 @@ pub struct ModuleOpenValue {
 
     /// The list of modules that can access this opened package, 
     /// specified with fully qualified names (using dots)
-    pub modules: Vec<Rc<QualifiedName>>,
+    pub modules: Vec<QualifiedNameRef>,
 }
 
 #[derive(Clone, Debug)]
 pub struct ModuleProvidesValue {
     /// The internal name of the service interface. (see [Type::get_internal_name]).
-    pub service: Rc<InternalName>,
+    pub service: InternalNameRef,
 
     /// The internal names of the implementations of the service interface.
-    pub providers: Vec<Rc<InternalName>>,
+    pub providers: Vec<InternalNameRef>,
+}
+
+pub type StrRef = Rc<str>;
+
+/// eg: java/lang/Class
+pub type InternalNameRef = StrRef; 
+
+/// eg: java.lang.Class
+pub type QualifiedNameRef = StrRef;
+
+pub type DescriptorRef = StrRef;
+
+impl ToRcRef<str> for &str {
+    #[inline]
+    fn as_rc(&self) -> StrRef {
+        Rc::from(self.as_ref())
+    }
+}
+
+impl ToRcRef<str> for String {
+    #[inline]
+    fn as_rc(&self) -> StrRef {
+        Rc::from(self.as_ref())
+    }
 }
 
 
-/// eg: java/lang/Class
-pub type InternalName = String;
-
-/// eg: java.lang.Class
-pub type QualifiedName = String;
-
-pub type Descriptor = String;

@@ -14,7 +14,7 @@ pub(crate) fn transform_attr(attribute_info: &AttributeInfo, cp: &Vec<CPInfo>) -
     let Attribute::Custom(bytes) = info else { return Ok(attribute_info.clone()); };
     let mut context = ReadContext { bytes: &bytes, index: &mut 0 };
     let utf8 = read_utf8_from_cp(attribute_name_index as usize, cp)?;
-    let attr = match utf8.as_str() {
+    let attr = match utf8.as_ref() {
         Constants::CONSTANT_VALUE => Attribute::ConstantValue {
             constantvalue_index: context.read()?,
         },

@@ -75,7 +75,7 @@ impl ClassNodeContext {
             JvmsAttribute::Signature { signature_index } => NodeAttribute::Signature(self.read_utf8(*signature_index)?),
             JvmsAttribute::SourceFile { sourcefile_index } => NodeAttribute::SourceFile(self.read_utf8(*sourcefile_index)?),
             JvmsAttribute::SourceDebugExtension { debug_extension } => NodeAttribute::SourceDebugExtension(
-                mutf8_to_string(debug_extension)?.rc(),
+                mutf8_to_string(debug_extension)?,
             ),
             JvmsAttribute::LineNumberTable { line_number_table, .. } => {
                 NodeAttribute::LineNumberTable(line_number_table.clone())

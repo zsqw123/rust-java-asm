@@ -2,11 +2,11 @@ use std::rc::Rc;
 
 use crate::asm_type::Type;
 use crate::jvms::attr::{LineNumberTableInfo, StackMapFrame};
+use crate::jvms::attr::Attribute as JvmsAttribute;
 use crate::jvms::attr::type_annotation::{TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
 use crate::node::insn::InsnNode;
-use crate::node::values::{AnnotationValue, ConstValue, Descriptor, FieldInitialValue, InternalName, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue, QualifiedName};
+use crate::node::values::{AnnotationValue, ConstValue, DescriptorRef, FieldInitialValue, InternalNameRef, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue, StrRef};
 use crate::opcodes::Opcodes;
-use crate::jvms::attr::Attribute as JvmsAttribute;
 
 #[derive(Clone, Debug)]
 pub struct ClassNode {
@@ -18,43 +18,43 @@ pub struct ClassNode {
     pub access: u16,
 
     /// The internal name of this class (see [Type::get_internal_name]).
-    pub name: Rc<InternalName>,
+    pub name: InternalNameRef,
 
     /// The signature of this class. May be [None].
-    pub signature: Option<Rc<String>>,
+    pub signature: Option<StrRef>,
 
     /// The internal of name of the super class (see [Type::get_internal_name]).
     /// For interfaces, the super class is `Object`. May be [None], but only for the
     /// `Object` class.
-    pub super_name: Option<Rc<InternalName>>,
+    pub super_name: Option<InternalNameRef>,
 
     /// The internal names of the interfaces directly implemented by this class (see [Type::get_internal_name])
-    pub interfaces: Vec<Rc<InternalName>>,
+    pub interfaces: Vec<InternalNameRef>,
 
     /// The name of the source file from which this class was compiled. May be [None].
-    pub source_file: Option<Rc<String>>,
+    pub source_file: Option<StrRef>,
 
     /// The correspondence between source and compiled elements of this class. May be [None].
-    pub source_debug: Option<Rc<String>>,
+    pub source_debug: Option<StrRef>,
 
     /// The module stored in this class. May be [None].
     pub module: Option<ModuleNode>,
 
     /// The internal name of the enclosing class of this class (see [Type::get_internal_name]).
     /// Must be [None] if this class is not a local or anonymous class.
-    pub outer_class: Option<Rc<InternalName>>,
+    pub outer_class: Option<InternalNameRef>,
 
     /// The name of the method that contains the class, or [None] if the class has no
     /// enclosing class, or is not enclosed in a method or constructor of its enclosing class (e.g. if
     /// it is enclosed in an instance initializer, static initializer, instance variable initializer,
     /// or class variable initializer).
-    pub outer_method_name: Option<Rc<String>>,
+    pub outer_method_name: Option<StrRef>,
 
     /// The descriptor of the method that contains the class, or [None] if the class has no
     /// enclosing class, or is not enclosed in a method or constructor of its enclosing class (e.g. if
     /// it is enclosed in an instance initializer, static initializer, instance variable initializer,
     /// or class variable initializer).
-    pub outer_method_desc: Option<Rc<Descriptor>>,
+    pub outer_method_desc: Option<DescriptorRef>,
 
     pub annotations: Vec<AnnotationNode>,
 
@@ -68,13 +68,13 @@ pub struct ClassNode {
 
     /// The internal name of the nest host class of this class (see [Type::get_internal_name]). 
     /// May be [None].
-    pub nest_host_class: Option<Rc<InternalName>>,
+    pub nest_host_class: Option<InternalNameRef>,
 
     /// The internal names of the nest members of this class (see [Type::get_internal_name]). 
-    pub nest_members: Vec<Rc<InternalName>>,
+    pub nest_members: Vec<InternalNameRef>,
 
     /// The internal names of the permitted subclasses of this class (see [Type::get_internal_name]).
-    pub permitted_subclasses: Vec<Rc<InternalName>>,
+    pub permitted_subclasses: Vec<InternalNameRef>,
 
     /// The record components of this class.
     pub record_components: Vec<RecordComponentNode>,
@@ -92,16 +92,16 @@ pub struct MethodNode {
     pub access: u16,
 
     /// The method's name.
-    pub name: Rc<String>,
+    pub name: StrRef,
 
     /// The method's descriptor (see [Type::get_method_descriptor]).
-    pub desc: Rc<Descriptor>,
+    pub desc: DescriptorRef,
 
     /// The method's signature. May be [None].
-    pub signature: Option<Rc<String>>,
+    pub signature: Option<StrRef>,
 
     /// The internal names of the method's exceptions (see [Type::get_internal_name]).
-    pub exceptions: Vec<Rc<InternalName>>,
+    pub exceptions: Vec<InternalNameRef>,
 
     /// The method parameter info.
     pub parameters: Vec<ParameterNode>,
@@ -141,13 +141,13 @@ pub struct MethodNode {
 #[derive(Clone, Debug)]
 pub struct InnerClassNode {
     /// The internal name of an inner class (see [Type::get_internal_name]).
-    pub name: Rc<InternalName>,
+    pub name: InternalNameRef,
 
     /// The internal name of the class to which the inner class belongs (see [Type::get_internal_name]).
-    pub outer_name: Option<Rc<InternalName>>,
+    pub outer_name: Option<InternalNameRef>,
 
     /// The simple name of the inner class inside its enclosing class.
-    pub inner_name: Rc<String>,
+    pub inner_name: StrRef,
 
     /// The access flags of the inner class as originally declared in the enclosing class.
     pub access: u16,
@@ -156,13 +156,13 @@ pub struct InnerClassNode {
 #[derive(Clone, Debug)]
 pub struct RecordComponentNode {
     /// The record component's name.
-    pub name: Rc<String>,
+    pub name: StrRef,
 
     /// The record component's descriptor (see [Type::get_descriptor]).
-    pub desc: Rc<String>,
+    pub desc: DescriptorRef,
 
     /// The record component's signature. May be [None].
-    pub signature: Option<Rc<String>>,
+    pub signature: Option<StrRef>,
 
     pub annotations: Vec<AnnotationNode>,
     pub type_annotations: Vec<TypeAnnotationNode>,
@@ -174,7 +174,7 @@ pub struct RecordComponentNode {
 #[derive(Clone, Debug)]
 pub struct ParameterNode {
     /// The parameter's name. May be [None].
-    pub name: Option<Rc<String>>,
+    pub name: Option<StrRef>,
 
     /// The parameter's access flags. Valid values are [Opcodes::ACC_FINAL], [Opcodes::ACC_SYNTHETIC]
     pub access: u16,
@@ -186,13 +186,13 @@ pub struct FieldNode {
     pub access: u16,
 
     /// The field's name.
-    pub name: Rc<String>,
+    pub name: StrRef,
 
     /// The field's descriptor (see [Type::get_descriptor]).
-    pub desc: Rc<Descriptor>,
+    pub desc: DescriptorRef,
 
     /// The field's signature. May be [None].
-    pub signature: Option<Rc<String>>,
+    pub signature: Option<StrRef>,
 
     /// The field's initial value. This field, which may be [None] if the field does not have an initial value, 
     /// must be an Integer, a Float, a Long, a Double or a String.
@@ -209,19 +209,19 @@ pub struct FieldNode {
 #[derive(Clone, Debug)]
 pub struct ModuleNode {
     /// The name of the module.
-    pub name: Rc<String>,
+    pub name: StrRef,
 
     /// The access flags of the module, valid values are [Opcodes::ACC_OPEN], [Opcodes::ACC_SYNTHETIC], [Opcodes::ACC_MANDATED]
     pub access: u16,
 
     /// The version of the module. May be [None].
-    pub version: Option<Rc<String>>,
+    pub version: Option<StrRef>,
 
     /// The main class of the module. May be [None].
-    pub main_class: Option<Rc<String>>,
+    pub main_class: Option<StrRef>,
 
     /// The packages of the module.
-    pub packages: Vec<Rc<String>>,
+    pub packages: Vec<StrRef>,
     
     /// The dependencies of this module.
     pub requires: Vec<ModuleRequireValue>,
@@ -233,7 +233,7 @@ pub struct ModuleNode {
     pub opens: Vec<ModuleOpenValue>,
     
     /// The internal names of the services used by this module (see [Type::get_internal_name]).
-    pub uses: Vec<Rc<InternalName>>,
+    pub uses: Vec<InternalNameRef>,
     
     // The services provided by this module.
     pub provides: Vec<ModuleProvidesValue>,
@@ -250,9 +250,9 @@ pub struct TypeAnnotationNode {
 #[derive(Clone, Debug)]
 pub struct AnnotationNode {
     pub visible: bool,
-    pub type_name: Rc<InternalName>,
+    pub type_name: InternalNameRef,
     // attribute -> value pairs
-    pub values: Vec<(Rc<String>, AnnotationValue)>,
+    pub values: Vec<(StrRef, AnnotationValue)>,
 }
 #[derive(Clone, Debug)]
 pub struct TryCatchBlockNode {
@@ -264,7 +264,7 @@ pub struct TryCatchBlockNode {
     pub handler: LabelNode,
     /// The internal name of the type of exceptions handled by the exception handler, 
     /// or [None] to catch any exceptions (for "finally" blocks).
-    pub catch_type: Option<Rc<InternalName>>,
+    pub catch_type: Option<InternalNameRef>,
     /// type annotations on the exception handler type.
     pub type_annotations: Vec<TypeAnnotationNode>,
 }
@@ -272,11 +272,11 @@ pub struct TryCatchBlockNode {
 #[derive(Clone, Debug)]
 pub struct LocalVariableNode {
     /// The name of a local variable.
-    pub name: Rc<String>,
+    pub name: StrRef,
     /// The type descriptor of this local variable.
-    pub desc: Rc<String>,
+    pub desc: DescriptorRef,
     /// The signature of this local variable. May be [None].
-    pub signature: Option<Rc<String>>,
+    pub signature: Option<StrRef>,
     /// The first instructions corresponding to the continuous ranges 
     /// that make the scope of this local variable (inclusive)
     pub start: LabelNode,
@@ -291,7 +291,7 @@ pub struct LocalVariableNode {
 
 #[derive(Clone, Debug)]
 pub struct UnknownAttribute {
-    pub name: Rc<String>,
+    pub name: StrRef,
     pub origin: JvmsAttribute,
 }
 
@@ -307,17 +307,17 @@ pub enum Attribute {
         attributes: Vec<Rc<Attribute>>,
     },
     StackMapTable(Vec<StackMapFrame>),
-    Exceptions(Vec<Rc<InternalName>>),
+    Exceptions(Vec<InternalNameRef>),
     InnerClasses(Vec<InnerClassNode>),
     EnclosingMethod {
-        class: Rc<InternalName>,
-        method_name: Rc<String>,
-        method_desc: Rc<Descriptor>,
+        class: InternalNameRef,
+        method_name: StrRef,
+        method_desc: DescriptorRef,
     },
     Synthetic,
-    Signature(Rc<String>),
-    SourceFile(Rc<String>),
-    SourceDebugExtension(Rc<String>),
+    Signature(StrRef),
+    SourceFile(StrRef),
+    SourceDebugExtension(StrRef),
     LineNumberTable(Vec<LineNumberNode>),
     LocalVariableTable(Vec<LocalVariableInfo>),
     LocalVariableTypeTable(Vec<LocalVariableTypeInfo>),
@@ -334,12 +334,12 @@ pub enum Attribute {
     BootstrapMethods(Vec<BootstrapMethodNode>),
     MethodParameters(Vec<ParameterNode>),
     Module(ModuleAttrValue),
-    ModulePackages(Vec<Rc<String>>),
-    ModuleMainClass(Rc<InternalName>),
-    NestHost(Rc<InternalName>),
-    NestMembers(Vec<Rc<InternalName>>),
+    ModulePackages(Vec<StrRef>),
+    ModuleMainClass(InternalNameRef),
+    NestHost(InternalNameRef),
+    NestMembers(Vec<InternalNameRef>),
     Record(Vec<RecordComponentNode>),
-    PermittedSubclasses(Vec<Rc<InternalName>>),
+    PermittedSubclasses(Vec<InternalNameRef>),
 }
 
 #[derive(Clone, Debug)]
@@ -347,7 +347,7 @@ pub struct ExceptionTable {
     pub start: LabelNode, // [start_pc, end_pc)
     pub end: LabelNode,
     pub handler: LabelNode,
-    pub catch_type: Option<Rc<InternalName>>,
+    pub catch_type: Option<InternalNameRef>,
 }
 
 pub type LineNumberNode = LineNumberTableInfo;

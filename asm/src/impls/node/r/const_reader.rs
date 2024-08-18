@@ -3,9 +3,10 @@ use std::rc::Rc;
 use java_asm_internal::err::{AsmErr, AsmResult};
 
 use crate::constants::Constants;
+use crate::impls::jvms::r::util::ToRcRef;
 use crate::impls::node::r::node_reader::ClassNodeContext;
 use crate::jvms::element::Const;
-use crate::node::values::{ConstValue, Descriptor};
+use crate::node::values::{ConstValue, DescriptorRef, StrRef};
 use crate::util::{mutf8_to_string, ToRc};
 
 macro_rules! read_const {
@@ -48,30 +49,30 @@ macro_rules! read_const_curly {
 
 /// impls for const reads
 impl ClassNodeContext {
-    pub fn name(&mut self) -> AsmResult<Rc<String>> {
+    pub fn name(&mut self) -> AsmResult<StrRef> {
         self.read_class_info(self.jvms_file.this_class)
     }
 
     read_const! {
-        read_class_info -> Rc<String> { Class(name) }
-        read_utf8 -> Rc<String> { String(s) }
-        read_module -> Rc<String> { Module(s) }
-        read_package -> Rc<String> { Package(s) }
+        read_class_info -> StrRef { Class(name) }
+        read_utf8 -> StrRef { String(s) }
+        read_module -> StrRef { Module(s) }
+        read_package -> StrRef { Package(s) }
     }
     
     read_const_curly! {
-        read_name_and_type -> (Rc<String>, Rc<Descriptor>) {
+        read_name_and_type -> (StrRef, DescriptorRef) {
             NameAndType { name, desc }
         }
-        read_member -> (Rc<String>, Rc<String>, Rc<Descriptor>) {
+        read_member -> (StrRef, StrRef, DescriptorRef) {
             Member { class, name, desc }
         }
     }
 
     #[inline]
-    pub fn read_class_info_or_default(&mut self, index: u16) -> Rc<String> {
+    pub fn read_class_info_or_default(&mut self, index: u16) -> StrRef {
         self.read_class_info(index)
-            .unwrap_or_else(|_| Constants::OBJECT_INTERNAL_NAME.to_string().rc())
+            .unwrap_or_else(|_| Constants::OBJECT_INTERNAL_NAME.as_rc())
     }
 
     pub fn read_const(&mut self, index: u16) -> AsmResult<Rc<ConstValue>> {
@@ -110,7 +111,7 @@ impl ClassNodeContext {
                 ConstValue::NameAndType { name, desc }
             }
             Const::Utf8 { bytes, .. } => {
-                ConstValue::String(mutf8_to_string(&bytes)?.rc())
+                ConstValue::String(mutf8_to_string(&bytes)?)
             }
             Const::MethodHandle { reference_kind, reference_index } => {
                 ConstValue::MethodHandle { reference_kind, reference_index }

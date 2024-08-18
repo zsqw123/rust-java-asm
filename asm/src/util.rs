@@ -1,5 +1,9 @@
 use std::rc::Rc;
+
 use java_asm_internal::err::{AsmErr, AsmResult};
+
+use crate::impls::jvms::r::util::ToRcRef;
+use crate::node::values::StrRef;
 
 /// Java MUTF-8 has 2 differences from UTF-8:
 /// 1. null characters (U+0000) are encoded as 2 bytes: 0xC0 0x80 (0x00 in UTF-8). So that 
@@ -104,10 +108,10 @@ pub fn mutf8_to_utf8(mutf8: &[u8]) -> AsmResult<Vec<u8>> {
     Ok(utf8)
 }
 
-pub fn mutf8_to_string(mutf8: &[u8]) -> AsmResult<String> {
+pub fn mutf8_to_string(mutf8: &[u8]) -> AsmResult<StrRef> {
     let utf8 = mutf8_to_utf8(mutf8)?;
     match String::from_utf8(utf8) {
-        Ok(str) => Ok(str),
+        Ok(str) => Ok(str.as_rc()),
         Err(e) => Err(AsmErr::ReadUTF8(e.to_string())),
     }
 }
