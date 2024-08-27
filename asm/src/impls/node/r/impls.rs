@@ -234,6 +234,7 @@ fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: MethodInf
         name, access, desc, signature, exceptions, parameters,
         annotations, type_annotations, parameter_annotations, attrs,
         annotation_default, instructions, try_catch_blocks, local_variables,
+        max_locals, max_stack,
     };
     Ok(method_node)
 }
