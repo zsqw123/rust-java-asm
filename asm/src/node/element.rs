@@ -136,6 +136,10 @@ pub struct MethodNode {
     pub try_catch_blocks: Vec<TryCatchBlockNode>,
 
     pub local_variables: Vec<LocalVariableNode>,
+    
+    pub max_stack: u16,
+    
+    pub max_locals: u16,
 }
 
 #[derive(Clone, Debug)]
@@ -358,5 +362,8 @@ pub struct BootstrapMethodNode {
     pub arguments: Vec<Rc<ConstValue>>,
 }
 
-// each label contains a unique id in the method scope.
+/// each label contains a unique id in the method scope.
+/// Although the Code attribute in JVMS has defined a `u4` (`u32` in rust) as code_length,
+/// but all of `code_length`'s usages in the JVM spec are `u16`, so we use `u16` here.
+/// I don't know why the JVM spec uses `u4` in `code_length`, hope someone can tell me.
 pub type LabelNode = u16;

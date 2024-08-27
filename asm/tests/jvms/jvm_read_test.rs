@@ -1,4 +1,4 @@
-use java_asm::jvms::read::JvmsClassReader;
+use java_asm::jvms::JvmsClassReader;
 
 #[test]
 fn read_jvms() {

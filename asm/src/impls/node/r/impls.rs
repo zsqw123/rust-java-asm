@@ -186,6 +186,9 @@ fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: MethodInf
     let mut local_variable_infos = vec![];
     let mut local_variable_type_infos = vec![];
 
+    let mut max_locals = 0;
+    let mut max_stack = 0;
+
     let name = class_context.read_utf8(method_info.name_index)?;
     let all_attributes = class_context.read_attrs(method_info.attributes.clone())?;
     for (attribute_info, attribute) in all_attributes {
@@ -206,9 +209,11 @@ fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: MethodInf
             Attribute::LocalVariableTypeTable(lv) => local_variable_type_infos = lv,
 
             Attribute::Code {
-                max_stack, max_locals, code, 
+                max_stack: m_stack, max_locals: m_locals, code, 
                 exception_table, attributes,
             } => {
+                max_stack = m_stack;
+                max_locals = m_locals;
                 instructions = class_context.read_code(code)?;
             }
             
