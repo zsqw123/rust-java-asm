@@ -106,12 +106,12 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     // I must admit that I hate the `mut` but I have to use it here.
     let mut fields = Vec::with_capacity(*&jvms_file.fields_count as usize);
     for field_info in &jvms_file.fields {
-        fields.push(field_from_jvms(&mut class_context, field_info.clone())?);
+        fields.push(field_from_jvms(&mut class_context, field_info)?);
     }
 
     let mut methods = Vec::with_capacity(*&jvms_file.methods_count as usize);
     for method_info in &jvms_file.methods {
-        methods.push(method_from_jvms(&mut class_context, method_info.clone())?);
+        methods.push(method_from_jvms(&mut class_context, method_info)?);
     }
 
     let class_node = ClassNode {
@@ -126,7 +126,7 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     Ok(class_node)
 }
 
-fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: FieldInfo) -> AsmResult<FieldNode> {
+fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: &FieldInfo) -> AsmResult<FieldNode> {
     let name = class_context.read_utf8(field_info.name_index)?;
     let access = field_info.access_flags;
     let desc = class_context.read_utf8(field_info.descriptor_index)?;
@@ -136,7 +136,7 @@ fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: FieldInfo) 
     let mut type_annotations = vec![];
     let mut attrs = vec![];
 
-    for (attribute_info, attribute) in class_context.read_attrs(field_info.attributes)? {
+    for (attribute_info, attribute) in class_context.read_attrs(&field_info.attributes)? {
         match attribute {
             Attribute::Signature(s) => signature = Some(s),
             Attribute::ConstantValue(v) => {
@@ -169,7 +169,7 @@ fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: FieldInfo) 
     Ok(field_node)
 }
 
-fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: MethodInfo) -> AsmResult<MethodNode> {
+fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: &MethodInfo) -> AsmResult<MethodNode> {
     let mut signature = None;
     let mut exceptions = vec![];
     let mut parameters = vec![];
@@ -190,7 +190,7 @@ fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: MethodInf
     let mut max_stack = 0;
 
     let name = class_context.read_utf8(method_info.name_index)?;
-    let all_attributes = class_context.read_attrs(method_info.attributes.clone())?;
+    let all_attributes = class_context.read_attrs(&method_info.attributes)?;
     for (attribute_info, attribute) in all_attributes {
         match attribute {
             Attribute::Signature(s) => signature = Some(s),

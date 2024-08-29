@@ -1,6 +1,6 @@
 use java_asm_internal::err::AsmResult;
 
-use crate::impls::node::r::node_reader::ClassNodeContext;
+use crate::impls::node::r::node_reader::{ClassNodeContext, CpCache};
 use crate::jvms::attr::annotation::{AnnotationElementValue, AnnotationInfo};
 use crate::jvms::attr::Attribute as JvmsAttribute;
 use crate::jvms::attr::RecordComponentInfo;
@@ -13,20 +13,23 @@ use crate::util::{mutf8_to_string, ToRc, VecEx};
 
 impl ClassNodeContext {
     pub fn read_class_attrs(&mut self) -> AsmResult<Vec<(AttributeInfo, NodeAttribute)>> {
-        let jvms_attrs = self.jvms_file.attributes.clone();
-        let attributes = self.read_attrs(jvms_attrs)?;
+        let jvms_attrs = &self.jvms_file.attributes;
+        let attributes = self.cp_cache.read_attrs(jvms_attrs)?;
         let mut result = Vec::with_capacity(attributes.len());
         for (attr_info, attr) in attributes {
             result.push((attr_info.clone(), attr));
         }
         Ok(result)
     }
+}
 
-    pub fn read_attrs(&mut self, attrs: Vec<AttributeInfo>) -> AsmResult<Vec<(AttributeInfo, NodeAttribute)>> {
+impl CpCache {
+    /// converts jvms attributes [JvmsAttribute] to node attributes [NodeAttribute]
+    pub fn read_attrs(&mut self, attrs: &Vec<AttributeInfo>) -> AsmResult<Vec<(AttributeInfo, NodeAttribute)>> {
         let mut result = Vec::with_capacity(attrs.len());
         for attr_info in attrs {
-            let attribute = self.read_attr(&attr_info)?;
-            result.push((attr_info, attribute));
+            let attribute = self.read_attr(attr_info)?;
+            result.push((attr_info.clone(), attribute));
         };
         Ok(result)
     }

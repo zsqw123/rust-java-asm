@@ -1,10 +1,11 @@
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 use java_asm_internal::err::{AsmErr, AsmResult};
 
 use crate::constants::Constants;
 use crate::impls::jvms::r::util::ToRcRef;
-use crate::impls::node::r::node_reader::ClassNodeContext;
+use crate::impls::node::r::node_reader::{ClassNodeContext, CpCache};
 use crate::jvms::element::Const;
 use crate::node::values::{ConstValue, DescriptorRef, StrRef};
 use crate::util::{mutf8_to_string, ToRc};
@@ -48,7 +49,7 @@ macro_rules! read_const_curly {
 }
 
 /// impls for const reads
-impl ClassNodeContext {
+impl CpCache {
     pub fn name(&mut self) -> AsmResult<StrRef> {
         self.read_class_info(self.jvms_file.this_class)
     }
@@ -59,7 +60,7 @@ impl ClassNodeContext {
         read_module -> StrRef { Module(s) }
         read_package -> StrRef { Package(s) }
     }
-    
+
     read_const_curly! {
         read_name_and_type -> (StrRef, DescriptorRef) {
             NameAndType { name, desc }
@@ -133,10 +134,19 @@ impl ClassNodeContext {
     }
 
     fn read_const_cache(&self, index: u16) -> Option<Rc<ConstValue>> {
-        self.cp_cache.get(&index).map(Rc::clone)
+        self.pool.get(&index).map(Rc::clone)
     }
 
     fn put_const_cache(&mut self, index: u16, constant: Rc<ConstValue>) {
-        self.cp_cache.insert(index, constant);
+        self.pool.insert(index, constant);
     }
+}
+
+impl Deref for ClassNodeContext {
+    type Target = CpCache;
+    fn deref(&self) -> &CpCache { &self.cp_cache }
+}
+
+impl DerefMut for ClassNodeContext {
+    fn deref_mut(&mut self) -> &mut CpCache { &mut self.cp_cache }
 }
