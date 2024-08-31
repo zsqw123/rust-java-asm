@@ -145,7 +145,7 @@ fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: &FieldInfo)
                     ConstValue::Float(f) => Some(FieldInitialValue::Float(f)),
                     ConstValue::Long(l) => Some(FieldInitialValue::Long(l)),
                     ConstValue::Double(d) => Some(FieldInitialValue::Double(d)),
-                    ConstValue::String(s) => Some(FieldInitialValue::String(s.to_string())),
+                    ConstValue::String(s) => Some(FieldInitialValue::String(s)),
                     _ => AsmErr::ResolveNode(
                         format!("invalid constant value {:?} for field: {}", v, name)
                     ).e()?,

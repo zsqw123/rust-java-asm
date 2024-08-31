@@ -1,14 +1,14 @@
 use crate::node::element::LabelNode;
-use crate::node::values::{ConstDynamic, LdcConst};
+use crate::node::values::{ConstDynamic, LdcConst, StrRef};
 
 //noinspection SpellCheckingInspection
 #[derive(Clone, Debug)]
 pub enum InsnNode {
     FieldInsnNode {
         opcode: u8, // GETSTATIC, PUTSTATIC, GETFIELD, PUTFIELD
-        owner: String, // internal name of the field's owner class
-        name: String,
-        desc: String,
+        owner: StrRef, // internal name of the field's owner class
+        name: StrRef,
+        desc: StrRef,
     },
     IIncInsnNode {
         var: u8, // index of the local variable to be incremented
@@ -51,13 +51,13 @@ pub enum InsnNode {
     },
     MethodInsnNode {
         opcode: u8, // INVOKEVIRTUAL, INVOKESPECIAL, INVOKESTATIC, INVOKEINTERFACE
-        owner: String, // internal name of the method's owner class
-        name: String,
-        desc: String,
+        owner: StrRef, // internal name of the method's owner class
+        name: StrRef,
+        desc: StrRef,
         is_interface: bool,
     },
     MultiANewArrayInsnNode {
-        desc: String,
+        desc: StrRef,
         dims: u8, // Number of dimensions of the array to allocate.
     },
     TableSwitchInsnNode {
@@ -68,7 +68,7 @@ pub enum InsnNode {
     },
     TypeInsnNode {
         opcode: u8, // NEW, ANEWARRAY, CHECKCAST or INSTANCEOF
-        desc: String,
+        desc: StrRef,
     },
     VarInsnNode {
         opcode: u8, // ILOAD, LLOAD, FLOAD, DLOAD, ALOAD, ISTORE, LSTORE, FSTORE, DSTORE, ASTORE

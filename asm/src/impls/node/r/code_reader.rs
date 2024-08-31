@@ -1,12 +1,12 @@
 use java_asm_internal::err::AsmResult;
 
-use crate::impls::node::r::node_reader::ClassNodeContext;
+use crate::impls::node::r::node_reader::CpCache;
 use crate::node::insn::InsnNode;
 use crate::node::insn::InsnNode::FieldInsnNode;
 use crate::node::values::FrameAttributeValue;
 use crate::opcodes::Opcodes;
 
-impl ClassNodeContext {
+impl CpCache {
     pub fn read_code(&mut self, code: Vec<u8>) -> AsmResult<Vec<InsnNode>> {
         let mut cur = 0usize;
 
@@ -21,7 +21,7 @@ impl ClassNodeContext {
             let opcode = code[cur];
             match opcode {
                 Opcodes::GETSTATIC | Opcodes::PUTSTATIC | Opcodes::GETFIELD | Opcodes::PUTFIELD => {
-                    let (owner, name, desc) = self.read_member_cloned(const_index(cur + 1))?;
+                    let (owner, name, desc) = self.read_member(const_index(cur + 1))?;
                     res.push(FieldInsnNode { opcode, owner, name, desc });
                     cur += 3;
                 }
@@ -35,14 +35,6 @@ impl ClassNodeContext {
     pub fn read_frames(&mut self, code: Vec<u8>) -> AsmResult<Vec<FrameAttributeValue>> {
         // let 
         Ok(vec![])
-    }
-
-    fn read_member_cloned(&mut self, index: u16) -> AsmResult<(String, String, String)> {
-        let (owner, name, desc) = self.read_member(index)?;
-        let owner = owner.as_ref().to_owned();
-        let name = name.as_ref().to_owned();
-        let desc = desc.as_ref().to_owned();
-        Ok((owner, name, desc))
     }
 }
 

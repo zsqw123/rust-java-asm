@@ -22,7 +22,7 @@ impl ClassNodeContext {
         Self {
             jvms_file: Rc::clone(&jvms_file),
             cp_cache: CpCache {
-                jvms_file: Rc::clone(&jvms_file),
+                jvms_file,
                 pool: HashMap::new(),
             },
         }

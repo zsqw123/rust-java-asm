@@ -52,7 +52,7 @@ pub enum FieldInitialValue {
     Float(f32),
     Long(i64),
     Double(f64),
-    String(String),
+    String(StrRef),
 }
 
 #[derive(Clone, Debug)]
@@ -95,7 +95,7 @@ pub enum FrameValue {
     Double,
     Null,
     UninitializedThis,
-    Object(String),
+    Object(StrRef),
     // indicate the offset of the NEW instruction that created the uninitialized object
     // being stored in the location
     Uninitialized(u16),
@@ -107,7 +107,7 @@ pub enum BootstrapMethodArgument {
     Float(f32),
     Long(i64),
     Double(f64),
-    String(String),
+    String(StrRef),
     Class(Type),
     Handle(Handle),
 }
@@ -120,10 +120,10 @@ pub struct Handle {
     /// [Opcodes::H_NEWINVOKESPECIAL], [Opcodes::H_INVOKEINTERFACE].
     pub tag: u8,
     // The internal name of the class to which the field or method belongs.
-    pub owner: String,
-    pub name: String,
+    pub owner: StrRef,
+    pub name: StrRef,
     // The descriptor of the field or method.
-    pub desc: String,
+    pub desc: StrRef,
     pub is_interface: bool,
 }
 
@@ -133,7 +133,7 @@ pub enum LdcConst {
     Float(f32),
     Long(i64),
     Double(f64),
-    String(String),
+    String(StrRef),
     Class(Type),
     Handle(Handle),
     ConstDynamic(ConstDynamic),
@@ -141,8 +141,8 @@ pub enum LdcConst {
 
 #[derive(Clone, Debug)]
 pub struct ConstDynamic {
-    pub name: String,
-    pub desc: String,
+    pub name: StrRef,
+    pub desc: StrRef,
     pub bsm: Handle,
     pub bsm_args: Vec<BootstrapMethodArgument>,
 }
