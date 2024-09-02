@@ -27,10 +27,9 @@ pub enum InsnNode {
         // DRETURN, ARETURN, RETURN, ARRAYLENGTH, ATHROW, MONITORENTER, or MONITOREXIT.
         opcode: u8,
     },
-    IntInsnNode {
-        opcode: u8, // BIPUSH, SIPUSH, NEWARRAY
-        operand: i32,
-    },
+    BIPushInsnNode { operand: i8 },
+    SIPushInsnNode { operand: i16 },
+    NewArrayInsnNode { array_type: u8 }, // T_BOOLEAN, T_CHAR, T_FLOAT, T_DOUBLE, T_BYTE, T_SHORT, T_INT, T_LONG
     InvokeDynamicInsnNode(ConstDynamic),
     JumpInsnNode {
         // the opcode of the type instruction to be constructed. This opcode must be IFEQ, IFNE,
