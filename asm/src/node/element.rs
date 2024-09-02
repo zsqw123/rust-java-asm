@@ -4,6 +4,7 @@ use crate::asm_type::Type;
 use crate::jvms::attr::{LineNumberTableInfo, StackMapFrame};
 use crate::jvms::attr::Attribute as JvmsAttribute;
 use crate::jvms::attr::type_annotation::{TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
+use crate::jvms::element::AttributeInfo;
 use crate::node::insn::InsnNode;
 use crate::node::values::{AnnotationValue, ConstValue, DescriptorRef, FieldInitialValue, InternalNameRef, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue, StrRef};
 use crate::opcodes::Opcodes;
@@ -126,20 +127,35 @@ pub struct MethodNode {
     pub parameter_annotations: Vec<Vec<AnnotationNode>>,
 
     /// The non-standard attributes of this method.
+    /// or didn't implement currently.
     pub attrs: Vec<UnknownAttribute>,
 
     /// The default value of this annotation interface method
     pub annotation_default: Option<AnnotationValue>,
 
+    pub code_body: Option<CodeBodyNode>,
+}
+
+
+#[derive(Clone, Debug)]
+pub struct CodeBodyNode {
     pub instructions: Vec<InsnNode>,
 
-    pub try_catch_blocks: Vec<TryCatchBlockNode>,
+    pub exception_table: Vec<ExceptionTable>,
 
     pub local_variables: Vec<LocalVariableNode>,
-    
+
     pub max_stack: u16,
-    
+
     pub max_locals: u16,
+
+    /// it stores type annotations which located in local variable declarations, 
+    /// exception parameter declarations, expressions etc.
+    pub type_annotations: Vec<TypeAnnotationNode>,
+
+    /// The non-standard attributes of this code body.
+    /// or didn't implement currently.
+    pub attrs: Vec<UnknownAttribute>,
 }
 
 #[derive(Clone, Debug)]
@@ -289,8 +305,6 @@ pub struct LocalVariableNode {
     pub end: LabelNode,
     /// The local variable's index in current frame.
     pub index: u16,
-    /// type annotations on the local variable type.
-    pub type_annotations: Rc<Vec<TypeAnnotationNode>>,
 }
 
 #[derive(Clone, Debug)]
@@ -303,13 +317,7 @@ pub struct UnknownAttribute {
 pub enum Attribute {
     Unknown(UnknownAttribute),
     ConstantValue(ConstValue),
-    Code {
-        max_stack: u16,
-        max_locals: u16,
-        code: Vec<u8>,
-        exception_table: Vec<ExceptionTable>,
-        attributes: Vec<Rc<Attribute>>,
-    },
+    Code(CodeAttribute),
     StackMapTable(Vec<StackMapFrame>),
     Exceptions(Vec<InternalNameRef>),
     InnerClasses(Vec<InnerClassNode>),
@@ -344,6 +352,15 @@ pub enum Attribute {
     NestMembers(Vec<InternalNameRef>),
     Record(Vec<RecordComponentNode>),
     PermittedSubclasses(Vec<InternalNameRef>),
+}
+
+#[derive(Clone, Debug)]
+pub struct CodeAttribute {
+    pub max_stack: u16,
+    pub max_locals: u16,
+    pub code: Vec<u8>,
+    pub exception_table: Vec<ExceptionTable>,
+    pub attributes: Vec<(AttributeInfo, Attribute)>,
 }
 
 #[derive(Clone, Debug)]

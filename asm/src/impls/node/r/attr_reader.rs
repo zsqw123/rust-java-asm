@@ -6,10 +6,10 @@ use crate::jvms::attr::Attribute as JvmsAttribute;
 use crate::jvms::attr::RecordComponentInfo;
 use crate::jvms::attr::type_annotation::TypeAnnotation;
 use crate::jvms::element::AttributeInfo;
-use crate::node::element::{AnnotationNode, BootstrapMethodNode, ExceptionTable, InnerClassNode, ParameterNode, RecordComponentNode, TypeAnnotationNode, UnknownAttribute};
+use crate::node::element::{AnnotationNode, BootstrapMethodNode, CodeAttribute, ExceptionTable, InnerClassNode, ParameterNode, RecordComponentNode, TypeAnnotationNode, UnknownAttribute};
 use crate::node::element::Attribute as NodeAttribute;
 use crate::node::values::{AnnotationValue, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue};
-use crate::util::{mutf8_to_string, ToRc, VecEx};
+use crate::util::{mutf8_to_string, VecEx};
 
 impl ClassNodeContext {
     pub fn read_class_attrs(&mut self) -> AsmResult<Vec<(AttributeInfo, NodeAttribute)>> {
@@ -36,7 +36,10 @@ impl CpCache {
 
     pub fn read_attr(&mut self, attribute_info: &AttributeInfo) -> AsmResult<NodeAttribute> {
         let attr = match &attribute_info.info {
-            JvmsAttribute::Code { max_stack, max_locals, code, exception_table, attributes, .. } => {
+            JvmsAttribute::Code {
+                max_stack, max_locals, code, exception_table,
+                attributes: jvms_attributes, ..
+            } => {
                 let exception_table = exception_table.mapping(|et| {
                     ExceptionTable {
                         start: et.start_pc,
@@ -45,14 +48,19 @@ impl CpCache {
                         catch_type: self.read_class_info(et.catch_type).ok(),
                     }
                 });
-                let attributes = attributes.mapping_res(|attr| Ok(self.read_attr(attr)?.rc()))?;
-                NodeAttribute::Code {
+                let mut attributes = vec![];
+                for attr in jvms_attributes {
+                    let attribute_info = attr.clone();
+                    let attr = self.read_attr(attr)?;
+                    attributes.push((attribute_info, attr));
+                }
+                NodeAttribute::Code(CodeAttribute {
                     max_stack: *max_stack,
                     max_locals: *max_locals,
                     code: code.clone(),
                     exception_table,
                     attributes,
-                }
+                })
             },
             JvmsAttribute::StackMapTable { entries, .. } => NodeAttribute::StackMapTable(entries.clone()),
             JvmsAttribute::Exceptions { exception_index_table, .. } => {
@@ -301,5 +309,12 @@ impl CpCache {
             },
         };
         Ok(value)
+    }
+
+    pub fn unknown_attr(&mut self, attribute_info: AttributeInfo) -> AsmResult<UnknownAttribute> {
+        Ok(UnknownAttribute {
+            name: self.read_utf8(attribute_info.attribute_name_index)?,
+            origin: attribute_info.info.clone(),
+        })
     }
 }

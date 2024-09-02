@@ -1,13 +1,11 @@
-use std::collections::HashMap;
 use std::rc::Rc;
 
 use java_asm_internal::err::{AsmErr, AsmResult};
 
 use crate::impls::node::r::node_reader::ClassNodeContext;
-use crate::jvms::attr::type_annotation::TypeAnnotationTargetInfo;
 use crate::jvms::element::{ClassFile, FieldInfo, MethodInfo};
-use crate::node::element::{Attribute, ClassNode, FieldNode, LocalVariableNode, MethodNode, ModuleNode, TypeAnnotationNode, UnknownAttribute};
-use crate::node::values::{ConstValue, FieldInitialValue, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue};
+use crate::node::element::{Attribute, ClassNode, FieldNode, MethodNode, ModuleNode, UnknownAttribute};
+use crate::node::values::{ConstValue, FieldInitialValue, ModuleAttrValue};
 
 pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     let jvms_file = Rc::new(jvms_file);
@@ -180,14 +178,7 @@ fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: &MethodIn
     let mut attrs = vec![];
 
     let mut annotation_default = None;
-    let mut instructions = vec![];
-    let mut try_catch_blocks = vec![];
-
-    let mut local_variable_infos = vec![];
-    let mut local_variable_type_infos = vec![];
-
-    let mut max_locals = 0;
-    let mut max_stack = 0;
+    let mut code_body = None;
 
     let name = class_context.read_utf8(method_info.name_index)?;
     let all_attributes = class_context.read_attrs(&method_info.attributes)?;
@@ -205,16 +196,9 @@ fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: &MethodIn
             Attribute::RuntimeInvisibleParameterAnnotations(pan) => parameter_annotations.extend(pan),
 
             Attribute::AnnotationDefault(v) => annotation_default = Some(v),
-            Attribute::LocalVariableTable(lv) => local_variable_infos = lv,
-            Attribute::LocalVariableTypeTable(lv) => local_variable_type_infos = lv,
 
-            Attribute::Code {
-                max_stack: m_stack, max_locals: m_locals, code, 
-                exception_table, attributes,
-            } => {
-                max_stack = m_stack;
-                max_locals = m_locals;
-                instructions = class_context.read_code(code)?;
+            Attribute::Code(code_attribute) => {
+                code_body = Some(class_context.read_code_body(code_attribute)?);
             }
             
             Attribute::Unknown(v) => attrs.push(v),
@@ -227,43 +211,11 @@ fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: &MethodIn
 
     let access = method_info.access_flags;
     let desc = class_context.read_utf8(method_info.descriptor_index)?;
-    let local_variables = merge_local_variables(
-        &local_variable_infos, &local_variable_type_infos, &type_annotations
-    );
     let method_node = MethodNode {
         name, access, desc, signature, exceptions, parameters,
         annotations, type_annotations, parameter_annotations, attrs,
-        annotation_default, instructions, try_catch_blocks, local_variables,
-        max_locals, max_stack,
+        annotation_default,
+        code_body,
     };
     Ok(method_node)
-}
-
-fn merge_local_variables(
-    infos: &Vec<LocalVariableInfo>,
-    type_infos: &Vec<LocalVariableTypeInfo>,
-    type_annotations: &Vec<TypeAnnotationNode>,
-) -> Vec<LocalVariableNode> {
-    let mut local_variables = vec![];
-    let mut type_map = HashMap::with_capacity(type_infos.len());
-    for info in type_infos {
-        let LocalVariableTypeInfo { start, length, signature, index, .. } = info;
-        type_map.insert((*start, *length, *index), Rc::clone(signature));
-    }
-    let type_annotations = type_annotations.iter().filter_map(|tan| {
-        if let TypeAnnotationTargetInfo::LocalVar { .. } = &tan.target_info { Some(tan.clone()) } else { None }
-    }).collect();
-    let type_annotations = Rc::new(type_annotations);
-
-    for info in infos {
-        let &LocalVariableInfo { start, length, index, .. } = info;
-        let name = Rc::clone(&info.name);
-        let desc = Rc::clone(&info.desc);
-        let signature = type_map.get(&(start, length, index)).cloned();
-        let type_annotations = Rc::clone(&type_annotations);
-        local_variables.push(LocalVariableNode {
-            name, desc, signature, start, end: start+length, index, type_annotations
-        });
-    }
-    local_variables
 }
