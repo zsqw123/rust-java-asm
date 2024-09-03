@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use java_asm_internal::err::AsmResult;
 
@@ -132,7 +133,31 @@ impl CpCache {
                     res.push(InsnNode::NewArrayInsnNode { array_type });
                     cur += 2;
                 }
-                
+                // invokedynamic | indexbyte1 | indexbyte2 | 0 | 0
+                Opcodes::INVOKEDYNAMIC => {
+                    let (bootstrap_method_attr_index, name, desc) =
+                        self.read_dynamic(const_from_index(cur + 1))?;
+                    let file_attrs = &Rc::clone(&self.jvms_file).attributes;
+                    let bm_attr = &file_attrs.get(bootstrap_method_attr_index as usize).ok_or_else(|| {
+                        let error_message = format!("cannot find bootstrap method attribute at index: {}", bootstrap_method_attr_index);
+                        self.err(error_message)
+                    })?.info;
+                    if let Attribute::BootstrapMethods(bm) = bm_attr {
+                        let method = bm.methods.get(0).ok_or_else(|| {
+                            self.err("cannot find bootstrap method")
+                        })?;
+                        let (method_name, method_desc) = self.read_name_and_type(method.name_and_type_index)?;
+                        if method_name != name || method_desc != desc {
+                            let error_message = format!("invalid bootstrap method, expected: {}{}, got: {}{}", name, desc, method_name, method_desc);
+                            return self.err(error_message);
+                        }
+                    } else {
+                        
+                        
+                        return self.err("invalid method attribute");
+                    }
+                    cur += 5;
+                }
                 _ => {}
             }
         }

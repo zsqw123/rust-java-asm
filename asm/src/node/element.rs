@@ -149,7 +149,7 @@ pub struct CodeBodyNode {
 
     pub max_locals: u16,
 
-    /// it stores type annotations which located in local variable declarations, 
+    /// it stores type annotations which located in local variable declarations,
     /// exception parameter declarations, expressions etc.
     pub type_annotations: Vec<TypeAnnotationNode>,
 

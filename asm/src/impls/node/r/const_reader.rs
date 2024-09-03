@@ -43,7 +43,7 @@ macro_rules! read_const_curly {
                         index, constant, stringify!($variant))
                 ).e();
             };
-            Ok(($(Rc::clone($arg)),*))
+            Ok(($($arg.clone()),*))
         })*
     };
 }
@@ -68,6 +68,9 @@ impl CpCache {
         read_member -> (StrRef, StrRef, DescriptorRef) {
             Member { class, name, desc }
         }
+        read_dynamic -> (u16, StrRef, DescriptorRef) {
+            Dynamic { bootstrap_method_attr_index, name, desc }
+        }
     }
 
     #[inline]
@@ -75,7 +78,7 @@ impl CpCache {
         self.read_class_info(index)
             .unwrap_or_else(|_| Constants::OBJECT_INTERNAL_NAME.as_rc())
     }
-
+    
     pub fn read_const(&mut self, index: u16) -> AsmResult<Rc<ConstValue>> {
         if let Some(constant) = self.read_const_cache(index) {
             return Ok(constant);
