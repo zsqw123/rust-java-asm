@@ -6,12 +6,12 @@ use java_asm_internal::err::{AsmErr, AsmResult, AsmResultRcExt};
 use crate::constants::Constants;
 use crate::impls::computable::{CacheableOwner, CacheAccessor};
 use crate::impls::jvms::r::util::ToRcRef;
-use crate::impls::node::r::node_reader::{ClassNodeContext, ConstComputableMap, CpCache};
+use crate::impls::node::r::node_reader::{ClassNodeContext, ConstComputableMap, ConstPool};
 use crate::jvms::element::Const;
 use crate::node::values::{ConstValue, DescriptorRef, StrRef};
 use crate::util::mutf8_to_string;
 
-impl CacheableOwner<u16, ConstValue, AsmErr> for CpCache {
+impl CacheableOwner<u16, ConstValue, AsmErr> for ConstPool {
     fn cache_map(&self) -> &ConstComputableMap {
         &self.pool
     }
@@ -60,7 +60,7 @@ macro_rules! read_const_curly {
 }
 
 /// impls for const reads
-impl CpCache {
+impl ConstPool {
     pub fn name(&self) -> AsmResult<StrRef> {
         self.read_class_info(self.jvms_file.this_class)
     }
@@ -148,6 +148,6 @@ impl CpCache {
 }
 
 impl<T> Deref for ClassNodeContext<T> {
-    type Target = CpCache;
-    fn deref(&self) -> &CpCache { &self.cp_cache }
+    type Target = ConstPool;
+    fn deref(&self) -> &ConstPool { &self.cp }
 }
