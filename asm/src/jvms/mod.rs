@@ -6,6 +6,7 @@ use java_asm_internal::write::jvms::WriteContext;
 
 use crate::impls::jvms::r::transform::transform_class_file;
 use crate::jvms::element::ClassFile;
+use crate::util::ToRc;
 
 pub mod element;
 pub mod attr;
@@ -19,7 +20,7 @@ impl JvmsClassReader {
         let mut bytes = [];
         let read_result = reader.read(&mut bytes);
         if let Err(e) = read_result {
-            return Err(AsmErr::ContentReadErr(e));
+            return Err(AsmErr::ContentReadErr(e.rc()));
         };
         Self::read_class_bytes(&bytes)
     }
@@ -41,7 +42,7 @@ impl JvmsClassWriter {
         let bytes = Self::write_class_bytes(vec![], class_file)?;
         match writer.write(bytes.as_slice()) {
             Ok(_) => { Ok(()) }
-            Err(io_err) => { Err(AsmErr::ContentWriteErr(io_err)) }
+            Err(e) => { Err(AsmErr::ContentWriteErr(e.rc())) }
         }
     }
 

@@ -1,17 +1,18 @@
 use std::collections::HashMap;
+use std::ops::Deref;
 use std::rc::Rc;
 
 use java_asm_internal::err::AsmResult;
 
-use crate::impls::node::r::node_reader::CpCache;
+use crate::impls::node::r::node_reader::{Attrs, ClassNodeContext};
 use crate::node::element::{Attribute, CodeAttribute, CodeBodyNode, LocalVariableNode};
 use crate::node::insn::InsnNode;
 use crate::node::insn::InsnNode::FieldInsnNode;
 use crate::node::values::{FrameAttributeValue, LocalVariableInfo, LocalVariableTypeInfo};
 use crate::opcodes::Opcodes;
 
-impl CpCache {
-    pub fn read_code_body(&mut self, code_attr: CodeAttribute) -> AsmResult<CodeBodyNode> {
+impl<AttrFn: FnOnce() -> Attrs> ClassNodeContext<AttrFn> {
+    pub fn read_code_body(&self, code_attr: CodeAttribute) -> AsmResult<CodeBodyNode> {
         let CodeAttribute { max_stack, max_locals, code, exception_table, attributes } = code_attr;
         let instructions = self.read_code(code)?;
 
@@ -48,7 +49,7 @@ impl CpCache {
     }
 
     //noinspection SpellCheckingInspection
-    pub fn read_code(&mut self, code: Vec<u8>) -> AsmResult<Vec<InsnNode>> {
+    pub fn read_code(&self, code: Vec<u8>) -> AsmResult<Vec<InsnNode>> {
         let mut cur = 0usize;
 
         // read a 16bit const from index, in jvm bytecode, it stores high byte first (big-endian)
@@ -142,20 +143,6 @@ impl CpCache {
                         let error_message = format!("cannot find bootstrap method attribute at index: {}", bootstrap_method_attr_index);
                         self.err(error_message)
                     })?.info;
-                    if let Attribute::BootstrapMethods(bm) = bm_attr {
-                        let method = bm.methods.get(0).ok_or_else(|| {
-                            self.err("cannot find bootstrap method")
-                        })?;
-                        let (method_name, method_desc) = self.read_name_and_type(method.name_and_type_index)?;
-                        if method_name != name || method_desc != desc {
-                            let error_message = format!("invalid bootstrap method, expected: {}{}, got: {}{}", name, desc, method_name, method_desc);
-                            return self.err(error_message);
-                        }
-                    } else {
-                        
-                        
-                        return self.err("invalid method attribute");
-                    }
                     cur += 5;
                 }
                 _ => {}

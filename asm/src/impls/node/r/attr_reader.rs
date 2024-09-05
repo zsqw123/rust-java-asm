@@ -1,18 +1,24 @@
+use std::rc::Rc;
+
 use java_asm_internal::err::AsmResult;
 
-use crate::impls::node::r::node_reader::{ClassNodeContext, CpCache};
+use crate::impls::node::r::node_reader::{Attrs, ClassNodeContext, ConstComputableMap, CpCache};
 use crate::jvms::attr::annotation::{AnnotationElementValue, AnnotationInfo};
 use crate::jvms::attr::Attribute as JvmsAttribute;
 use crate::jvms::attr::RecordComponentInfo;
 use crate::jvms::attr::type_annotation::TypeAnnotation;
-use crate::jvms::element::AttributeInfo;
+use crate::jvms::element::{AttributeInfo, ClassFile};
 use crate::node::element::{AnnotationNode, BootstrapMethodNode, CodeAttribute, ExceptionTable, InnerClassNode, ParameterNode, RecordComponentNode, TypeAnnotationNode, UnknownAttribute};
 use crate::node::element::Attribute as NodeAttribute;
 use crate::node::values::{AnnotationValue, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue};
 use crate::util::{mutf8_to_string, VecEx};
 
-impl ClassNodeContext {
-    pub fn read_class_attrs(&mut self) -> AsmResult<Vec<(AttributeInfo, NodeAttribute)>> {
+fn attr_from_cp(cp: Rc<ConstComputableMap>, jvms_file: Rc<ClassFile>) -> Attrs {
+    todo!()
+}
+
+impl<T> ClassNodeContext<T> {
+    pub fn read_class_attrs(&self) -> AsmResult<Vec<(AttributeInfo, NodeAttribute)>> {
         let jvms_attrs = &self.jvms_file.attributes;
         let attributes = self.cp_cache.read_attrs(jvms_attrs)?;
         let mut result = Vec::with_capacity(attributes.len());
@@ -25,7 +31,7 @@ impl ClassNodeContext {
 
 impl CpCache {
     /// converts jvms attributes [JvmsAttribute] to node attributes [NodeAttribute]
-    pub fn read_attrs(&mut self, attrs: &Vec<AttributeInfo>) -> AsmResult<Vec<(AttributeInfo, NodeAttribute)>> {
+    pub fn read_attrs(&self, attrs: &Vec<AttributeInfo>) -> AsmResult<Vec<(AttributeInfo, NodeAttribute)>> {
         let mut result = Vec::with_capacity(attrs.len());
         for attr_info in attrs {
             let attribute = self.read_attr(attr_info)?;
@@ -34,7 +40,7 @@ impl CpCache {
         Ok(result)
     }
 
-    pub fn read_attr(&mut self, attribute_info: &AttributeInfo) -> AsmResult<NodeAttribute> {
+    pub fn read_attr(&self, attribute_info: &AttributeInfo) -> AsmResult<NodeAttribute> {
         let attr = match &attribute_info.info {
             JvmsAttribute::Code {
                 max_stack, max_locals, code, exception_table,
@@ -150,8 +156,8 @@ impl CpCache {
             },
             JvmsAttribute::BootstrapMethods { bootstrap_methods, .. } => {
                 let methods = bootstrap_methods.mapping_res(|method| {
-                    let method_handle = self.read_const(method.bootstrap_method_ref)?;
-                    let arguments = method.bootstrap_arguments.mapping_res(|arg| self.read_const(*arg))?;
+                    let method_handle = self.get(method.bootstrap_method_ref)?;
+                    let arguments = method.bootstrap_arguments.mapping_res(|arg| self.get(*arg))?;
                     Ok(BootstrapMethodNode { method_handle, arguments })
                 })?;
                 NodeAttribute::BootstrapMethods(methods)
@@ -234,7 +240,7 @@ impl CpCache {
         Ok(attr)
     }
 
-    fn read_record(&mut self, component: &RecordComponentInfo) -> AsmResult<RecordComponentNode> {
+    fn read_record(&self, component: &RecordComponentInfo) -> AsmResult<RecordComponentNode> {
         let name = self.read_utf8(component.name_index)?;
         let desc = self.read_utf8(component.descriptor_index)?;
         let mut signature = None;
@@ -258,7 +264,7 @@ impl CpCache {
         })
     }
 
-    fn read_type_annotation(&mut self, visible: bool, type_annotation: &TypeAnnotation) -> AsmResult<TypeAnnotationNode> {
+    fn read_type_annotation(&self, visible: bool, type_annotation: &TypeAnnotation) -> AsmResult<TypeAnnotationNode> {
         let annotation_attr = AnnotationInfo {
             type_index: type_annotation.type_index,
             num_element_value_pairs: type_annotation.num_element_value_pairs,
@@ -273,7 +279,7 @@ impl CpCache {
         })
     }
 
-    fn read_annotation_info(&mut self, visible: bool, annotation: &AnnotationInfo) -> AsmResult<AnnotationNode> {
+    fn read_annotation_info(&self, visible: bool, annotation: &AnnotationInfo) -> AsmResult<AnnotationNode> {
         let type_name = self.read_class_info(annotation.type_index)?;
         let values = annotation.element_value_pairs.mapping_res(|pair| {
             let element_name = self.read_utf8(pair.element_name_index)?;
@@ -283,10 +289,10 @@ impl CpCache {
         Ok(AnnotationNode { visible, type_name, values })
     }
 
-    fn read_annotation_value(&mut self, visible: bool, annotation: &AnnotationElementValue) -> AsmResult<AnnotationValue> {
+    fn read_annotation_value(&self, visible: bool, annotation: &AnnotationElementValue) -> AsmResult<AnnotationValue> {
         let value = match annotation {
             AnnotationElementValue::Const { const_value_index } => {
-                let value = self.read_const(*const_value_index)?;
+                let value = self.get(*const_value_index)?;
                 AnnotationValue::Const(value)
             },
             AnnotationElementValue::EnumConst { type_name_index, const_name_index } => {
@@ -311,7 +317,7 @@ impl CpCache {
         Ok(value)
     }
 
-    pub fn unknown_attr(&mut self, attribute_info: AttributeInfo) -> AsmResult<UnknownAttribute> {
+    pub fn unknown_attr(&self, attribute_info: AttributeInfo) -> AsmResult<UnknownAttribute> {
         Ok(UnknownAttribute {
             name: self.read_utf8(attribute_info.attribute_name_index)?,
             origin: attribute_info.info.clone(),

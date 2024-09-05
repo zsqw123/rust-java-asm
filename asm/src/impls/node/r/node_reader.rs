@@ -1,47 +1,55 @@
-use std::collections::HashMap;
+use std::cell::LazyCell;
 use std::fmt::Display;
-use std::hash::Hash;
 use std::rc::Rc;
 
 use java_asm_internal::err::{AsmErr, AsmResult};
 
 use crate::impls::computable::ComputableMap;
-use crate::jvms::element::{ClassFile, MethodInfo};
+use crate::jvms::element::{AttributeInfo, ClassFile, MethodInfo};
+use crate::node::element::Attribute;
 use crate::node::values::ConstValue;
 
 pub struct CpCache {
     pub jvms_file: Rc<ClassFile>,
-    pub pool: HashMap<u16, Rc<ConstValue>>,
+    pub pool: Rc<ConstComputableMap>,
 }
 
-pub(crate) struct ClassNodeContext {
+pub(crate) struct ClassNodeContext<AttrFn = fn() -> Attrs> {
     pub jvms_file: Rc<ClassFile>,
-    pub const_pool: ConstComputableMap,
-    pub cp_cache: CpCache,
+    pub cp_cache: Rc<CpCache>,
+    pub attrs: LazyCell<Attrs, AttrFn>,
 }
 
-type ConstFn = fn(&u16) -> AsmResult<ConstValue>;
-type ConstComputableMap = ComputableMap<u16, AsmResult<ConstValue>, ConstFn>;
+pub type Attrs = AsmResult<Vec<(AttributeInfo, Attribute)>>;
+pub type ConstComputableMap = ComputableMap<u16, ConstValue, AsmErr>;
 
 impl ClassNodeContext {
-    pub fn new(jvms_file: Rc<ClassFile>) -> Self {
-        let const_pool = ComputableMap::new(|index| {
-            let cp_info = &jvms_file.cp_info[index as usize];
-            let cp = Rc::new(cp_info.to_const()?);
-            Ok(cp)
-        });
-        Self {
+    pub fn new(jvms_file: Rc<ClassFile>) -> ClassNodeContext<impl FnOnce() -> Attrs> {
+        let const_pool: ConstComputableMap = Default::default();
+        let cp_map_rc = Rc::new(const_pool);
+        let cp_cache = CpCache {
             jvms_file: Rc::clone(&jvms_file),
-            cp_cache: CpCache {
-                jvms_file,
-                pool: HashMap::new(),
-            },
+            pool: Rc::clone(&cp_map_rc),
+        };
+        // attrs need to be read entirely, because we need to traverse the attributes
+        // when constructing the class node, we just uses LazyCell for read it lazily.
+        let cp_cache = Rc::new(cp_cache);
+        let cp_cache_for_attr = Rc::clone(&cp_cache);
+        let attrs = LazyCell::new(move || {
+            Rc::clone(&cp_cache_for_attr);
+            todo!()
+        });
+        ClassNodeContext {
+            jvms_file: Rc::clone(&jvms_file),
+            cp_cache,
+            attrs,
         }
     }
 }
 
+
 impl CpCache {
-    pub(crate) fn err<D: Display>(&mut self, msg: D) -> AsmErr {
+    pub(crate) fn err<D: Display>(&self, msg: D) -> AsmErr {
         match self.name().ok() {
             Some(name) => AsmErr::ResolveNode(format!("class: {}, {}", name, msg)),
             None => AsmErr::ResolveNode(msg.to_string()),

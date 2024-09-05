@@ -1,14 +1,25 @@
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::rc::Rc;
 
-use java_asm_internal::err::{AsmErr, AsmResult};
+use java_asm_internal::err::{AsmErr, AsmResult, AsmResultRcExt};
 
 use crate::constants::Constants;
+use crate::impls::computable::{CacheableOwner, CacheAccessor};
 use crate::impls::jvms::r::util::ToRcRef;
-use crate::impls::node::r::node_reader::{ClassNodeContext, CpCache};
+use crate::impls::node::r::node_reader::{ClassNodeContext, ConstComputableMap, CpCache};
 use crate::jvms::element::Const;
 use crate::node::values::{ConstValue, DescriptorRef, StrRef};
-use crate::util::{mutf8_to_string, ToRc};
+use crate::util::mutf8_to_string;
+
+impl CacheableOwner<u16, ConstValue, AsmErr> for CpCache {
+    fn cache_map(&self) -> &ConstComputableMap {
+        &self.pool
+    }
+
+    fn compute(&self, key: &u16) -> AsmResult<ConstValue> {
+        self.read_const(*key)
+    }
+}
 
 macro_rules! read_const {
     {
@@ -16,8 +27,8 @@ macro_rules! read_const {
             $variant:ident($($arg:ident),*)
         })*
     } => {
-        $(pub fn $name(&mut self, index: u16) -> AsmResult<$ret> {
-            let constant = self.read_const(index)?;
+        $(pub fn $name(&self, index: u16) -> AsmResult<$ret> {
+            let constant = self.get(index)?;
             let ConstValue::$variant( $($arg),* ) = constant.as_ref() else {
                 return AsmErr::IllegalArgument(
                     format!("cannot read const value from constant pool, cp_index: {}, constant: {:?}, required: ConstValue::{}",
@@ -35,8 +46,8 @@ macro_rules! read_const_curly {
             $variant:ident { $($arg:ident),* }
         })*
     } => {
-        $(pub fn $name(&mut self, index: u16) -> AsmResult<$ret> {
-            let constant = self.read_const(index)?;
+        $(pub fn $name(&self, index: u16) -> AsmResult<$ret> {
+            let constant = self.get(index)?;
             let ConstValue::$variant{ $($arg),* } = constant.as_ref() else {
                 return AsmErr::IllegalArgument(
                     format!("cannot read const value from constant pool, cp_index: {}, constant: {:?}, required: ConstValue::{}",
@@ -50,7 +61,7 @@ macro_rules! read_const_curly {
 
 /// impls for const reads
 impl CpCache {
-    pub fn name(&mut self) -> AsmResult<StrRef> {
+    pub fn name(&self) -> AsmResult<StrRef> {
         self.read_class_info(self.jvms_file.this_class)
     }
 
@@ -74,15 +85,16 @@ impl CpCache {
     }
 
     #[inline]
-    pub fn read_class_info_or_default(&mut self, index: u16) -> StrRef {
+    pub fn read_class_info_or_default(&self, index: u16) -> StrRef {
         self.read_class_info(index)
             .unwrap_or_else(|_| Constants::OBJECT_INTERNAL_NAME.as_rc())
     }
-    
-    pub fn read_const(&mut self, index: u16) -> AsmResult<Rc<ConstValue>> {
-        if let Some(constant) = self.read_const_cache(index) {
-            return Ok(constant);
-        }
+
+    pub fn get(&self, index: u16) -> AsmResult<Rc<ConstValue>> {
+        self.get_with_ref(&index).clone_if_error()
+    }
+
+    fn read_const(&self, index: u16) -> AsmResult<ConstValue> {
         let raw_const = self.jvms_file.constant_pool[index as usize].info.clone();
         let const_value = match raw_const {
             Const::Invalid => { ConstValue::Invalid }
@@ -131,25 +143,11 @@ impl CpCache {
             Const::Module { name_index } => ConstValue::Module(self.read_utf8(name_index)?),
             Const::Package { name_index } => ConstValue::Package(self.read_utf8(name_index)?),
         };
-        let const_value = const_value.rc();
-        self.put_const_cache(index, Rc::clone(&const_value));
-        return Ok(const_value);
-    }
-
-    fn read_const_cache(&self, index: u16) -> Option<Rc<ConstValue>> {
-        self.pool.get(&index).map(Rc::clone)
-    }
-
-    fn put_const_cache(&mut self, index: u16, constant: Rc<ConstValue>) {
-        self.pool.insert(index, constant);
+        Ok(const_value)
     }
 }
 
-impl Deref for ClassNodeContext {
+impl<T> Deref for ClassNodeContext<T> {
     type Target = CpCache;
     fn deref(&self) -> &CpCache { &self.cp_cache }
-}
-
-impl DerefMut for ClassNodeContext {
-    fn deref_mut(&mut self) -> &mut CpCache { &mut self.cp_cache }
 }

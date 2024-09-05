@@ -2,14 +2,14 @@ use std::rc::Rc;
 
 use java_asm_internal::err::{AsmErr, AsmResult};
 
-use crate::impls::node::r::node_reader::ClassNodeContext;
+use crate::impls::node::r::node_reader::{Attrs, ClassNodeContext};
 use crate::jvms::element::{ClassFile, FieldInfo, MethodInfo};
 use crate::node::element::{Attribute, ClassNode, FieldNode, MethodNode, ModuleNode, UnknownAttribute};
 use crate::node::values::{ConstValue, FieldInitialValue, ModuleAttrValue};
 
 pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     let jvms_file = Rc::new(jvms_file);
-    let mut class_context = ClassNodeContext::new(Rc::clone(&jvms_file));
+    let class_context = ClassNodeContext::new(Rc::clone(&jvms_file));
 
     let mut signature = None;
     let super_name = Some(class_context.read_class_info_or_default(jvms_file.super_class));
@@ -104,12 +104,12 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     // I must admit that I hate the `mut` but I have to use it here.
     let mut fields = Vec::with_capacity(*&jvms_file.fields_count as usize);
     for field_info in &jvms_file.fields {
-        fields.push(field_from_jvms(&mut class_context, field_info)?);
+        fields.push(field_from_jvms(&class_context, field_info)?);
     }
 
     let mut methods = Vec::with_capacity(*&jvms_file.methods_count as usize);
     for method_info in &jvms_file.methods {
-        methods.push(method_from_jvms(&mut class_context, method_info)?);
+        methods.push(method_from_jvms(&class_context, method_info)?);
     }
 
     let class_node = ClassNode {
@@ -124,7 +124,7 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     Ok(class_node)
 }
 
-fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: &FieldInfo) -> AsmResult<FieldNode> {
+fn field_from_jvms<AF>(class_context: &ClassNodeContext<AF>, field_info: &FieldInfo) -> AsmResult<FieldNode> {
     let name = class_context.read_utf8(field_info.name_index)?;
     let access = field_info.access_flags;
     let desc = class_context.read_utf8(field_info.descriptor_index)?;
@@ -167,7 +167,7 @@ fn field_from_jvms(class_context: &mut ClassNodeContext, field_info: &FieldInfo)
     Ok(field_node)
 }
 
-fn method_from_jvms(class_context: &mut ClassNodeContext, method_info: &MethodInfo) -> AsmResult<MethodNode> {
+fn method_from_jvms<AttrFn: FnOnce() -> Attrs>(class_context: &ClassNodeContext<AttrFn>, method_info: &MethodInfo) -> AsmResult<MethodNode> {
     let mut signature = None;
     let mut exceptions = vec![];
     let mut parameters = vec![];
