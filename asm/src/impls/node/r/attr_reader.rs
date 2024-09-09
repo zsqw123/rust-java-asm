@@ -1,21 +1,14 @@
-use std::rc::Rc;
-
-use crate::err::AsmResult;
-
-use crate::impls::node::r::node_reader::{Attrs, ClassNodeContext, ConstComputableMap, ConstPool};
+use crate::err::{AsmResult, AsmResultOkExt};
+use crate::impls::node::r::node_reader::{ClassNodeContext, ConstPool};
 use crate::jvms::attr::annotation::{AnnotationElementValue, AnnotationInfo};
 use crate::jvms::attr::Attribute as JvmsAttribute;
 use crate::jvms::attr::RecordComponentInfo;
 use crate::jvms::attr::type_annotation::TypeAnnotation;
-use crate::jvms::element::{AttributeInfo, ClassFile};
-use crate::node::element::{AnnotationNode, BootstrapMethodNode, CodeAttribute, ExceptionTable, InnerClassNode, ParameterNode, RecordComponentNode, TypeAnnotationNode, UnknownAttribute};
+use crate::jvms::element::AttributeInfo;
+use crate::node::element::{AnnotationNode, BootstrapMethodAttr, CodeAttribute, EnclosingMethodAttribute, ExceptionTable, InnerClassNode, ParameterNode, RecordComponentNode, TypeAnnotationNode, UnknownAttribute};
 use crate::node::element::Attribute as NodeAttribute;
 use crate::node::values::{AnnotationValue, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue};
 use crate::util::{mutf8_to_string, VecEx};
-
-fn attr_from_cp(cp: Rc<ConstComputableMap>, jvms_file: Rc<ClassFile>) -> Attrs {
-    todo!()
-}
 
 impl ClassNodeContext {
     pub fn read_class_attrs(&self) -> AsmResult<Vec<(AttributeInfo, NodeAttribute)>> {
@@ -25,7 +18,7 @@ impl ClassNodeContext {
         for (attr_info, attr) in attributes {
             result.push((attr_info.clone(), attr));
         }
-        Ok(result)
+        result.ok()
     }
 }
 
@@ -86,7 +79,8 @@ impl ConstPool {
             JvmsAttribute::EnclosingMethod { class_index, method_index } => {
                 let class = self.read_class_info(*class_index)?;
                 let (method_name, method_desc) = self.read_name_and_type(*method_index)?;
-                NodeAttribute::EnclosingMethod { class, method_name, method_desc }
+                NodeAttribute::EnclosingMethod(
+                    EnclosingMethodAttribute { class, method_name, method_desc })
             },
             JvmsAttribute::Synthetic => NodeAttribute::Synthetic,
             JvmsAttribute::Signature { signature_index } => NodeAttribute::Signature(self.read_utf8(*signature_index)?),
@@ -158,7 +152,7 @@ impl ConstPool {
                 let methods = bootstrap_methods.mapping_res(|method| {
                     let method_handle = self.get(method.bootstrap_method_ref)?;
                     let arguments = method.bootstrap_arguments.mapping_res(|arg| self.get(*arg))?;
-                    Ok(BootstrapMethodNode { method_handle, arguments })
+                    BootstrapMethodAttr { method_handle, arguments }.ok()
                 })?;
                 NodeAttribute::BootstrapMethods(methods)
             },

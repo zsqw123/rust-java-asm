@@ -321,11 +321,7 @@ pub enum Attribute {
     StackMapTable(Vec<StackMapFrame>),
     Exceptions(Vec<InternalNameRef>),
     InnerClasses(Vec<InnerClassNode>),
-    EnclosingMethod {
-        class: InternalNameRef,
-        method_name: StrRef,
-        method_desc: DescriptorRef,
-    },
+    EnclosingMethod(EnclosingMethodAttribute),
     Synthetic,
     Signature(StrRef),
     SourceFile(StrRef),
@@ -343,7 +339,7 @@ pub enum Attribute {
     RuntimeInvisibleTypeAnnotations(Vec<TypeAnnotationNode>),
     AnnotationDefault(AnnotationValue),
     // 
-    BootstrapMethods(Vec<BootstrapMethodNode>),
+    BootstrapMethods(Vec<BootstrapMethodAttr>),
     MethodParameters(Vec<ParameterNode>),
     Module(ModuleAttrValue),
     ModulePackages(Vec<StrRef>),
@@ -352,6 +348,13 @@ pub enum Attribute {
     NestMembers(Vec<InternalNameRef>),
     Record(Vec<RecordComponentNode>),
     PermittedSubclasses(Vec<InternalNameRef>),
+}
+
+#[derive(Clone, Debug)]
+pub struct EnclosingMethodAttribute {
+    pub class: InternalNameRef,
+    pub method_name: StrRef,
+    pub method_desc: DescriptorRef,
 }
 
 #[derive(Clone, Debug)]
@@ -374,7 +377,7 @@ pub struct ExceptionTable {
 pub type LineNumberNode = LineNumberTableInfo;
 
 #[derive(Clone, Debug)]
-pub struct BootstrapMethodNode {
+pub struct BootstrapMethodAttr {
     pub method_handle: Rc<ConstValue>, // ConstValue::MethodHandle
     pub arguments: Vec<Rc<ConstValue>>,
 }

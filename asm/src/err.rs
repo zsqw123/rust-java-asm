@@ -23,8 +23,19 @@ impl AsmErr {
 
 pub type AsmResult<T> = Result<T, AsmErr>;
 
+pub(crate) trait AsmResultOkExt<T> {
+    fn ok(self) -> AsmResult<T>;
+}
+
 pub(crate) trait AsmResultExt<T> {
     fn ok_or_error(self, when_none: impl FnOnce() -> AsmResult<T>) -> AsmResult<T>;
+}
+
+impl<T> AsmResultOkExt<T> for T {
+    #[inline]
+    fn ok(self) -> AsmResult<T> {
+        Ok(self)
+    }
 }
 
 impl<T> AsmResultExt<T> for Option<T> {

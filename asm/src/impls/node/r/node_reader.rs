@@ -2,11 +2,10 @@ use std::cell::OnceCell;
 use std::fmt::Display;
 use std::rc::Rc;
 
-use crate::err::{AsmErr, AsmResult};
-
+use crate::err::AsmErr;
 use crate::impls::computable::ComputableMap;
 use crate::jvms::element::{AttributeInfo, ClassFile, MethodInfo};
-use crate::node::element::Attribute;
+use crate::node::element::{Attribute, BootstrapMethodAttr};
 use crate::node::values::ConstValue;
 
 pub struct ConstPool {
@@ -17,10 +16,10 @@ pub struct ConstPool {
 pub(crate) struct ClassNodeContext {
     pub jvms_file: Rc<ClassFile>,
     pub cp: Rc<ConstPool>,
-    pub attrs: OnceCell<Attrs>,
+    pub bootstrap_methods: OnceCell<Vec<BootstrapMethodAttr>>,
 }
 
-pub type Attrs = Rc<Vec<(AttributeInfo, Attribute)>>;
+pub type Attrs = Vec<(AttributeInfo, Attribute)>;
 pub type ConstComputableMap = ComputableMap<u16, ConstValue, AsmErr>;
 
 impl ClassNodeContext {
@@ -32,12 +31,17 @@ impl ClassNodeContext {
         // attrs need to be read entirely, because we need to traverse the attributes
         // when constructing the class node, we just uses LazyCell for read it lazily.
         let cp = Rc::new(const_pool);
-        let attrs = OnceCell::default();
+        let bootstrap_methods = OnceCell::default();
         ClassNodeContext {
             jvms_file: Rc::clone(&jvms_file),
             cp,
-            attrs,
+            bootstrap_methods,
         }
+    }
+
+    // unsafe function, but only for internal use.
+    pub fn require_bms(&self) -> &Vec<BootstrapMethodAttr> {
+        self.bootstrap_methods.get().expect("bootstrap methods not read yet.")
     }
 }
 

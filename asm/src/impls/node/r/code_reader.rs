@@ -5,7 +5,7 @@ use crate::impls::node::r::node_reader::ClassNodeContext;
 use crate::node::element::{Attribute, CodeAttribute, CodeBodyNode, LocalVariableNode};
 use crate::node::insn::InsnNode;
 use crate::node::insn::InsnNode::FieldInsnNode;
-use crate::node::values::{FrameAttributeValue, LocalVariableInfo, LocalVariableTypeInfo};
+use crate::node::values::{ConstDynamic, ConstValue, FrameAttributeValue, Handle, LocalVariableInfo, LocalVariableTypeInfo};
 use crate::opcodes::Opcodes;
 
 impl ClassNodeContext {
@@ -135,14 +135,20 @@ impl ClassNodeContext {
                 Opcodes::INVOKEDYNAMIC => {
                     let (bootstrap_method_attr_index, name, desc) =
                         self.read_dynamic(const_from_index(cur + 1))?;
-                    let file_attrs = self.attrs.get().ok_or_error(|| {
-                        let error_message = format!("cannot find attributes in this class {}", self.name()?);
+                    let bm_attr = self.require_bms().get(bootstrap_method_attr_index as usize).ok_or_error(|| {
+                        let error_message = format!("cannot find bootstrap method attribute at index: {}", bootstrap_method_attr_index);
                         Err(self.err(error_message))
                     })?;
-                    let bm_attr = &file_attrs.get(bootstrap_method_attr_index as usize).ok_or_else(|| {
-                        let error_message = format!("cannot find bootstrap method attribute at index: {}", bootstrap_method_attr_index);
-                        self.err(error_message)
-                    })?.info;
+                    let bm_handle = &bm_attr.method_handle;
+                    let &ConstValue::MethodHandle {
+                        reference_kind, reference_index
+                    } = bm_handle.as_ref() else { 
+                        panic!("MethodHandle in BootstrapMethodAttr must be a MethodHandle");
+                    };
+                    let handle = Handle {
+                        
+                    }
+                    
                     cur += 5;
                 }
                 _ => {}

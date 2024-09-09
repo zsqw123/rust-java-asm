@@ -1,6 +1,7 @@
+use std::fmt::format;
 use std::rc::Rc;
 
-use crate::err::{AsmErr, AsmResult};
+use crate::err::{AsmErr, AsmResult, AsmResultExt};
 use crate::impls::node::r::node_reader::ClassNodeContext;
 use crate::jvms::element::{ClassFile, FieldInfo, MethodInfo};
 use crate::node::element::{Attribute, ClassNode, FieldNode, MethodNode, ModuleNode, UnknownAttribute};
@@ -40,14 +41,7 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     let name = class_context.name()?;
     // read raw class attributes
     let class_attrs = class_context.read_class_attrs()?;
-    // impossible to fail, so we use unwrap here,
-    // because class context is created in this function previously.
-    let attrs_rc = Rc::new(class_attrs);
-    let class_attrs = Rc::clone(&attrs_rc);
-    class_context.attrs.set(attrs_rc).unwrap(); 
-    // set node variable's value from attributes
-    // and put all unrecognized attributes into `attrs`
-    for (attribute_info, attribute) in class_attrs.as_ref() {
+    for (attribute_info, attribute) in class_attrs {
         match attribute {
             Attribute::Signature(s) => signature = Some(s),
             Attribute::SourceFile(s) => source_file = Some(s),
@@ -57,11 +51,11 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
             Attribute::ModulePackages(packages) => module_packages = Some(packages),
             Attribute::ModuleMainClass(main) => module_main = Some(main),
 
-            Attribute::EnclosingMethod { class, method_name, method_desc } => {
-                outer_class = Some(class);
-                outer_method_name = Some(method_name);
-                outer_method_desc = Some(method_desc);
-            }
+            Attribute::EnclosingMethod(enc) => {
+                outer_class = Some(enc.class);
+                outer_method_name = Some(enc.method_name);
+                outer_method_desc = Some(enc.method_desc);
+            },
 
             // annotations
             Attribute::RuntimeVisibleAnnotations(an) => annotations.extend(an),
@@ -74,6 +68,12 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
             Attribute::NestMembers(nm) => nest_members.extend(nm),
             Attribute::PermittedSubclasses(ps) => permitted_subclasses.extend(ps),
             Attribute::Record(rc) => record_components.extend(rc),
+            
+            Attribute::BootstrapMethods(bm_attrs) => {
+                class_context.bootstrap_methods.set(bm_attrs).ok().ok_or_error(|| {
+                    AsmErr::ResolveNode("most one bootstrap methods attribute is allowed".to_string()).e() 
+                })?;
+            }
 
             Attribute::Unknown(v) => attrs.push(v),
             _ => attrs.push(UnknownAttribute {
