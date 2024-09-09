@@ -1,4 +1,4 @@
-use java_asm_internal::err::AsmResult;
+use crate::err::AsmResult;
 use crate::jvms::element::{AttributeInfo, ClassFile, CPInfo, FieldInfo, MethodInfo};
 use crate::impls::jvms::r::transform::attr::transform_attr;
 

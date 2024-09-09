@@ -1,5 +1,5 @@
-use java_asm_internal::err::{AsmErr, AsmResult};
-use java_asm_internal::read::jvms::{FromReadContext, ReadContext};
+use crate::err::{AsmErr, AsmResult};
+use crate::impls::jvms::r::{FromReadContext, ReadContext};
 
 use crate::jvms::attr::annotation::{AnnotationElementValue, AnnotationElementValueInfo};
 use crate::jvms::attr::type_annotation::{TypeAnnotation, TypeAnnotationTargetInfo};

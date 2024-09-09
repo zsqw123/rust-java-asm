@@ -1,5 +1,3 @@
-pub use java_asm_macro::IntoWriteContext;
-
 pub struct WriteContext {
     pub bytes: Vec<u8>,
 }
@@ -47,6 +45,4 @@ impl IntoWriteContext<u8> for u8 {
         bytes.push(from);
     }
 }
-
-
 

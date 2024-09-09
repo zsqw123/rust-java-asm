@@ -1,8 +1,7 @@
 use std::rc::Rc;
 
-use java_asm_internal::err::{AsmErr, AsmResult};
-
-use crate::impls::node::r::node_reader::{Attrs, ClassNodeContext};
+use crate::err::{AsmErr, AsmResult};
+use crate::impls::node::r::node_reader::ClassNodeContext;
 use crate::jvms::element::{ClassFile, FieldInfo, MethodInfo};
 use crate::node::element::{Attribute, ClassNode, FieldNode, MethodNode, ModuleNode, UnknownAttribute};
 use crate::node::values::{ConstValue, FieldInitialValue, ModuleAttrValue};
@@ -41,9 +40,14 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     let name = class_context.name()?;
     // read raw class attributes
     let class_attrs = class_context.read_class_attrs()?;
+    // impossible to fail, so we use unwrap here,
+    // because class context is created in this function previously.
+    let attrs_rc = Rc::new(class_attrs);
+    let class_attrs = Rc::clone(&attrs_rc);
+    class_context.attrs.set(attrs_rc).unwrap(); 
     // set node variable's value from attributes
     // and put all unrecognized attributes into `attrs`
-    for (attribute_info, attribute) in class_attrs {
+    for (attribute_info, attribute) in class_attrs.as_ref() {
         match attribute {
             Attribute::Signature(s) => signature = Some(s),
             Attribute::SourceFile(s) => source_file = Some(s),
@@ -124,7 +128,7 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     Ok(class_node)
 }
 
-fn field_from_jvms<AF>(class_context: &ClassNodeContext<AF>, field_info: &FieldInfo) -> AsmResult<FieldNode> {
+fn field_from_jvms(class_context: &ClassNodeContext, field_info: &FieldInfo) -> AsmResult<FieldNode> {
     let name = class_context.read_utf8(field_info.name_index)?;
     let access = field_info.access_flags;
     let desc = class_context.read_utf8(field_info.descriptor_index)?;
@@ -167,7 +171,7 @@ fn field_from_jvms<AF>(class_context: &ClassNodeContext<AF>, field_info: &FieldI
     Ok(field_node)
 }
 
-fn method_from_jvms<AttrFn: FnOnce() -> Attrs>(class_context: &ClassNodeContext<AttrFn>, method_info: &MethodInfo) -> AsmResult<MethodNode> {
+fn method_from_jvms(class_context: &ClassNodeContext, method_info: &MethodInfo) -> AsmResult<MethodNode> {
     let mut signature = None;
     let mut exceptions = vec![];
     let mut parameters = vec![];

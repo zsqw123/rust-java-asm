@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use java_asm_internal::err::{AsmErr, AsmResult};
+use crate::err::{AsmErr, AsmResult};
 
 use crate::impls::jvms::r::util::ToRcRef;
 use crate::node::values::StrRef;

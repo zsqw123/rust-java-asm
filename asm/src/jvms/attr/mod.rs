@@ -1,5 +1,4 @@
-use java_asm_internal::read::jvms::FromReadContext;
-use java_asm_internal::write::jvms::IntoWriteContext;
+use java_asm_macro::{FromReadContext, IntoWriteContext};
 
 use crate::jvms::attr::annotation::{AnnotationElementValueInfo, AnnotationInfo, ParameterAnnotationInfo};
 use crate::jvms::attr::module::{ModuleExports, ModuleOpens, ModuleProvides, ModuleRequires};

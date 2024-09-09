@@ -1,10 +1,10 @@
 use std::io::{BufReader, BufWriter, Read, Write};
 
-use java_asm_internal::err::{AsmErr, AsmResult};
-use java_asm_internal::read::jvms::{FromReadContext, ReadContext};
-use java_asm_internal::write::jvms::WriteContext;
+use crate::err::{AsmErr, AsmResult};
+use crate::impls::jvms::r::{FromReadContext, ReadContext};
 
 use crate::impls::jvms::r::transform::transform_class_file;
+use crate::impls::jvms::w::WriteContext;
 use crate::jvms::element::ClassFile;
 use crate::util::ToRc;
 

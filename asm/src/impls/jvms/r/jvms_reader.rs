@@ -1,7 +1,7 @@
-use java_asm_internal::err::{AsmErr, AsmResult};
-use java_asm_internal::read::jvms::{FromReadContext, ReadContext};
+use crate::err::{AsmErr, AsmResult};
 
 use crate::constants::Constants;
+use crate::impls::jvms::r::{FromReadContext, ReadContext};
 use crate::jvms::attr::Attribute;
 use crate::jvms::element::{AttributeInfo, ClassFile, Const, CPInfo, FieldInfo, MethodInfo};
 

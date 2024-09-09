@@ -1,5 +1,4 @@
-use java_asm_internal::read::jvms::FromReadContext;
-use java_asm_internal::write::jvms::IntoWriteContext;
+use java_asm_macro::{FromReadContext, IntoWriteContext};
 
 // ClassFile {
 //     u4             magic;

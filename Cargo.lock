@@ -6,13 +6,6 @@ version = 3
 name = "java_asm"
 version = "0.0.4"
 dependencies = [
- "java_asm_internal",
-]
-
-[[package]]
-name = "java_asm_internal"
-version = "0.0.4"
-dependencies = [
  "java_asm_macro",
 ]
 

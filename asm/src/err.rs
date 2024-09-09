@@ -23,6 +23,20 @@ impl AsmErr {
 
 pub type AsmResult<T> = Result<T, AsmErr>;
 
+pub(crate) trait AsmResultExt<T> {
+    fn ok_or_error(self, when_none: impl FnOnce() -> AsmResult<T>) -> AsmResult<T>;
+}
+
+impl<T> AsmResultExt<T> for Option<T> {
+    #[inline]
+    fn ok_or_error(self, when_none: impl FnOnce() -> AsmResult<T>) -> AsmResult<T> {
+        match self {
+            Some(v) => Ok(v),
+            None => when_none(),
+        }
+    }
+}
+
 pub trait AsmResultRcExt<T> {
     fn clone_if_error(self) -> AsmResult<T>;
 }

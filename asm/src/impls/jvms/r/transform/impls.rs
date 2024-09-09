@@ -1,7 +1,6 @@
-use java_asm_internal::err::{AsmErr, AsmResult};
-use java_asm_internal::read::jvms::{FromReadContext, ReadContext};
+use crate::err::{AsmErr, AsmResult};
+use crate::impls::jvms::r::{FromReadContext, ReadContext};
 use crate::impls::jvms::r::frame::Frame;
-
 use crate::jvms::attr::{StackMapFrame, VerificationTypeInfo};
 
 impl FromReadContext<VerificationTypeInfo> for VerificationTypeInfo {

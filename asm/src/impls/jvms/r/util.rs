@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use java_asm_internal::err::{AsmErr, AsmResult};
+use crate::err::{AsmErr, AsmResult};
 
 use crate::constants::Constants;
 use crate::jvms::element::{Const, CPInfo};

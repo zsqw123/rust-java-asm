@@ -11,3 +11,4 @@ pub mod jvms;
 pub mod node;
 pub(crate) mod util;
 pub(crate) mod impls;
+pub mod err;

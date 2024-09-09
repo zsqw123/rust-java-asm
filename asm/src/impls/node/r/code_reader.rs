@@ -1,17 +1,14 @@
 use std::collections::HashMap;
-use std::ops::Deref;
-use std::rc::Rc;
 
-use java_asm_internal::err::AsmResult;
-
-use crate::impls::node::r::node_reader::{Attrs, ClassNodeContext};
+use crate::err::{AsmResult, AsmResultExt};
+use crate::impls::node::r::node_reader::ClassNodeContext;
 use crate::node::element::{Attribute, CodeAttribute, CodeBodyNode, LocalVariableNode};
 use crate::node::insn::InsnNode;
 use crate::node::insn::InsnNode::FieldInsnNode;
 use crate::node::values::{FrameAttributeValue, LocalVariableInfo, LocalVariableTypeInfo};
 use crate::opcodes::Opcodes;
 
-impl<AttrFn: FnOnce() -> Attrs> ClassNodeContext<AttrFn> {
+impl ClassNodeContext {
     pub fn read_code_body(&self, code_attr: CodeAttribute) -> AsmResult<CodeBodyNode> {
         let CodeAttribute { max_stack, max_locals, code, exception_table, attributes } = code_attr;
         let instructions = self.read_code(code)?;
@@ -138,7 +135,10 @@ impl<AttrFn: FnOnce() -> Attrs> ClassNodeContext<AttrFn> {
                 Opcodes::INVOKEDYNAMIC => {
                     let (bootstrap_method_attr_index, name, desc) =
                         self.read_dynamic(const_from_index(cur + 1))?;
-                    let file_attrs = &Rc::clone(&self.jvms_file).attributes;
+                    let file_attrs = self.attrs.get().ok_or_error(|| {
+                        let error_message = format!("cannot find attributes in this class {}", self.name()?);
+                        Err(self.err(error_message))
+                    })?;
                     let bm_attr = &file_attrs.get(bootstrap_method_attr_index as usize).ok_or_else(|| {
                         let error_message = format!("cannot find bootstrap method attribute at index: {}", bootstrap_method_attr_index);
                         self.err(error_message)

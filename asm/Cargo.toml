@@ -10,7 +10,7 @@ readme.workspace = true
 repository.workspace = true
 
 [dependencies]
-java_asm_internal = { workspace = true }
+java_asm_macro = { workspace = true }
 
 [lib]
 doctest = false

@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::rc::Rc;
 
-use java_asm_internal::err::{AsmErr, AsmResult, AsmResultRcExt};
+use crate::err::{AsmErr, AsmResult, AsmResultRcExt};
 
 use crate::constants::Constants;
 use crate::impls::computable::{CacheableOwner, CacheAccessor};
@@ -147,7 +147,7 @@ impl ConstPool {
     }
 }
 
-impl<T> Deref for ClassNodeContext<T> {
+impl Deref for ClassNodeContext {
     type Target = ConstPool;
     fn deref(&self) -> &ConstPool { &self.cp }
 }

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use java_asm_internal::err::AsmResult;
+use crate::err::AsmResult;
 
 use crate::impls::node::r::node_reader::{Attrs, ClassNodeContext, ConstComputableMap, ConstPool};
 use crate::jvms::attr::annotation::{AnnotationElementValue, AnnotationInfo};
@@ -17,7 +17,7 @@ fn attr_from_cp(cp: Rc<ConstComputableMap>, jvms_file: Rc<ClassFile>) -> Attrs {
     todo!()
 }
 
-impl<T> ClassNodeContext<T> {
+impl ClassNodeContext {
     pub fn read_class_attrs(&self) -> AsmResult<Vec<(AttributeInfo, NodeAttribute)>> {
         let jvms_attrs = &self.jvms_file.attributes;
         let attributes = self.cp.read_attrs(jvms_attrs)?;

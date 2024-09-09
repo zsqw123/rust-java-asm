@@ -18,8 +18,8 @@ pub(crate) fn auto_write_bytes(input: TokenStream) -> TokenStream {
         }
     };
 
-    let into_write_context_path = quote! { java_asm_internal::write::jvms::IntoWriteContext };
-    let write_context_path = quote! { java_asm_internal::write::jvms::WriteContext };
+    let into_write_context_path = quote! { crate::impls::jvms::w::IntoWriteContext };
+    let write_context_path = quote! { crate::impls::jvms::w::WriteContext };
 
     let generated = quote! {
         impl #into_write_context_path<#name> for #name {

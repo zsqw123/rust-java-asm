@@ -1,6 +1,6 @@
 use std::io::Read;
 
-use java_asm_internal::err::AsmResult;
+use crate::err::AsmResult;
 
 use crate::impls::node::r::impls::from_jvms_internal;
 use crate::jvms::element::ClassFile;

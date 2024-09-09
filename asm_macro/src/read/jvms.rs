@@ -20,9 +20,9 @@ pub(crate) fn auto_read_bytes(input: TokenStream) -> TokenStream {
         Fields::Unit => quote! { Ok(Self) }
     };
 
-    let from_read_context_path = quote! { java_asm_internal::read::jvms::FromReadContext };
-    let read_context_path = quote! { java_asm_internal::read::jvms::ReadContext };
-    let asm_result_path = quote! { java_asm_internal::err::AsmResult };
+    let from_read_context_path = quote! { crate::impls::jvms::r::FromReadContext };
+    let read_context_path = quote! { crate::impls::jvms::r::ReadContext };
+    let asm_result_path = quote! { crate::err::AsmResult };
 
     let generated = quote! {
         impl #from_read_context_path<#name> for #name {
