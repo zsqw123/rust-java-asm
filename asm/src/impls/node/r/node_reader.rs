@@ -41,7 +41,7 @@ impl ClassNodeContext {
 
     // unsafe function, but only for internal use.
     pub fn require_bms(&self) -> &Vec<BootstrapMethodAttr> {
-        self.bootstrap_methods.get().expect("bootstrap methods not read yet.")
+        self.bootstrap_methods.get().expect("bootstrap methods not initialized yet.")
     }
 }
 

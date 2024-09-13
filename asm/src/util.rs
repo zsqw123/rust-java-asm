@@ -103,7 +103,7 @@ pub fn mutf8_to_utf8(mutf8: &[u8]) -> AsmResult<Vec<u8>> {
             current_offset += 3;
             continue;
         }
-        return AsmErr::ReadMUTF8(format!("unknown MUTF-8 first byte: 0x{:X}", byte1)).e();
+        return AsmErr::ReadUTF8(format!("unknown MUTF-8 first byte: 0x{:X}", byte1)).e();
     }
     Ok(utf8)
 }
@@ -185,6 +185,10 @@ pub(crate) trait VecEx<'v, T> where T: 'v {
 }
 
 impl<'v, T> VecEx<'v, T> for Vec<T> where T: 'v {
+    // it's very stupid in rust that we can't use `?` in a closure
+    // such as `fields.iter().map(|f| foo(f)?);` is not allowed due to `?` is not allowed in closure.
+    // so here we use a for-in loop to construct the fields and methods.
+    // I must admit that I hate the `mut` but I have to use it here.
     #[inline]
     fn mapping_res<R>(&'v self, mut f: impl FnMut(&'v T) -> AsmResult<R>) -> AsmResult<Vec<R>> {
         let mut new = Vec::with_capacity(self.len());

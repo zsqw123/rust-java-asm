@@ -1,11 +1,11 @@
-use std::fmt::format;
 use std::rc::Rc;
 
-use crate::err::{AsmErr, AsmResult, AsmResultExt};
+use crate::err::{AsmErr, AsmResult};
 use crate::impls::node::r::node_reader::ClassNodeContext;
 use crate::jvms::element::{ClassFile, FieldInfo, MethodInfo};
 use crate::node::element::{Attribute, ClassNode, FieldNode, MethodNode, ModuleNode, UnknownAttribute};
 use crate::node::values::{ConstValue, FieldInitialValue, ModuleAttrValue};
+use crate::util::VecEx;
 
 pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     let jvms_file = Rc::new(jvms_file);
@@ -70,8 +70,10 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
             Attribute::Record(rc) => record_components.extend(rc),
             
             Attribute::BootstrapMethods(bm_attrs) => {
-                class_context.bootstrap_methods.set(bm_attrs).ok().ok_or_error(|| {
-                    AsmErr::ResolveNode("most one bootstrap methods attribute is allowed".to_string()).e() 
+                class_context.bootstrap_methods.set(bm_attrs).map_err(|prev| {
+                    let err_msg = format!("most one bootstrap methods attribute is allowed, \
+                    but found another one: {:?}", prev);
+                    AsmErr::ResolveNode(err_msg)
                 })?;
             }
 
@@ -102,19 +104,14 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
         None => None,
     };
 
-    // it's very stupid in rust that we can't use `?` in a closure
-    // such as `fields.iter().map(|f| foo(f)?);` is not allowed due to `?` is not allowed in closure.
-    // so here we use a for-in loop to construct the fields and methods.
-    // I must admit that I hate the `mut` but I have to use it here.
-    let mut fields = Vec::with_capacity(*&jvms_file.fields_count as usize);
-    for field_info in &jvms_file.fields {
-        fields.push(field_from_jvms(&class_context, field_info)?);
-    }
+  
+    let fields = jvms_file.fields.mapping_res(|field_info| {
+        field_from_jvms(&class_context, field_info)
+    })?;
 
-    let mut methods = Vec::with_capacity(*&jvms_file.methods_count as usize);
-    for method_info in &jvms_file.methods {
-        methods.push(method_from_jvms(&class_context, method_info)?);
-    }
+    let methods = jvms_file.methods.mapping_res(|method_info| {
+        method_from_jvms(&class_context, method_info)
+    })?;
 
     let class_node = ClassNode {
         minor_version: *&jvms_file.minor_version,

@@ -23,10 +23,7 @@ pub enum ConstValue {
         name: StrRef,
         desc: DescriptorRef,
     },
-    MethodHandle {
-        reference_kind: u8,
-        reference_index: u16,
-    },
+    MethodHandle(Handle),
     MethodType(DescriptorRef),
     Dynamic {
         bootstrap_method_attr_index: u16,
@@ -108,7 +105,7 @@ pub enum BootstrapMethodArgument {
     Long(i64),
     Double(f64),
     String(StrRef),
-    Class(Type),
+    Class(InternalNameRef),
     Handle(Handle),
 }
 
@@ -118,13 +115,12 @@ pub struct Handle {
     /// [Opcodes::H_GETFIELD], [Opcodes::H_GETSTATIC], [Opcodes::H_PUTFIELD], [Opcodes::H_PUTSTATIC],
     /// [Opcodes::H_INVOKEVIRTUAL], [Opcodes::H_INVOKESTATIC], [Opcodes::H_INVOKESPECIAL],
     /// [Opcodes::H_NEWINVOKESPECIAL], [Opcodes::H_INVOKEINTERFACE].
-    pub tag: u8,
+    pub reference_kind: u8,
     // The internal name of the class to which the field or method belongs.
     pub owner: StrRef,
     pub name: StrRef,
     // The descriptor of the field or method.
     pub desc: StrRef,
-    pub is_interface: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -143,7 +139,7 @@ pub enum LdcConst {
 pub struct ConstDynamic {
     pub name: StrRef,
     pub desc: StrRef,
-    pub bsm: Handle,
+    pub bsm: Handle, // bootstrap method handle
     pub bsm_args: Vec<BootstrapMethodArgument>,
 }
 

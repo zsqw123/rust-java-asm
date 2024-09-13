@@ -1,14 +1,13 @@
 use std::ops::Deref;
 use std::rc::Rc;
 
-use crate::err::{AsmErr, AsmResult, AsmResultRcExt};
-
 use crate::constants::Constants;
+use crate::err::{AsmErr, AsmResult, AsmResultRcExt};
 use crate::impls::computable::{CacheableOwner, CacheAccessor};
 use crate::impls::jvms::r::util::ToRcRef;
 use crate::impls::node::r::node_reader::{ClassNodeContext, ConstComputableMap, ConstPool};
 use crate::jvms::element::Const;
-use crate::node::values::{ConstValue, DescriptorRef, StrRef};
+use crate::node::values::{ConstValue, DescriptorRef, Handle, StrRef};
 use crate::util::mutf8_to_string;
 
 impl CacheableOwner<u16, ConstValue, AsmErr> for ConstPool {
@@ -130,7 +129,9 @@ impl ConstPool {
                 ConstValue::String(mutf8_to_string(&bytes)?)
             }
             Const::MethodHandle { reference_kind, reference_index } => {
-                ConstValue::MethodHandle { reference_kind, reference_index }
+                let (owner, name, desc) = self.read_member(reference_index)?;
+                let handle = Handle { reference_kind, owner, name, desc };
+                ConstValue::MethodHandle(handle)
             }
             Const::MethodType { descriptor_index } => {
                 ConstValue::MethodType(self.read_utf8(descriptor_index)?)

@@ -6,7 +6,6 @@ pub enum AsmErr {
     ContentReadErr(Rc<io::Error>),
     ContentWriteErr(Rc<io::Error>),
     IllegalArgument(String),
-    ReadMUTF8(String),
     ReadUTF8(String),
     ResolveNode(String),
 }

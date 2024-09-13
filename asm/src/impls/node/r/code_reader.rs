@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 
-use crate::err::{AsmResult, AsmResultExt};
+use crate::err::{AsmErr, AsmResult, AsmResultExt};
 use crate::impls::node::r::node_reader::ClassNodeContext;
 use crate::node::element::{Attribute, CodeAttribute, CodeBodyNode, LocalVariableNode};
 use crate::node::insn::InsnNode;
 use crate::node::insn::InsnNode::FieldInsnNode;
-use crate::node::values::{ConstDynamic, ConstValue, FrameAttributeValue, Handle, LocalVariableInfo, LocalVariableTypeInfo};
+use crate::node::values::{BootstrapMethodArgument, ConstDynamic, ConstValue, FrameAttributeValue, LocalVariableInfo, LocalVariableTypeInfo};
 use crate::opcodes::Opcodes;
+use crate::util::VecEx;
 
 impl ClassNodeContext {
     pub fn read_code_body(&self, code_attr: CodeAttribute) -> AsmResult<CodeBodyNode> {
@@ -135,20 +136,25 @@ impl ClassNodeContext {
                 Opcodes::INVOKEDYNAMIC => {
                     let (bootstrap_method_attr_index, name, desc) =
                         self.read_dynamic(const_from_index(cur + 1))?;
-                    let bm_attr = self.require_bms().get(bootstrap_method_attr_index as usize).ok_or_error(|| {
+                    let bsm_attr = self.require_bms().get(bootstrap_method_attr_index as usize).ok_or_error(|| {
                         let error_message = format!("cannot find bootstrap method attribute at index: {}", bootstrap_method_attr_index);
                         Err(self.err(error_message))
                     })?;
-                    let bm_handle = &bm_attr.method_handle;
-                    let &ConstValue::MethodHandle {
-                        reference_kind, reference_index
-                    } = bm_handle.as_ref() else { 
-                        panic!("MethodHandle in BootstrapMethodAttr must be a MethodHandle");
+                    let bsm_args = bsm_attr.arguments.mapping_res(|arg|
+                        const_to_bsm_arg((**arg).clone())
+                    )?;
+                    let bm_handle = &bsm_attr.method_handle;
+                    let ConstValue::MethodHandle(handle) = (*bm_handle).as_ref() else { 
+                        let err_msg = "MethodHandle in BootstrapMethodAttr must be a MethodHandle";
+                        AsmErr::IllegalArgument(err_msg.to_string()).e()?
                     };
-                    let handle = Handle {
-                        
-                    }
-                    
+                    let const_dynamic = ConstDynamic {
+                        name,
+                        desc,
+                        bsm: handle.clone(),
+                        bsm_args,
+                    };
+                    res.push(InsnNode::InvokeDynamicInsnNode(const_dynamic));
                     cur += 5;
                 }
                 _ => {}
@@ -160,6 +166,22 @@ impl ClassNodeContext {
     pub fn read_frames(&mut self, code: Vec<u8>) -> AsmResult<Vec<FrameAttributeValue>> {
         // let 
         Ok(vec![])
+    }
+}
+
+fn const_to_bsm_arg(c: ConstValue) -> AsmResult<BootstrapMethodArgument> {
+    match c {
+        ConstValue::Integer(i) => Ok(BootstrapMethodArgument::Integer(i)),
+        ConstValue::Float(f) => Ok(BootstrapMethodArgument::Float(f)),
+        ConstValue::Long(l) => Ok(BootstrapMethodArgument::Long(l)),
+        ConstValue::Double(d) => Ok(BootstrapMethodArgument::Double(d)),
+        ConstValue::String(s) => Ok(BootstrapMethodArgument::String(s)),
+        ConstValue::Class(t) => Ok(BootstrapMethodArgument::Class(t)),
+        ConstValue::MethodHandle(h) => Ok(BootstrapMethodArgument::Handle(h)),
+        _ => {
+            let err_msg = format!("cannot convert correspond const value to bootstrap method argument: {:?}", c);
+            Err(AsmErr::IllegalArgument(err_msg))
+        },
     }
 }
 
