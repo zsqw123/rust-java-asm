@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use crate::err::{AsmErr, AsmResult};
-
 use crate::impls::jvms::r::util::ToRcRef;
 use crate::node::values::StrRef;
 
@@ -179,27 +178,19 @@ impl<T> ToRc<T> for T {
     fn rc(self) -> Rc<T> { Rc::new(self) }
 }
 
-pub(crate) trait VecEx<'v, T> where T: 'v {
-    fn mapping_res<R>(&'v self, f: impl FnMut(&'v T) -> AsmResult<R>) -> AsmResult<Vec<R>>;
-    fn mapping<R>(&'v self, f: impl FnMut(&'v T) -> R) -> Vec<R>;
+pub(crate) trait VecEx<T> {
+    fn map_res<R>(&self, f: impl FnMut(&T) -> AsmResult<R>) -> AsmResult<Vec<R>>;
+    fn map<R>(&self, f: impl FnMut(&T) -> R) -> Vec<R>;
 }
 
-impl<'v, T> VecEx<'v, T> for Vec<T> where T: 'v {
-    // it's very stupid in rust that we can't use `?` in a closure
-    // such as `fields.iter().map(|f| foo(f)?);` is not allowed due to `?` is not allowed in closure.
-    // so here we use a for-in loop to construct the fields and methods.
-    // I must admit that I hate the `mut` but I have to use it here.
+impl<T> VecEx<T> for Vec<T> {
     #[inline]
-    fn mapping_res<R>(&'v self, mut f: impl FnMut(&'v T) -> AsmResult<R>) -> AsmResult<Vec<R>> {
-        let mut new = Vec::with_capacity(self.len());
-        for item in self { new.push(f(item)?); }
-        Ok(new)
+    fn map_res<R>(&self, f: impl FnMut(&T) -> AsmResult<R>) -> AsmResult<Vec<R>> {
+        self.iter().map(f).collect()
     }
 
     #[inline]
-    fn mapping<R>(&'v self, mut f: impl FnMut(&'v T) -> R) -> Vec<R> {
-        let mut new = Vec::with_capacity(self.len());
-        for item in self { new.push(f(item)); }
-        new
+    fn map<R>(&self, f: impl FnMut(&T) -> R) -> Vec<R> {
+        self.iter().map(f).collect()
     }
 }

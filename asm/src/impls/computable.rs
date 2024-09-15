@@ -21,11 +21,10 @@ pub trait CacheableOwner<K, V, E, MapRef = ComputableMap<K, V, E>>
 }
 
 pub trait CacheAccessor<K, V, E> where K: Clone + Eq + Hash {
-    fn get_with_ref(&self, key: &K) -> ResultRc<V, E>;
-
-    /// Get the value from the map, if the value is not existed, 
-    /// compute it and insert the cloned key and the computed value into the map.
-    fn get(&self, key: K) -> ResultRc<V, E>;
+    /// Get the value from the map.
+    /// Compute it and insert the cloned key if the value is not existed,
+    /// and insert the computed value into the map.
+    fn get(&self, key: &K) -> ResultRc<V, E>;
 
     fn values(&self) -> Vec<ResultRc<V, E>>;
 }
@@ -33,7 +32,7 @@ pub trait CacheAccessor<K, V, E> where K: Clone + Eq + Hash {
 impl<T, K, V, E> CacheAccessor<K, V, E> for T
     where T: CacheableOwner<K, V, E>,
           K: Clone + Eq + Hash {
-    fn get_with_ref(&self, key: &K) -> ResultRc<V, E> {
+    fn get(&self, key: &K) -> ResultRc<V, E> {
         let mut mut_map_ref = self.cache_map().0.borrow_mut();
         return if let Some(value) = mut_map_ref.get(key) {
             match value.as_ref() {
@@ -49,10 +48,6 @@ impl<T, K, V, E> CacheAccessor<K, V, E> for T
             mut_map_ref.insert(key.clone(), computed);
             returned
         }
-    }
-
-    fn get(&self, key: K) -> ResultRc<V, E> {
-        self.get_with_ref(&key)
     }
 
     fn values(&self) -> Vec<ResultRc<V, E>> {

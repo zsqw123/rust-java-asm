@@ -105,11 +105,11 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     };
 
   
-    let fields = jvms_file.fields.mapping_res(|field_info| {
+    let fields = jvms_file.fields.map_res(|field_info| {
         field_from_jvms(&class_context, field_info)
     })?;
 
-    let methods = jvms_file.methods.mapping_res(|method_info| {
+    let methods = jvms_file.methods.map_res(|method_info| {
         method_from_jvms(&class_context, method_info)
     })?;
 

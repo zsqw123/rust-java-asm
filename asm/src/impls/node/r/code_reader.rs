@@ -140,11 +140,11 @@ impl ClassNodeContext {
                         let error_message = format!("cannot find bootstrap method attribute at index: {}", bootstrap_method_attr_index);
                         Err(self.err(error_message))
                     })?;
-                    let bsm_args = bsm_attr.arguments.mapping_res(|arg|
+                    let bsm_args = bsm_attr.arguments.map_res(|arg|
                         const_to_bsm_arg((**arg).clone())
                     )?;
                     let bm_handle = &bsm_attr.method_handle;
-                    let ConstValue::MethodHandle(handle) = (*bm_handle).as_ref() else { 
+                    let ConstValue::MethodHandle(handle) = (*bm_handle).as_ref() else {
                         let err_msg = "MethodHandle in BootstrapMethodAttr must be a MethodHandle";
                         AsmErr::IllegalArgument(err_msg.to_string()).e()?
                     };

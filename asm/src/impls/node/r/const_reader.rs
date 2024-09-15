@@ -27,7 +27,7 @@ macro_rules! read_const {
         })*
     } => {
         $(pub fn $name(&self, index: u16) -> AsmResult<$ret> {
-            let constant = self.get(index)?;
+            let constant = self.get_res(index)?;
             let ConstValue::$variant( $($arg),* ) = constant.as_ref() else {
                 return AsmErr::IllegalArgument(
                     format!("cannot read const value from constant pool, cp_index: {}, constant: {:?}, required: ConstValue::{}",
@@ -46,7 +46,7 @@ macro_rules! read_const_curly {
         })*
     } => {
         $(pub fn $name(&self, index: u16) -> AsmResult<$ret> {
-            let constant = self.get(index)?;
+            let constant = self.get_res(index)?;
             let ConstValue::$variant{ $($arg),* } = constant.as_ref() else {
                 return AsmErr::IllegalArgument(
                     format!("cannot read const value from constant pool, cp_index: {}, constant: {:?}, required: ConstValue::{}",
@@ -89,8 +89,8 @@ impl ConstPool {
             .unwrap_or_else(|_| Constants::OBJECT_INTERNAL_NAME.as_rc())
     }
 
-    pub fn get(&self, index: u16) -> AsmResult<Rc<ConstValue>> {
-        self.get_with_ref(&index).clone_if_error()
+    pub fn get_res(&self, index: u16) -> AsmResult<Rc<ConstValue>> {
+        self.get(&index).clone_if_error()
     }
 
     fn read_const(&self, index: u16) -> AsmResult<ConstValue> {

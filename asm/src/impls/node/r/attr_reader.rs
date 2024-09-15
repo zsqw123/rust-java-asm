@@ -39,7 +39,7 @@ impl ConstPool {
                 max_stack, max_locals, code, exception_table,
                 attributes: jvms_attributes, ..
             } => {
-                let exception_table = exception_table.mapping(|et| {
+                let exception_table = exception_table.map(|et| {
                     ExceptionTable {
                         start: et.start_pc,
                         end: et.end_pc,
@@ -63,11 +63,11 @@ impl ConstPool {
             },
             JvmsAttribute::StackMapTable { entries, .. } => NodeAttribute::StackMapTable(entries.clone()),
             JvmsAttribute::Exceptions { exception_index_table, .. } => {
-                let exceptions = exception_index_table.mapping_res(|index| self.read_class_info(*index))?;
+                let exceptions = exception_index_table.map_res(|index| self.read_class_info(*index))?;
                 NodeAttribute::Exceptions(exceptions)
             },
             JvmsAttribute::InnerClasses { classes, .. } => {
-                let classes = classes.mapping_res(|inner_class| {
+                let classes = classes.map_res(|inner_class| {
                     let name = self.read_class_info(inner_class.inner_class_info_index)?;
                     let outer_name = self.read_class_info(inner_class.outer_class_info_index).ok();
                     let inner_name = self.read_utf8(inner_class.inner_name_index)?;
@@ -92,7 +92,7 @@ impl ConstPool {
                 NodeAttribute::LineNumberTable(line_number_table.clone())
             },
             JvmsAttribute::LocalVariableTable { local_variable_table, .. } => {
-                let local_variables = local_variable_table.mapping_res(|local_variable| {
+                let local_variables = local_variable_table.map_res(|local_variable| {
                     let start = local_variable.start_pc;
                     let length = local_variable.length;
                     let name = self.read_utf8(local_variable.name_index)?;
@@ -103,7 +103,7 @@ impl ConstPool {
                 NodeAttribute::LocalVariableTable(local_variables)
             },
             JvmsAttribute::LocalVariableTypeTable { local_variable_table, .. } => {
-                let local_variables = local_variable_table.mapping_res(|local_variable| {
+                let local_variables = local_variable_table.map_res(|local_variable| {
                     let start = local_variable.start_pc;
                     let length = local_variable.length;
                     let name = self.read_utf8(local_variable.name_index)?;
@@ -115,32 +115,32 @@ impl ConstPool {
             },
             JvmsAttribute::Deprecated => NodeAttribute::Deprecated,
             JvmsAttribute::RuntimeVisibleAnnotations { annotations, .. } => {
-                let annotations = annotations.mapping_res(|annotation|
+                let annotations = annotations.map_res(|annotation|
                     self.read_annotation_info(true, annotation))?;
                 NodeAttribute::RuntimeVisibleAnnotations(annotations)
             },
             JvmsAttribute::RuntimeInvisibleAnnotations { annotations, .. } => {
-                let annotations = annotations.mapping_res(|annotation|
+                let annotations = annotations.map_res(|annotation|
                     self.read_annotation_info(false, annotation))?;
                 NodeAttribute::RuntimeInvisibleAnnotations(annotations)
             },
             JvmsAttribute::RuntimeVisibleParameterAnnotations { parameter_annotations, .. } => {
-                let parameter_annotations = parameter_annotations.mapping_res(|parameter|
-                    parameter.annotations.mapping_res(|annotation| self.read_annotation_info(true, annotation)))?;
+                let parameter_annotations = parameter_annotations.map_res(|parameter|
+                    parameter.annotations.map_res(|annotation| self.read_annotation_info(true, annotation)))?;
                 NodeAttribute::RuntimeVisibleParameterAnnotations(parameter_annotations)
             },
             JvmsAttribute::RuntimeInvisibleParameterAnnotations { parameter_annotations, .. } => {
-                let parameter_annotations = parameter_annotations.mapping_res(|parameter|
-                    parameter.annotations.mapping_res(|annotation| self.read_annotation_info(false, annotation)))?;
+                let parameter_annotations = parameter_annotations.map_res(|parameter|
+                    parameter.annotations.map_res(|annotation| self.read_annotation_info(false, annotation)))?;
                 NodeAttribute::RuntimeInvisibleParameterAnnotations(parameter_annotations)
             },
             JvmsAttribute::RuntimeVisibleTypeAnnotations { annotations, .. } => {
-                let annotations = annotations.mapping_res(|annotation|
+                let annotations = annotations.map_res(|annotation|
                     self.read_type_annotation(true, annotation))?;
                 NodeAttribute::RuntimeVisibleTypeAnnotations(annotations)
             },
             JvmsAttribute::RuntimeInvisibleTypeAnnotations { annotations, .. } => {
-                let annotations = annotations.mapping_res(|annotation|
+                let annotations = annotations.map_res(|annotation|
                     self.read_type_annotation(false, annotation))?;
                 NodeAttribute::RuntimeInvisibleTypeAnnotations(annotations)
             },
@@ -149,15 +149,15 @@ impl ConstPool {
                 NodeAttribute::AnnotationDefault(value)
             },
             JvmsAttribute::BootstrapMethods { bootstrap_methods, .. } => {
-                let methods = bootstrap_methods.mapping_res(|method| {
-                    let method_handle = self.get(method.bootstrap_method_ref)?;
-                    let arguments = method.bootstrap_arguments.mapping_res(|arg| self.get(*arg))?;
+                let methods = bootstrap_methods.map_res(|method| {
+                    let method_handle = self.get_res(method.bootstrap_method_ref)?;
+                    let arguments = method.bootstrap_arguments.map_res(|arg| self.get_res(*arg))?;
                     BootstrapMethodAttr { method_handle, arguments }.ok()
                 })?;
                 NodeAttribute::BootstrapMethods(methods)
             },
             JvmsAttribute::MethodParameters { parameters, .. } => {
-                let parameters = parameters.mapping_res(|parameter| {
+                let parameters = parameters.map_res(|parameter| {
                     let name = self.read_utf8(parameter.name_index).ok();
                     let access = parameter.access_flags;
                     Ok(ParameterNode { name, access })
@@ -171,28 +171,28 @@ impl ConstPool {
                 let name = self.read_utf8(*module_name_index)?;
                 let access = *module_flags;
                 let version = self.read_utf8(*module_version_index).ok();
-                let requires = requires.mapping_res(|require| {
+                let requires = requires.map_res(|require| {
                     let module = self.read_module(require.requires_index)?;
                     let access = require.requires_flags;
                     let version = self.read_utf8(require.requires_version_index).ok();
                     Ok(ModuleRequireValue { module, access, version })
                 })?;
-                let exports = exports.mapping_res(|export| {
+                let exports = exports.map_res(|export| {
                     let package = self.read_package(export.exports_index)?;
                     let access = export.exports_flags;
-                    let modules = export.exports_to_index.mapping_res(|index| self.read_module(*index))?;
+                    let modules = export.exports_to_index.map_res(|index| self.read_module(*index))?;
                     Ok(ModuleExportValue { package, access, modules })
                 })?;
-                let opens = opens.mapping_res(|open| {
+                let opens = opens.map_res(|open| {
                     let package = self.read_package(open.opens_index)?;
                     let access = open.opens_flags;
-                    let modules = open.opens_to_index.mapping_res(|index| self.read_module(*index))?;
+                    let modules = open.opens_to_index.map_res(|index| self.read_module(*index))?;
                     Ok(ModuleOpenValue { package, access, modules })
                 })?;
-                let uses = uses_index.mapping_res(|index| self.read_class_info(*index))?;
-                let provides = provides.mapping_res(|provide| {
+                let uses = uses_index.map_res(|index| self.read_class_info(*index))?;
+                let provides = provides.map_res(|provide| {
                     let service = self.read_class_info(provide.provides_index)?;
-                    let providers = provide.provides_with_index.mapping_res(|index| self.read_class_info(*index))?;
+                    let providers = provide.provides_with_index.map_res(|index| self.read_class_info(*index))?;
                     Ok(ModuleProvidesValue { service, providers })
                 })?;
                 let attr_value = ModuleAttrValue {
@@ -201,7 +201,7 @@ impl ConstPool {
                 NodeAttribute::Module(attr_value)
             }
             JvmsAttribute::ModulePackages { package_index, .. } => {
-                let packages = package_index.mapping_res(|index| self.read_package(*index))?;
+                let packages = package_index.map_res(|index| self.read_package(*index))?;
                 NodeAttribute::ModulePackages(packages)
             },
             JvmsAttribute::ModuleMainClass { main_class_index } => {
@@ -213,17 +213,17 @@ impl ConstPool {
                 NodeAttribute::NestHost(host_class)
             },
             JvmsAttribute::NestMembers { classes, .. } => {
-                let classes = classes.mapping_res(|index| self.read_class_info(*index))?;
+                let classes = classes.map_res(|index| self.read_class_info(*index))?;
                 NodeAttribute::NestMembers(classes)
             },
             JvmsAttribute::Record { components, .. } => {
-                let components = components.mapping_res(|component| {
+                let components = components.map_res(|component| {
                     self.read_record(component)
                 })?;
                 NodeAttribute::Record(components)
             },
             JvmsAttribute::PermittedSubclasses { classes, .. } => {
-                let classes = classes.mapping_res(|index| self.read_class_info(*index))?;
+                let classes = classes.map_res(|index| self.read_class_info(*index))?;
                 NodeAttribute::PermittedSubclasses(classes)
             },
             _ => NodeAttribute::Unknown(UnknownAttribute {
@@ -275,7 +275,7 @@ impl ConstPool {
 
     fn read_annotation_info(&self, visible: bool, annotation: &AnnotationInfo) -> AsmResult<AnnotationNode> {
         let type_name = self.read_class_info(annotation.type_index)?;
-        let values = annotation.element_value_pairs.mapping_res(|pair| {
+        let values = annotation.element_value_pairs.map_res(|pair| {
             let element_name = self.read_utf8(pair.element_name_index)?;
             let value = self.read_annotation_value(visible, &pair.value.value)?;
             Ok((element_name, value))
@@ -286,7 +286,7 @@ impl ConstPool {
     fn read_annotation_value(&self, visible: bool, annotation: &AnnotationElementValue) -> AsmResult<AnnotationValue> {
         let value = match annotation {
             AnnotationElementValue::Const { const_value_index } => {
-                let value = self.get(*const_value_index)?;
+                let value = self.get_res(*const_value_index)?;
                 AnnotationValue::Const(value)
             },
             AnnotationElementValue::EnumConst { type_name_index, const_name_index } => {
@@ -303,7 +303,7 @@ impl ConstPool {
                 AnnotationValue::Annotation(annotation)
             },
             AnnotationElementValue::Array { values, .. } => {
-                let values = values.mapping_res(|value|
+                let values = values.map_res(|value|
                     self.read_annotation_value(visible, &value.value))?;
                 AnnotationValue::Array(values)
             },
