@@ -6,14 +6,15 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.4" # JAVA_ASM_VERSION
+version = "0.0.5" # JAVA_ASM_VERSION
 authors = ["zsqw123"]
 edition = "2021"
 license = "Apache-2.0"
 description = "Java bytecode reader & writer in rust"
 documentation = "https://github.com/zsqw123/rust-java-asm"
 repository = "https://github.com/zsqw123/rust-java-asm"
+homepage = "https://crates.io/crates/java_asm"
 readme = "README.md"
 
 [workspace.dependencies]
-java_asm_macro = { path = "asm_macro", version = "0.0.4" } # JAVA_ASM_VERSION
+java_asm_macro = { path = "asm_macro", version = "0.0.5" } # JAVA_ASM_VERSION

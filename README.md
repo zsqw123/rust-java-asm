@@ -1,6 +1,6 @@
 # java-asm
 
-![Crates.io Version](https://img.shields.io/crates/v/java_asm)
+[![Crates.io Version](https://img.shields.io/crates/v/java_asm)](https://crates.io/crates/java_asm)
 
 Java bytecode reader & writer, maybe a rust implementation for [ASM](https://gitlab.ow2.org/asm/asm)
 
@@ -18,7 +18,7 @@ This project supports much newer LTS Java version(Java 21 currently) than other 
 - [ ] **WIP**, ASM nodes reader
   - [x] Constant pool
   - [x] Attributes
-  - [ ] Class / Field / Method metadata
+  - [x] Class / Field / Method metadata
   - [ ] Method instructions
   - [ ] Method frames
   - [ ] Method local variables / stacks / try-catches
