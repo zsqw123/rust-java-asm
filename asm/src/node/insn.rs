@@ -1,5 +1,6 @@
+use std::rc::Rc;
 use crate::node::element::LabelNode;
-use crate::node::values::{ConstDynamic, LdcConst, StrRef};
+use crate::node::values::{ConstDynamic, ConstValue, StrRef};
 
 //noinspection SpellCheckingInspection
 #[derive(Clone, Debug)]
@@ -38,14 +39,10 @@ pub enum InsnNode {
         opcode: u8,
         label: LabelNode,
     },
-    LdcInsnNode(LdcConst),
-    LineNumberNode {
-        line: u16,
-        start: LabelNode,
-    },
+    LdcInsnNode(Rc<ConstValue>),
     LookupSwitchInsnNode {
-        dflt: LabelNode, // Beginning of the default handler block.
-        keys: Vec<u32>, 
+        default: LabelNode, // Beginning of the default handler block.
+        keys: Vec<i32>, 
         labels: Vec<LabelNode>,
     },
     MethodInsnNode {

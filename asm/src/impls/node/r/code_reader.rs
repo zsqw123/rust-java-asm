@@ -51,10 +51,18 @@ impl ClassNodeContext {
         let mut cur = 0usize;
 
         // read a 16bit const from index, in jvm bytecode, it stores high byte first (big-endian)
-        let const_from_index = |high_index: usize| -> u16 {
+        let read_u16 = |high_index: usize| -> u16 {
             let high = (code[high_index] as u16) << 8;
             let low = code[high_index + 1] as u16;
             high | low
+        };
+
+        let read_int = |high_index: usize| -> i32 {
+            let a = (code[high_index] as u32) << 24;
+            let b = (code[high_index + 1] as u32) << 16;
+            let c = (code[high_index + 2] as u32) << 8;
+            let d = code[high_index + 3] as u32;
+            (a | b | c | d) as i32
         };
 
         let mut res = vec![];
@@ -63,7 +71,7 @@ impl ClassNodeContext {
             match opcode {
                 // getstatic | indexbyte1 | indexbyte2
                 Opcodes::GETSTATIC | Opcodes::PUTSTATIC | Opcodes::GETFIELD | Opcodes::PUTFIELD => {
-                    let (owner, name, desc) = self.read_member(const_from_index(cur + 1))?;
+                    let (owner, name, desc) = self.read_member(read_u16(cur + 1))?;
                     res.push(FieldInsnNode { opcode, owner, name, desc });
                     cur += 3;
                 }
@@ -122,7 +130,7 @@ impl ClassNodeContext {
                 }
                 // sipush | byte1 | byte2
                 Opcodes::SIPUSH => {
-                    let operand = const_from_index(cur + 1) as i16;
+                    let operand = read_u16(cur + 1) as i16;
                     res.push(InsnNode::SIPushInsnNode { operand });
                     cur += 3;
                 }
@@ -135,7 +143,7 @@ impl ClassNodeContext {
                 // invokedynamic | indexbyte1 | indexbyte2 | 0 | 0
                 Opcodes::INVOKEDYNAMIC => {
                     let (bootstrap_method_attr_index, name, desc) =
-                        self.read_dynamic(const_from_index(cur + 1))?;
+                        self.read_dynamic(read_u16(cur + 1))?;
                     let bsm_attr = self.require_bms().get(bootstrap_method_attr_index as usize).ok_or_error(|| {
                         let error_message = format!("cannot find bootstrap method attribute at index: {}", bootstrap_method_attr_index);
                         Err(self.err(error_message))
@@ -148,14 +156,46 @@ impl ClassNodeContext {
                         let err_msg = "MethodHandle in BootstrapMethodAttr must be a MethodHandle";
                         AsmErr::IllegalArgument(err_msg.to_string()).e()?
                     };
-                    let const_dynamic = ConstDynamic {
-                        name,
-                        desc,
-                        bsm: handle.clone(),
-                        bsm_args,
-                    };
+                    let bsm = handle.clone();
+                    let const_dynamic = ConstDynamic { name, desc, bsm, bsm_args };
                     res.push(InsnNode::InvokeDynamicInsnNode(const_dynamic));
                     cur += 5;
+                }
+                // if<cond> | branchbyte1 | branchbyte2
+                Opcodes::IFLT | Opcodes::IFGE | Opcodes::IFGT | Opcodes::IFLE |
+                Opcodes::IF_ICMPEQ | Opcodes::IF_ICMPNE | Opcodes::IF_ICMPLT | Opcodes::IF_ICMPGE |
+                Opcodes::IF_ICMPGT | Opcodes::IF_ICMPLE | Opcodes::IF_ACMPEQ | Opcodes::IF_ACMPNE |
+                Opcodes::GOTO | Opcodes::JSR | Opcodes::IFNULL | Opcodes::IFNONNULL => {
+                    let label = read_u16(cur + 1);
+                    res.push(InsnNode::JumpInsnNode { opcode, label });
+                    cur += 3;
+                }
+                // ldc | index
+                Opcodes::LDC => {
+                    let const_value = self.cp.get_res(code[cur + 1] as u16)?;
+                    res.push(InsnNode::LdcInsnNode(const_value));
+                    cur += 2;
+                }
+                // lookupswitch | <0-3 bytes padding> |
+                // defaultbyte1 | defaultbyte2 | defaultbyte3 | defaultbyte4 |
+                // npairs1 | npairs2 | npairs3 | npairs4 |
+                // match-offset pairs...
+                Opcodes::LOOKUPSWITCH => {
+                    let lookup_start = cur as u16;
+                    cur += 1;
+                    let df_start = cur + 4 - (cur & 3);
+                    let default = read_int(df_start) as u16;
+                    let npairs = read_int(df_start + 4);
+                    let mut keys = vec![];
+                    let mut labels = vec![];
+                    cur += 8;
+                    for _ in 0..npairs {
+                        keys.push(read_int(cur));
+                        let offset = read_int(cur + 4) as u16;
+                        labels.push(lookup_start + offset);
+                        cur += 8;
+                    }
+                    res.push(InsnNode::LookupSwitchInsnNode { default, keys, labels });
                 }
                 _ => {}
             }
@@ -206,5 +246,4 @@ fn merge_local_variables(
     }
     local_variables
 }
-
 

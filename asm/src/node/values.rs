@@ -1,9 +1,7 @@
 use std::rc::Rc;
 
-use crate::asm_type::Type;
 use crate::impls::jvms::r::util::ToRcRef;
 use crate::node::element::{AnnotationNode, LabelNode};
-use crate::opcodes::Opcodes;
 
 #[derive(Clone, Debug)]
 pub enum ConstValue {
@@ -121,18 +119,6 @@ pub struct Handle {
     pub name: StrRef,
     // The descriptor of the field or method.
     pub desc: StrRef,
-}
-
-#[derive(Clone, Debug)]
-pub enum LdcConst {
-    Integer(i32),
-    Float(f32),
-    Long(i64),
-    Double(f64),
-    String(StrRef),
-    Class(Type),
-    Handle(Handle),
-    ConstDynamic(ConstDynamic),
 }
 
 #[derive(Clone, Debug)]
