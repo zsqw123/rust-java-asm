@@ -262,6 +262,12 @@ impl ClassNodeContext {
                     res.push(InsnNode::VarInsnNode { opcode, var_index });
                     cur += 2;
                 }
+                // iload_<n> | fload_<n> | aload_<n> | istore_<n> | fstore_<n> | astore_<n>
+                Opcodes::ILOAD_0..=Opcodes::ALOAD_3 | Opcodes::ISTORE_0..=Opcodes::ASTORE_3 => {
+                    res.push(InsnNode::NoOperand { opcode });
+                    cur += 1;
+                }
+                // wide
                 Opcodes::WIDE => {
                     let opcode = code[cur + 1];
                     if opcode == Opcodes::IINC {
