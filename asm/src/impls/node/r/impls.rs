@@ -2,9 +2,11 @@ use std::rc::Rc;
 
 use crate::err::{AsmErr, AsmResult};
 use crate::impls::node::r::node_reader::ClassNodeContext;
+use crate::impls::node::r::util::{once_vec_builder, once_vec_unpack};
+use crate::impls::node::r::util::OnceAsmVec;
 use crate::jvms::element::{ClassFile, FieldInfo, MethodInfo};
-use crate::node::element::{Attribute, ClassNode, FieldNode, MethodNode, ModuleNode, UnknownAttribute};
-use crate::node::values::{ConstValue, FieldInitialValue, ModuleAttrValue};
+use crate::node::element::{AnnotationNode, Attribute, ClassNode, FieldNode, InnerClassNode, MethodNode, ModuleNode, ParameterNode, RecordComponentNode, TypeAnnotationNode, UnknownAttribute};
+use crate::node::values::{ConstValue, FieldInitialValue, InternalNameRef, ModuleAttrValue};
 use crate::util::VecEx;
 
 pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
@@ -29,14 +31,17 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     let mut outer_method_name = None;
     let mut outer_method_desc = None;
 
-    let mut annotations = vec![];
-    let mut type_annotations = vec![];
+    once_vec_builder! {
+        let annotations: AnnotationNode;
+        let type_annotations: TypeAnnotationNode;
+        let inner_classes: InnerClassNode;
+        let nest_members: InternalNameRef;
+        let permitted_subclasses: InternalNameRef;
+        let record_components: RecordComponentNode;
+    }
+    
     let mut attrs = vec![];
-    let mut inner_classes = vec![];
     let mut nest_host_class = None;
-    let mut nest_members = vec![];
-    let mut permitted_subclasses = vec![];
-    let mut record_components = vec![];
 
     let name = class_context.name()?;
     // read raw class attributes
@@ -58,16 +63,16 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
             },
 
             // annotations
-            Attribute::RuntimeVisibleAnnotations(an) => annotations.extend(an),
-            Attribute::RuntimeInvisibleAnnotations(an) => annotations.extend(an),
-            Attribute::RuntimeVisibleTypeAnnotations(tan) => type_annotations.extend(tan),
-            Attribute::RuntimeInvisibleTypeAnnotations(tan) => type_annotations.extend(tan),
+            Attribute::RuntimeVisibleAnnotations(an) => annotations.put(an)?,
+            Attribute::RuntimeInvisibleAnnotations(an) => annotations.put(an)?,
+            Attribute::RuntimeVisibleTypeAnnotations(tan) => type_annotations.put(tan)?,
+            Attribute::RuntimeInvisibleTypeAnnotations(tan) => type_annotations.put(tan)?,
 
-            Attribute::InnerClasses(ic) => inner_classes.extend(ic),
+            Attribute::InnerClasses(ic) => inner_classes.put(ic)?,
             Attribute::NestHost(nh) => nest_host_class = Some(nh),
-            Attribute::NestMembers(nm) => nest_members.extend(nm),
-            Attribute::PermittedSubclasses(ps) => permitted_subclasses.extend(ps),
-            Attribute::Record(rc) => record_components.extend(rc),
+            Attribute::NestMembers(nm) => nest_members.put(nm)?,
+            Attribute::PermittedSubclasses(ps) => permitted_subclasses.put(ps)?,
+            Attribute::Record(rc) => record_components.put(rc)?,
             
             Attribute::BootstrapMethods(bm_attrs) => {
                 class_context.bootstrap_methods.set(bm_attrs).map_err(|prev| {
@@ -113,10 +118,17 @@ pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
         method_from_jvms(&class_context, method_info)
     })?;
 
+    let minor_version = *&jvms_file.minor_version;
+    let major_version = *&jvms_file.major_version;
+    let access = *&jvms_file.access_flags;
+
+    once_vec_unpack!(annotations, type_annotations, 
+        inner_classes, nest_members, permitted_subclasses, record_components);
+    
     let class_node = ClassNode {
-        minor_version: *&jvms_file.minor_version,
-        major_version: *&jvms_file.major_version,
-        access: *&jvms_file.access_flags,
+        minor_version,
+        major_version,
+        access,
         name, signature, super_name, interfaces, source_file, source_debug,
         module, outer_class, outer_method_name, outer_method_desc,
         annotations, type_annotations, inner_classes, nest_host_class, nest_members,
@@ -131,8 +143,10 @@ fn field_from_jvms(class_context: &ClassNodeContext, field_info: &FieldInfo) -> 
     let desc = class_context.read_utf8(field_info.descriptor_index)?;
     let mut signature = None;
     let mut value = None;
-    let mut annotations = vec![];
-    let mut type_annotations = vec![];
+    once_vec_builder! {
+        let annotations: AnnotationNode;
+        let type_annotations: TypeAnnotationNode;
+    }
     let mut attrs = vec![];
 
     for (attribute_info, attribute) in class_context.read_attrs(&field_info.attributes)? {
@@ -150,10 +164,10 @@ fn field_from_jvms(class_context: &ClassNodeContext, field_info: &FieldInfo) -> 
                     ).e()?,
                 }
             },
-            Attribute::RuntimeVisibleAnnotations(an) => annotations.extend(an),
-            Attribute::RuntimeInvisibleAnnotations(an) => annotations.extend(an),
-            Attribute::RuntimeVisibleTypeAnnotations(tan) => type_annotations.extend(tan),
-            Attribute::RuntimeInvisibleTypeAnnotations(tan) => type_annotations.extend(tan),
+            Attribute::RuntimeVisibleAnnotations(an) => annotations.put(an)?,
+            Attribute::RuntimeInvisibleAnnotations(an) => annotations.put(an)?,
+            Attribute::RuntimeVisibleTypeAnnotations(tan) => type_annotations.put(tan)?,
+            Attribute::RuntimeInvisibleTypeAnnotations(tan) => type_annotations.put(tan)?,
             Attribute::Unknown(v) => attrs.push(v),
             _ => attrs.push(UnknownAttribute {
                 name: class_context.read_utf8(attribute_info.attribute_name_index)?,
@@ -161,6 +175,8 @@ fn field_from_jvms(class_context: &ClassNodeContext, field_info: &FieldInfo) -> 
             }),
         }
     }
+
+    once_vec_unpack!(annotations, type_annotations);
 
     let field_node = FieldNode {
         name, access, desc, signature, value, annotations, type_annotations, attrs,
@@ -170,12 +186,15 @@ fn field_from_jvms(class_context: &ClassNodeContext, field_info: &FieldInfo) -> 
 
 fn method_from_jvms(class_context: &ClassNodeContext, method_info: &MethodInfo) -> AsmResult<MethodNode> {
     let mut signature = None;
-    let mut exceptions = vec![];
-    let mut parameters = vec![];
 
-    let mut annotations = vec![];
-    let mut type_annotations = vec![];
-    let mut parameter_annotations = vec![];
+    once_vec_builder! {
+        let exceptions: InternalNameRef;
+        let parameters: ParameterNode;
+        let annotations: AnnotationNode;
+        let type_annotations: TypeAnnotationNode;
+        let parameter_annotations: Vec<AnnotationNode>;
+    }
+    
     let mut attrs = vec![];
 
     let mut annotation_default = None;
@@ -186,15 +205,15 @@ fn method_from_jvms(class_context: &ClassNodeContext, method_info: &MethodInfo) 
     for (attribute_info, attribute) in all_attributes {
         match attribute {
             Attribute::Signature(s) => signature = Some(s),
-            Attribute::Exceptions(ex) => exceptions = ex,
-            Attribute::MethodParameters(ps) => parameters = ps,
+            Attribute::Exceptions(ex) => exceptions.put(ex)?,
+            Attribute::MethodParameters(ps) => parameters.put(ps)?,
 
-            Attribute::RuntimeVisibleAnnotations(an) => annotations.extend(an),
-            Attribute::RuntimeInvisibleAnnotations(an) => annotations.extend(an),
-            Attribute::RuntimeVisibleTypeAnnotations(tan) => type_annotations.extend(tan),
-            Attribute::RuntimeInvisibleTypeAnnotations(tan) => type_annotations.extend(tan),
-            Attribute::RuntimeVisibleParameterAnnotations(pan) => parameter_annotations.extend(pan),
-            Attribute::RuntimeInvisibleParameterAnnotations(pan) => parameter_annotations.extend(pan),
+            Attribute::RuntimeVisibleAnnotations(an) => annotations.put(an)?,
+            Attribute::RuntimeInvisibleAnnotations(an) => annotations.put(an)?,
+            Attribute::RuntimeVisibleTypeAnnotations(tan) => type_annotations.put(tan)?,
+            Attribute::RuntimeInvisibleTypeAnnotations(tan) => type_annotations.put(tan)?,
+            Attribute::RuntimeVisibleParameterAnnotations(pan) => parameter_annotations.put(pan)?,
+            Attribute::RuntimeInvisibleParameterAnnotations(pan) => parameter_annotations.put(pan)?,
 
             Attribute::AnnotationDefault(v) => annotation_default = Some(v),
 
@@ -209,6 +228,8 @@ fn method_from_jvms(class_context: &ClassNodeContext, method_info: &MethodInfo) 
             }),
         }
     }
+
+    once_vec_unpack!(exceptions, parameters, annotations, type_annotations, parameter_annotations);
 
     let access = method_info.access_flags;
     let desc = class_context.read_utf8(method_info.descriptor_index)?;
