@@ -1,6 +1,6 @@
 use std::rc::Rc;
 use crate::node::element::LabelNode;
-use crate::node::values::{ConstDynamic, ConstValue, StrRef};
+use crate::node::values::{ConstDynamic, ConstValue, InternalNameRef, StrRef};
 
 //noinspection SpellCheckingInspection
 #[derive(Clone, Debug)]
@@ -12,7 +12,7 @@ pub enum InsnNode {
         desc: StrRef,
     },
     IIncInsnNode {
-        var: u8, // index of the local variable to be incremented
+        var: u16, // index of the local variable to be incremented
         incr: i16,
     },
     NoOperand {
@@ -30,7 +30,6 @@ pub enum InsnNode {
     },
     BIPushInsnNode { operand: i8 },
     SIPushInsnNode { operand: i16 },
-    NewArrayInsnNode { array_type: u8 }, // T_BOOLEAN, T_CHAR, T_FLOAT, T_DOUBLE, T_BYTE, T_SHORT, T_INT, T_LONG
     InvokeDynamicInsnNode(ConstDynamic),
     JumpInsnNode {
         // the opcode of the type instruction to be constructed. This opcode must be IFEQ, IFNE,
@@ -40,9 +39,15 @@ pub enum InsnNode {
         label: LabelNode,
     },
     LdcInsnNode(Rc<ConstValue>),
+    TableSwitchInsnNode {
+        default: LabelNode, // Beginning of the default handler block.
+        min: i32, // The minimum key value.
+        max: i32, // The maximum key value.
+        labels: Vec<LabelNode>,
+    },
     LookupSwitchInsnNode {
         default: LabelNode, // Beginning of the default handler block.
-        keys: Vec<i32>, 
+        keys: Vec<i32>,
         labels: Vec<LabelNode>,
     },
     MethodInsnNode {
@@ -50,24 +55,18 @@ pub enum InsnNode {
         owner: StrRef, // internal name of the method's owner class
         name: StrRef,
         desc: StrRef,
-        is_interface: bool,
     },
+    NewArrayInsnNode { array_type: u8 }, // T_BOOLEAN, T_CHAR, T_FLOAT, T_DOUBLE, T_BYTE, T_SHORT, T_INT, T_LONG
     MultiANewArrayInsnNode {
-        desc: StrRef,
+        array_type: InternalNameRef,
         dims: u8, // Number of dimensions of the array to allocate.
-    },
-    TableSwitchInsnNode {
-        dflt: LabelNode, // Beginning of the default handler block.
-        min: i32, // The minimum key value.
-        max: i32, // The maximum key value.
-        labels: Vec<LabelNode>,
     },
     TypeInsnNode {
         opcode: u8, // NEW, ANEWARRAY, CHECKCAST or INSTANCEOF
-        desc: StrRef,
+        type_name: InternalNameRef,
     },
     VarInsnNode {
         opcode: u8, // ILOAD, LLOAD, FLOAD, DLOAD, ALOAD, ISTORE, LSTORE, FSTORE, DSTORE, ASTORE
-        var: u16, // index of the local variable to load or store
+        var_index: u16, // index of the local variable to load or store
     },
 }

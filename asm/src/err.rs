@@ -8,6 +8,7 @@ pub enum AsmErr {
     IllegalArgument(String),
     ReadUTF8(String),
     ResolveNode(String),
+    UnknownInsn(u8),
 }
 
 impl AsmErr {

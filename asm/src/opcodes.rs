@@ -127,6 +127,8 @@ impl Opcodes {
     pub const BIPUSH: u8 = 16; // visitIntInsn
     pub const SIPUSH: u8 = 17; // -
     pub const LDC: u8 = 18; // visitLdcInsn
+    pub const LDC_W: u8 = 19; // -
+    pub const LDC2_W: u8 = 20; // -
     pub const ILOAD: u8 = 21; // visitVarInsn
     pub const LLOAD: u8 = 22; // -
     pub const FLOAD: u8 = 23; // -
@@ -262,9 +264,12 @@ impl Opcodes {
     pub const INSTANCEOF: u8 = 193; // -
     pub const MONITORENTER: u8 = 194; // visitInsn
     pub const MONITOREXIT: u8 = 195; // -
+    pub const WIDE: u8 = 196;
     pub const MULTIANEWARRAY: u8 = 197; // visitMultiANewArrayInsn
     pub const IFNULL: u8 = 198; // visitJumpInsn
     pub const IFNONNULL: u8 = 199; // -
+    pub const GOTO_W: u8 = 200;
+    pub const JSR_W: u8 = 201;
 }
 
 impl OpcodesConsts {
@@ -310,7 +315,4 @@ impl OpcodesConsts {
     pub const ASTORE_1: u8 = 76;
     pub const ASTORE_2: u8 = 77;
     pub const ASTORE_3: u8 = 78;
-    pub const WIDE: u8 = 196;
-    pub const GOTO_W: u8 = 200;
-    pub const JSR_W: u8 = 201;
 }

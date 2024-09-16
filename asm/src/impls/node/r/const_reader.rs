@@ -7,7 +7,7 @@ use crate::impls::computable::{CacheableOwner, CacheAccessor};
 use crate::impls::jvms::r::util::ToRcRef;
 use crate::impls::node::r::node_reader::{ClassNodeContext, ConstComputableMap, ConstPool};
 use crate::jvms::element::Const;
-use crate::node::values::{ConstValue, DescriptorRef, Handle, StrRef};
+use crate::node::values::{ConstValue, DescriptorRef, Handle, InternalNameRef, StrRef};
 use crate::util::mutf8_to_string;
 
 impl CacheableOwner<u16, ConstValue, AsmErr> for ConstPool {
@@ -65,7 +65,7 @@ impl ConstPool {
     }
 
     read_const! {
-        read_class_info -> StrRef { Class(name) }
+        read_class_info -> InternalNameRef { Class(name) }
         read_utf8 -> StrRef { String(s) }
         read_module -> StrRef { Module(s) }
         read_package -> StrRef { Package(s) }

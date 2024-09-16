@@ -57,7 +57,13 @@ impl ClassNodeContext {
             high | low
         };
 
-        let read_int = |high_index: usize| -> i32 {
+        let read_i16 = |high_index: usize| -> i16 {
+            let high = (code[high_index] as u16) << 8;
+            let low = code[high_index + 1] as u16;
+            (high | low) as i16
+        };
+
+        let read_i32 = |high_index: usize| -> i32 {
             let a = (code[high_index] as u32) << 24;
             let b = (code[high_index + 1] as u32) << 16;
             let c = (code[high_index + 2] as u32) << 8;
@@ -77,7 +83,7 @@ impl ClassNodeContext {
                 }
                 // iinc | index | const
                 Opcodes::IINC => {
-                    let var = code[cur + 1];
+                    let var = code[cur + 1] as u16;
                     let incr = code[cur + 2] as i8 as i16;
                     res.push(InsnNode::IIncInsnNode { var, incr });
                     cur += 3;
@@ -166,7 +172,8 @@ impl ClassNodeContext {
                 Opcodes::IF_ICMPEQ | Opcodes::IF_ICMPNE | Opcodes::IF_ICMPLT | Opcodes::IF_ICMPGE |
                 Opcodes::IF_ICMPGT | Opcodes::IF_ICMPLE | Opcodes::IF_ACMPEQ | Opcodes::IF_ACMPNE |
                 Opcodes::GOTO | Opcodes::JSR | Opcodes::IFNULL | Opcodes::IFNONNULL => {
-                    let label = read_u16(cur + 1);
+                    let offset = read_i16(cur + 1) as i32;
+                    let label = ((cur as i32) + offset) as u16;
                     res.push(InsnNode::JumpInsnNode { opcode, label });
                     cur += 3;
                 }
@@ -184,20 +191,98 @@ impl ClassNodeContext {
                     let lookup_start = cur as u16;
                     cur += 1;
                     let df_start = cur + 4 - (cur & 3);
-                    let default = read_int(df_start) as u16;
-                    let npairs = read_int(df_start + 4);
+                    let default = read_i32(df_start) as u16;
+                    let npairs = read_i32(df_start + 4);
                     let mut keys = vec![];
                     let mut labels = vec![];
                     cur += 8;
                     for _ in 0..npairs {
-                        keys.push(read_int(cur));
-                        let offset = read_int(cur + 4) as u16;
+                        keys.push(read_i32(cur));
+                        let offset = read_i32(cur + 4) as u16;
                         labels.push(lookup_start + offset);
                         cur += 8;
                     }
                     res.push(InsnNode::LookupSwitchInsnNode { default, keys, labels });
                 }
-                _ => {}
+                // invoke | indexbyte1 | indexbyte2
+                Opcodes::INVOKEVIRTUAL | Opcodes::INVOKESPECIAL |
+                Opcodes::INVOKESTATIC | Opcodes::INVOKEINTERFACE => {
+                    let (owner, name, desc) = self.read_member(read_u16(cur + 1))?;
+                    res.push(InsnNode::MethodInsnNode { opcode, owner, name, desc });
+                    cur += 3;
+                }
+                // multianewarray | indexbyte1 | indexbyte2 | dimensions
+                Opcodes::MULTIANEWARRAY => {
+                    let array_type = self.read_class_info(read_u16(cur + 1))?;
+                    let dims = code[cur + 3];
+                    res.push(InsnNode::MultiANewArrayInsnNode { array_type, dims });
+                    cur += 4;
+                }
+                // tableswitch | <0-3 bytes padding> |
+                // defaultbyte1 | defaultbyte2 | defaultbyte3 | defaultbyte4 |
+                // lowbyte1 | lowbyte2 | lowbyte3 | lowbyte4 |
+                // highbyte1 | highbyte2 | highbyte3 | highbyte4 |
+                // jump offsets...
+                Opcodes::TABLESWITCH => {
+                    let table_start = cur as u16;
+                    cur += 1;
+                    let df_start = cur + 4 - (cur & 3);
+                    let default = read_i32(df_start) as u16;
+                    let min = read_i32(df_start + 4);
+                    let max = read_i32(df_start + 8);
+                    let mut labels = vec![];
+                    cur += 12;
+                    for _ in min..=max {
+                        let offset = read_i32(cur) as u16;
+                        labels.push(table_start + offset);
+                        cur += 4;
+                    }
+                    res.push(InsnNode::TableSwitchInsnNode { default, min, max, labels });
+                }
+                // instanceof | indexbyte1 | indexbyte2
+                Opcodes::NEW | Opcodes::ANEWARRAY | Opcodes::CHECKCAST | Opcodes::INSTANCEOF => {
+                    let type_name = self.read_class_info(read_u16(cur + 1))?;
+                    res.push(InsnNode::TypeInsnNode { opcode, type_name });
+                    cur += 3;
+                }
+                // iload | index
+                Opcodes::ILOAD | Opcodes::LLOAD | Opcodes::FLOAD | Opcodes::DLOAD | Opcodes::ALOAD |
+                Opcodes::ISTORE | Opcodes::LSTORE | Opcodes::FSTORE | Opcodes::DSTORE | Opcodes::ASTORE => {
+                    let var_index = code[cur + 1] as u16;
+                    res.push(InsnNode::VarInsnNode { opcode, var_index });
+                    cur += 2;
+                }
+                Opcodes::WIDE => {
+                    let opcode = code[cur + 1];
+                    if opcode == Opcodes::IINC {
+                        // wide | iinc | indexbyte1 | indexbyte2 | constbyte1 | constbyte2
+                        let var = read_u16(cur + 2);
+                        let incr = read_i16(cur + 4);
+                        res.push(InsnNode::IIncInsnNode { var, incr });
+                        cur += 6;
+                    } else {
+                        // wide | opcode | indexbyte1 | indexbyte2
+                        let var_index = read_u16(cur + 2);
+                        res.push(InsnNode::VarInsnNode { opcode, var_index });
+                        cur += 4;
+                    }
+                }
+                // goto_w | branchbyte1 | branchbyte2 | branchbyte3 | branchbyte4
+                Opcodes::GOTO_W | Opcodes::JSR_W => {
+                    let offset = read_i32(cur + 1);
+                    let label = ((cur as i32) + offset) as u16;
+                    res.push(InsnNode::JumpInsnNode { opcode, label });
+                    cur += 5;
+                }
+                // ldc_w | indexbyte1 | indexbyte2
+                Opcodes::LDC_W | Opcodes::LDC2_W => {
+                    let const_value = self.cp.get_res(read_u16(cur + 1))?;
+                    res.push(InsnNode::LdcInsnNode(const_value));
+                    cur += 3;
+                }
+                _ => {
+                    return AsmErr::UnknownInsn(opcode).e();
+                }
             }
         }
         Ok(vec![])
