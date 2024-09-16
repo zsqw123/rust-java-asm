@@ -2,10 +2,13 @@ use std::collections::HashMap;
 
 use crate::err::{AsmErr, AsmResult, AsmResultExt};
 use crate::impls::node::r::node_reader::ClassNodeContext;
-use crate::node::element::{Attribute, CodeAttribute, CodeBodyNode, LocalVariableNode};
+use crate::impls::node::r::util::{once_vec_builder, once_vec_unpack};
+use crate::impls::node::r::util::OnceAsmVec;
+use crate::jvms::attr::StackMapFrame;
+use crate::node::element::{Attribute, CodeAttribute, CodeBodyNode, LocalVariableNode, TypeAnnotationNode};
 use crate::node::insn::InsnNode;
 use crate::node::insn::InsnNode::FieldInsnNode;
-use crate::node::values::{BootstrapMethodArgument, ConstDynamic, ConstValue, FrameAttributeValue, LocalVariableInfo, LocalVariableTypeInfo};
+use crate::node::values::{BootstrapMethodArgument, ConstDynamic, ConstValue, LocalVariableInfo, LocalVariableTypeInfo};
 use crate::opcodes::Opcodes;
 use crate::util::VecEx;
 
@@ -14,22 +17,28 @@ impl ClassNodeContext {
         let CodeAttribute { max_stack, max_locals, code, exception_table, attributes } = code_attr;
         let instructions = self.read_code(code)?;
 
-        let mut local_variable_infos = vec![];
-        let mut local_variable_type_infos = vec![];
+        once_vec_builder! {
+            let local_variable_infos: LocalVariableInfo;
+            let local_variable_type_infos: LocalVariableTypeInfo;
+            let type_annotations: TypeAnnotationNode;
+            let stack_map_table: StackMapFrame;
+        }
 
-        let mut type_annotations = vec![];
         let mut unknown_attributes = vec![];
 
         for (attr_info, attr) in attributes {
             match attr {
-                Attribute::LocalVariableTable(lv) => local_variable_infos = lv,
-                Attribute::LocalVariableTypeTable(lv) => local_variable_type_infos = lv,
-                Attribute::RuntimeInvisibleTypeAnnotations(ta) => type_annotations.extend(ta),
-                Attribute::RuntimeVisibleTypeAnnotations(ta) => type_annotations.extend(ta),
+                Attribute::LocalVariableTable(lv) => local_variable_infos.put(lv)?,
+                Attribute::LocalVariableTypeTable(lv) => local_variable_type_infos.put(lv)?,
+                Attribute::RuntimeInvisibleTypeAnnotations(ta) => type_annotations.put(ta)?,
+                Attribute::RuntimeVisibleTypeAnnotations(ta) => type_annotations.put(ta)?,
+                Attribute::StackMapTable(table) => stack_map_table.put(table)?,
                 Attribute::Unknown(a) => unknown_attributes.push(a),
                 _ => unknown_attributes.push(self.unknown_attr(attr_info)?),
             }
         }
+
+        once_vec_unpack!(local_variable_infos, local_variable_type_infos, type_annotations, stack_map_table);
 
         let local_variables = merge_local_variables(
             local_variable_infos, local_variable_type_infos,
@@ -42,7 +51,8 @@ impl ClassNodeContext {
             max_stack,
             max_locals,
             type_annotations,
-            attrs: unknown_attributes,
+            stack_map_table,
+            unknown_attributes,
         })
     }
 
@@ -285,11 +295,6 @@ impl ClassNodeContext {
                 }
             }
         }
-        Ok(vec![])
-    }
-    
-    pub fn read_frames(&mut self, code: Vec<u8>) -> AsmResult<Vec<FrameAttributeValue>> {
-        // let 
         Ok(vec![])
     }
 }

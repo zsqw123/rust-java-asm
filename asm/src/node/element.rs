@@ -152,10 +152,12 @@ pub struct CodeBodyNode {
     /// it stores type annotations which located in local variable declarations,
     /// exception parameter declarations, expressions etc.
     pub type_annotations: Vec<TypeAnnotationNode>,
+    
+    pub stack_map_table: Vec<StackMapFrame>,
 
     /// The non-standard attributes of this code body.
     /// or didn't implement currently.
-    pub attrs: Vec<UnknownAttribute>,
+    pub unknown_attributes: Vec<UnknownAttribute>,
 }
 
 #[derive(Clone, Debug)]
