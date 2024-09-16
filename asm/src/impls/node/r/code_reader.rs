@@ -301,7 +301,7 @@ impl ClassNodeContext {
                 }
             }
         }
-        Ok(vec![])
+        Ok(res)
     }
 }
 

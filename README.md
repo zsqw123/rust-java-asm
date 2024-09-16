@@ -13,13 +13,17 @@ This project supports much newer LTS Java version(Java 21 currently) than other 
 
 ## Current Stage
 
+After version 0.0.6, you can try to use `ClassNode::from_jvms` to read a class file into a `ClassNode`, 
+and it is pretty useful to now, check [tests](asm/tests/node/read_test.rs) in this project to 
+see some examples.
+
 - [x] Implement **Read** Java class file with **[JVMS](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)** format
 - [x] Implement **Write** Java class file with **[JVMS](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)** format
-- [ ] **WIP**, ASM nodes reader
+- [ ] **WIP**, `ClassNode` reader
   - [x] Constant pool
   - [x] Attributes
   - [x] Class / Field / Method metadata
-  - [ ] Method instructions
+  - [x] Method instructions
   - [ ] Method frames
   - [ ] Method local variables / stacks / try-catches
 - [ ] **Not Start**, Nodes writer
