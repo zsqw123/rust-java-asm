@@ -4,9 +4,9 @@ use crate::jvms::attr::{LineNumberTableInfo, StackMapFrame};
 use crate::jvms::attr::Attribute as JvmsAttribute;
 use crate::jvms::attr::type_annotation::{TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
 use crate::jvms::element::AttributeInfo;
-use crate::node::insn::InsnNode;
+use crate::InsnNode;
 use crate::node::values::{AnnotationValue, ConstValue, DescriptorRef, FieldInitialValue, InternalNameRef, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue, StrRef};
-use crate::opcodes::Opcodes;
+use crate::Opcodes;
 
 #[derive(Clone, Debug)]
 pub struct ClassNode {

@@ -4,7 +4,7 @@ use crate::err::AsmResult;
 
 use crate::impls::node::r::impls::from_jvms_internal;
 use crate::jvms::element::ClassFile;
-use crate::jvms::JvmsClassReader;
+use crate::JvmsClassReader;
 use crate::node::element::ClassNode;
 
 pub mod option;

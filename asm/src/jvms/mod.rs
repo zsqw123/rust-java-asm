@@ -11,7 +11,6 @@ use crate::impls::ToRc;
 pub mod element;
 pub mod attr;
 
-
 pub struct JvmsClassReader {}
 
 impl JvmsClassReader {

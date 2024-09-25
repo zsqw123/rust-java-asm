@@ -6,10 +6,9 @@ use crate::impls::{once_vec_builder, once_vec_unpack};
 use crate::impls::OnceAsmVec;
 use crate::jvms::attr::StackMapFrame;
 use crate::node::element::{Attribute, CodeAttribute, CodeBodyNode, LocalVariableNode, TypeAnnotationNode};
-use crate::node::insn::InsnNode;
-use crate::node::insn::InsnNode::FieldInsnNode;
+use crate::InsnNode;
 use crate::node::values::{BootstrapMethodArgument, ConstDynamic, ConstValue, LocalVariableInfo, LocalVariableTypeInfo};
-use crate::opcodes::Opcodes;
+use crate::Opcodes;
 use crate::impls::VecEx;
 
 impl ClassNodeContext {
@@ -88,7 +87,7 @@ impl ClassNodeContext {
                 // getstatic | indexbyte1 | indexbyte2
                 Opcodes::GETSTATIC | Opcodes::PUTSTATIC | Opcodes::GETFIELD | Opcodes::PUTFIELD => {
                     let (owner, name, desc) = self.read_member(read_u16(cur + 1))?;
-                    res.push(FieldInsnNode { opcode, owner, name, desc });
+                    res.push(InsnNode::FieldInsnNode { opcode, owner, name, desc });
                     cur += 3;
                 }
                 // iinc | index | const

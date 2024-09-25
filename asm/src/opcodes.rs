@@ -9,8 +9,6 @@
  */
 pub struct Opcodes;
 
-pub struct OpcodesConsts;
-
 impl Opcodes {
     // Java ClassFile versions (the minor version is stored in the 16 most significant bits, and the
     // major version in the 16 least significant bits).
@@ -303,49 +301,4 @@ impl Opcodes {
     pub const IFNONNULL: u8 = 199; // -
     pub const GOTO_W: u8 = 200;
     pub const JSR_W: u8 = 201;
-}
-
-impl OpcodesConsts {
-    pub const LDC_W: u8 = 19;
-    pub const LDC2_W: u8 = 20;
-    pub const ILOAD_0: u8 = 26;
-    pub const ILOAD_1: u8 = 27;
-    pub const ILOAD_2: u8 = 28;
-    pub const ILOAD_3: u8 = 29;
-    pub const LLOAD_0: u8 = 30;
-    pub const LLOAD_1: u8 = 31;
-    pub const LLOAD_2: u8 = 32;
-    pub const LLOAD_3: u8 = 33;
-    pub const FLOAD_0: u8 = 34;
-    pub const FLOAD_1: u8 = 35;
-    pub const FLOAD_2: u8 = 36;
-    pub const FLOAD_3: u8 = 37;
-    pub const DLOAD_0: u8 = 38;
-    pub const DLOAD_1: u8 = 39;
-    pub const DLOAD_2: u8 = 40;
-    pub const DLOAD_3: u8 = 41;
-    pub const ALOAD_0: u8 = 42;
-    pub const ALOAD_1: u8 = 43;
-    pub const ALOAD_2: u8 = 44;
-    pub const ALOAD_3: u8 = 45;
-    pub const ISTORE_0: u8 = 59;
-    pub const ISTORE_1: u8 = 60;
-    pub const ISTORE_2: u8 = 61;
-    pub const ISTORE_3: u8 = 62;
-    pub const LSTORE_0: u8 = 63;
-    pub const LSTORE_1: u8 = 64;
-    pub const LSTORE_2: u8 = 65;
-    pub const LSTORE_3: u8 = 66;
-    pub const FSTORE_0: u8 = 67;
-    pub const FSTORE_1: u8 = 68;
-    pub const FSTORE_2: u8 = 69;
-    pub const FSTORE_3: u8 = 70;
-    pub const DSTORE_0: u8 = 71;
-    pub const DSTORE_1: u8 = 72;
-    pub const DSTORE_2: u8 = 73;
-    pub const DSTORE_3: u8 = 74;
-    pub const ASTORE_0: u8 = 75;
-    pub const ASTORE_1: u8 = 76;
-    pub const ASTORE_2: u8 = 77;
-    pub const ASTORE_3: u8 = 78;
 }

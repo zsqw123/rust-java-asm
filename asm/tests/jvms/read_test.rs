@@ -1,6 +1,6 @@
 use java_asm::err::AsmResult;
 use java_asm::jvms::element::ClassFile;
-use java_asm::jvms::JvmsClassReader;
+use java_asm::JvmsClassReader;
 
 #[test]
 fn read_jvms_test() {

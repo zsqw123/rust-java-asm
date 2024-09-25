@@ -1,4 +1,4 @@
-use java_asm::node::element::ClassNode;
+use java_asm::ClassNode;
 
 use crate::jvms::read_test::read_jvms;
 
