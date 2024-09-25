@@ -1,6 +1,7 @@
 pub use constants::*;
 pub use err::*;
 pub use jvms::*;
+pub use jvms_pub_utils::*;
 pub use node::*;
 pub use opcodes::*;
 
@@ -17,3 +18,4 @@ pub mod node;
 pub mod err;
 
 pub(crate) mod impls;
+mod jvms_pub_utils;
