@@ -6,7 +6,7 @@ use crate::impls::jvms::r::{FromReadContext, ReadContext};
 use crate::impls::jvms::r::transform::transform_class_file;
 use crate::impls::jvms::w::WriteContext;
 use crate::jvms::element::ClassFile;
-use crate::util::ToRc;
+use crate::impls::ToRc;
 
 pub mod element;
 pub mod attr;

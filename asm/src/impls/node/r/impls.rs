@@ -2,12 +2,12 @@ use std::rc::Rc;
 
 use crate::err::{AsmErr, AsmResult};
 use crate::impls::node::r::node_reader::ClassNodeContext;
-use crate::impls::node::r::util::{once_vec_builder, once_vec_unpack};
-use crate::impls::node::r::util::OnceAsmVec;
+use crate::impls::{once_vec_builder, once_vec_unpack};
+use crate::impls::OnceAsmVec;
 use crate::jvms::element::{ClassFile, FieldInfo, MethodInfo};
 use crate::node::element::{AnnotationNode, Attribute, ClassNode, FieldNode, InnerClassNode, MethodNode, ModuleNode, ParameterNode, RecordComponentNode, TypeAnnotationNode, UnknownAttribute};
 use crate::node::values::{ConstValue, FieldInitialValue, InternalNameRef, ModuleAttrValue};
-use crate::util::VecEx;
+use crate::impls::VecEx;
 
 pub fn from_jvms_internal(jvms_file: ClassFile) -> AsmResult<ClassNode> {
     let jvms_file = Rc::new(jvms_file);

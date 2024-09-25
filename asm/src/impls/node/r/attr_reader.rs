@@ -8,7 +8,7 @@ use crate::jvms::element::AttributeInfo;
 use crate::node::element::{AnnotationNode, BootstrapMethodAttr, CodeAttribute, EnclosingMethodAttribute, ExceptionTable, InnerClassNode, ParameterNode, RecordComponentNode, TypeAnnotationNode, UnknownAttribute};
 use crate::node::element::Attribute as NodeAttribute;
 use crate::node::values::{AnnotationValue, LocalVariableInfo, LocalVariableTypeInfo, ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue};
-use crate::util::{mutf8_to_string, VecEx};
+use crate::impls::{mutf8_to_string, VecEx};
 
 impl ClassNodeContext {
     pub fn read_class_attrs(&self) -> AsmResult<Vec<(AttributeInfo, NodeAttribute)>> {

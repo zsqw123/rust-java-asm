@@ -5,7 +5,7 @@ use crate::err::{AsmErr, AsmResult};
 use crate::constants::Constants;
 use crate::jvms::element::{Const, CPInfo};
 use crate::node::values::StrRef;
-use crate::util::mutf8_to_string;
+use crate::impls::mutf8_to_string;
 
 pub fn read_utf8_from_cp(index: usize, cp: &Vec<CPInfo>) -> AsmResult<StrRef> {
     let cp_info = &cp[index];

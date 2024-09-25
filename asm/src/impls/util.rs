@@ -1,3 +1,5 @@
+use std::cell::OnceCell;
+use std::fmt::Debug;
 use std::rc::Rc;
 
 use crate::err::{AsmErr, AsmResult};
@@ -49,7 +51,7 @@ use crate::node::values::StrRef;
 /// at the above example. Although UTF-8 need 21 bit, but MUTF-8 only needs to express 
 /// (0x10FFFF - 0x010000) = 0xFFFFF, and 0xFFFFF only needs 20 bit. We can simply add 
 /// 0x010000 to the 20 bit value to get the 21 bit UTF-8 value.
-pub fn mutf8_to_utf8(mutf8: &[u8]) -> AsmResult<Vec<u8>> {
+pub(crate) fn mutf8_to_utf8(mutf8: &[u8]) -> AsmResult<Vec<u8>> {
     let len = mutf8.len();
     let mut utf8 = Vec::with_capacity(len);
     let mut current_offset = 0;
@@ -107,7 +109,7 @@ pub fn mutf8_to_utf8(mutf8: &[u8]) -> AsmResult<Vec<u8>> {
     Ok(utf8)
 }
 
-pub fn mutf8_to_string(mutf8: &[u8]) -> AsmResult<StrRef> {
+pub(crate) fn mutf8_to_string(mutf8: &[u8]) -> AsmResult<StrRef> {
     let utf8 = mutf8_to_utf8(mutf8)?;
     match String::from_utf8(utf8) {
         Ok(str) => Ok(str.as_rc()),
@@ -115,7 +117,7 @@ pub fn mutf8_to_string(mutf8: &[u8]) -> AsmResult<StrRef> {
     }
 }
 
-pub fn utf8_to_mutf8(utf8: &[u8]) -> AsmResult<Vec<u8>> {
+pub(crate) fn utf8_to_mutf8(utf8: &[u8]) -> AsmResult<Vec<u8>> {
     let len = utf8.len();
     let mut mutf8 = Vec::with_capacity(len);
     let mut current_offset = 0;
@@ -194,3 +196,48 @@ impl<T> VecEx<T> for Vec<T> {
         self.iter().map(f).collect()
     }
 }
+
+pub struct OnceAsmVec<T> {
+    tag: &'static str,
+    vec: OnceCell<Vec<T>>,
+}
+
+impl<T> OnceAsmVec<T> {
+    pub fn new(tag: &'static str) -> Self {
+        Self { tag, vec: OnceCell::new() }
+    }
+
+    pub fn to_vec(self) -> Vec<T> {
+        self.vec.into_inner().unwrap_or_default()
+    }
+}
+
+impl<T: Debug> OnceAsmVec<T> {
+    pub fn put(&self, vec: Vec<T>) -> AsmResult<()> {
+        self.vec.set(vec).map_err(|origin| {
+            let err_msg = format!("{} already initialized with {:?}", self.tag, origin);
+            AsmErr::IllegalArgument(err_msg)
+        })
+    }
+}
+
+macro_rules! once_vec_builder {
+    {
+        $(let $name:ident: $vecType:ty;)*
+    } => {
+        $(
+            let $name = OnceAsmVec::<$vecType>::new(stringify!($name));
+        )*
+    };
+}
+
+macro_rules! once_vec_unpack {
+    { $($name:ident),* } => {
+        $(
+            let $name = $name.to_vec();
+        )*
+    };
+}
+
+pub(crate) use once_vec_builder;
+pub(crate) use once_vec_unpack;

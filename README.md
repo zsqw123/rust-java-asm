@@ -24,10 +24,20 @@ see some examples.
   - [x] Attributes
   - [x] Class / Field / Method metadata
   - [x] Method instructions
+  - [ ] Method frames (read as an attribute is available, need a better format)
+  - [ ] Method local variables / stacks / try-catches (read as an attribute is available, need a better format)
+- [ ] **Not Start**, Nodes writer (low priority currently)
+  - [ ] Append constant pool if needed
+  - [ ] Write back attributes into Class / Field / Method / Code
   - [ ] Method frames
-  - [ ] Method local variables / stacks / try-catches
-- [ ] **Not Start**, Nodes writer
 - [ ] **Not Start**, Implement ASM features (eg. auto calculate frame/stack etc.)
+
+### Goals
+
+1. Fully read and write Java class file with JVMS format.
+2. Partially implement ASM features in rust, but provides some better operations in rust.
+3. Support much newer Java version (Java 21 currently).
+4. Not depends on any of other rust libraries, build everything from std lib.
 
 ---
 

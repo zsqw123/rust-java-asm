@@ -2,15 +2,15 @@ use std::collections::HashMap;
 
 use crate::err::{AsmErr, AsmResult, AsmResultExt};
 use crate::impls::node::r::node_reader::ClassNodeContext;
-use crate::impls::node::r::util::{once_vec_builder, once_vec_unpack};
-use crate::impls::node::r::util::OnceAsmVec;
+use crate::impls::{once_vec_builder, once_vec_unpack};
+use crate::impls::OnceAsmVec;
 use crate::jvms::attr::StackMapFrame;
 use crate::node::element::{Attribute, CodeAttribute, CodeBodyNode, LocalVariableNode, TypeAnnotationNode};
 use crate::node::insn::InsnNode;
 use crate::node::insn::InsnNode::FieldInsnNode;
 use crate::node::values::{BootstrapMethodArgument, ConstDynamic, ConstValue, LocalVariableInfo, LocalVariableTypeInfo};
 use crate::opcodes::Opcodes;
-use crate::util::VecEx;
+use crate::impls::VecEx;
 
 impl ClassNodeContext {
     pub fn read_code_body(&self, code_attr: CodeAttribute) -> AsmResult<CodeBodyNode> {

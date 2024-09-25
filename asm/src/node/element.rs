@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use crate::asm_type::Type;
 use crate::jvms::attr::{LineNumberTableInfo, StackMapFrame};
 use crate::jvms::attr::Attribute as JvmsAttribute;
 use crate::jvms::attr::type_annotation::{TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
@@ -18,18 +17,18 @@ pub struct ClassNode {
     /// The class's access flags (see [Opcodes]).
     pub access: u16,
 
-    /// The internal name of this class (see [Type::get_internal_name]).
+    /// The internal name of this class.
     pub name: InternalNameRef,
 
     /// The signature of this class. May be [None].
     pub signature: Option<StrRef>,
 
-    /// The internal of name of the super class (see [Type::get_internal_name]).
+    /// The internal of name of the super class.
     /// For interfaces, the super class is `Object`. May be [None], but only for the
     /// `Object` class.
     pub super_name: Option<InternalNameRef>,
 
-    /// The internal names of the interfaces directly implemented by this class (see [Type::get_internal_name])
+    /// The internal names of the interfaces directly implemented by this class
     pub interfaces: Vec<InternalNameRef>,
 
     /// The name of the source file from which this class was compiled. May be [None].
@@ -41,7 +40,7 @@ pub struct ClassNode {
     /// The module stored in this class. May be [None].
     pub module: Option<ModuleNode>,
 
-    /// The internal name of the enclosing class of this class (see [Type::get_internal_name]).
+    /// The internal name of the enclosing class of this class.
     /// Must be [None] if this class is not a local or anonymous class.
     pub outer_class: Option<InternalNameRef>,
 
@@ -67,14 +66,14 @@ pub struct ClassNode {
     /// The inner classes of this class.
     pub inner_classes: Vec<InnerClassNode>,
 
-    /// The internal name of the nest host class of this class (see [Type::get_internal_name]). 
+    /// The internal name of the nest host class of this class. 
     /// May be [None].
     pub nest_host_class: Option<InternalNameRef>,
 
-    /// The internal names of the nest members of this class (see [Type::get_internal_name]). 
+    /// The internal names of the nest members of this class. 
     pub nest_members: Vec<InternalNameRef>,
 
-    /// The internal names of the permitted subclasses of this class (see [Type::get_internal_name]).
+    /// The internal names of the permitted subclasses of this class.
     pub permitted_subclasses: Vec<InternalNameRef>,
 
     /// The record components of this class.
@@ -101,7 +100,7 @@ pub struct MethodNode {
     /// The method's signature. May be [None].
     pub signature: Option<StrRef>,
 
-    /// The internal names of the method's exceptions (see [Type::get_internal_name]).
+    /// The internal names of the method's exceptions.
     pub exceptions: Vec<InternalNameRef>,
 
     /// The method parameter info.
@@ -162,10 +161,10 @@ pub struct CodeBodyNode {
 
 #[derive(Clone, Debug)]
 pub struct InnerClassNode {
-    /// The internal name of an inner class (see [Type::get_internal_name]).
+    /// The internal name of an inner class.
     pub name: InternalNameRef,
 
-    /// The internal name of the class to which the inner class belongs (see [Type::get_internal_name]).
+    /// The internal name of the class to which the inner class belongs.
     pub outer_name: Option<InternalNameRef>,
 
     /// The simple name of the inner class inside its enclosing class.
@@ -253,8 +252,8 @@ pub struct ModuleNode {
     
     /// The packages opened by this module.
     pub opens: Vec<ModuleOpenValue>,
-    
-    /// The internal names of the services used by this module (see [Type::get_internal_name]).
+
+    /// The internal names of the services used by this module.
     pub uses: Vec<InternalNameRef>,
     
     // The services provided by this module.
