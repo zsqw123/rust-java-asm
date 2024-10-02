@@ -25,8 +25,6 @@ pub trait CacheAccessor<K, V, E> where K: Clone + Eq + Hash {
     /// Compute it and insert the cloned key if the value is not existed,
     /// and insert the computed value into the map.
     fn get(&self, key: &K) -> ResultRc<V, E>;
-
-    fn values(&self) -> Vec<ResultRc<V, E>>;
 }
 
 impl<T, K, V, E> CacheAccessor<K, V, E> for T
@@ -50,11 +48,6 @@ impl<T, K, V, E> CacheAccessor<K, V, E> for T
             mut_map_ref.insert(key.clone(), computed);
             returned
         }
-    }
-
-    fn values(&self) -> Vec<ResultRc<V, E>> {
-        let internal_ref_map = self.cache_map().0.borrow();
-        internal_ref_map.values().cloned().collect()
     }
 }
 
