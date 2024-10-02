@@ -11,7 +11,7 @@ use crate::impls::ToRc;
 pub mod element;
 pub mod attr;
 
-pub struct JvmsClassReader {}
+pub struct JvmsClassReader;
 
 impl JvmsClassReader {
     pub fn read_class_file<T: Read>(read: T) -> AsmResult<ClassFile> {
@@ -33,7 +33,7 @@ impl JvmsClassReader {
 }
 
 
-pub struct JvmsClassWriter {}
+pub struct JvmsClassWriter;
 
 impl JvmsClassWriter {
     pub fn write_class_file<T: Write>(write: T, class_file: ClassFile) -> AsmResult<()> {

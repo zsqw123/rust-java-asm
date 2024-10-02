@@ -1,6 +1,8 @@
 use std::rc::Rc;
+
+use crate::{InternalNameRef, StrRef};
 use crate::node::element::LabelNode;
-use crate::node::values::{ConstDynamic, ConstValue, InternalNameRef, StrRef};
+use crate::node::values::{ConstDynamic, ConstValue};
 
 //noinspection SpellCheckingInspection
 #[derive(Clone, Debug)]

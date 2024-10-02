@@ -6,10 +6,10 @@ use crate::impls::{once_vec_builder, once_vec_unpack};
 use crate::impls::OnceAsmVec;
 use crate::jvms::attr::StackMapFrame;
 use crate::node::element::{Attribute, CodeAttribute, CodeBodyNode, LocalVariableNode, TypeAnnotationNode};
-use crate::InsnNode;
 use crate::node::values::{BootstrapMethodArgument, ConstDynamic, ConstValue, LocalVariableInfo, LocalVariableTypeInfo};
 use crate::Opcodes;
 use crate::impls::VecEx;
+use crate::node::InsnNode;
 
 impl ClassNodeContext {
     pub fn read_code_body(&self, code_attr: CodeAttribute) -> AsmResult<CodeBodyNode> {

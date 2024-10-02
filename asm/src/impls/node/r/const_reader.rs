@@ -1,14 +1,14 @@
 use std::ops::Deref;
 use std::rc::Rc;
 
+use crate::*;
 use crate::constants::Constants;
 use crate::err::{AsmErr, AsmResult, AsmResultRcExt};
-use crate::impls::computable::{CacheableOwner, CacheAccessor};
-use crate::impls::jvms::r::util::ToRcRef;
+use crate::impls::{mutf8_to_string, ToStringRef};
+use crate::impls::{CacheableOwner, CacheAccessor};
 use crate::impls::node::r::node_reader::{ClassNodeContext, ConstComputableMap, ConstPool};
 use crate::jvms::element::Const;
-use crate::node::values::{ConstValue, DescriptorRef, Handle, InternalNameRef, StrRef};
-use crate::impls::mutf8_to_string;
+use crate::node::values::{ConstValue, Handle};
 
 impl CacheableOwner<u16, ConstValue, AsmErr> for ConstPool {
     fn cache_map(&self) -> &ConstComputableMap {
@@ -86,7 +86,7 @@ impl ConstPool {
     #[inline]
     pub fn read_class_info_or_default(&self, index: u16) -> StrRef {
         self.read_class_info(index)
-            .unwrap_or_else(|_| Constants::OBJECT_INTERNAL_NAME.as_rc())
+            .unwrap_or_else(|_| (*Constants::OBJECT_INTERNAL_NAME).to_ref())
     }
 
     pub fn get_res(&self, index: u16) -> AsmResult<Rc<ConstValue>> {

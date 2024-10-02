@@ -1,10 +1,5 @@
-use std::cell::OnceCell;
-use std::fmt::Debug;
-use std::rc::Rc;
-
-use crate::err::{AsmErr, AsmResult};
-use crate::impls::jvms::r::util::ToRcRef;
-use crate::node::values::StrRef;
+use crate::{AsmErr, AsmResult, StrRef};
+use crate::impls::ToStringRef;
 
 /// Java MUTF-8 has 2 differences from UTF-8:
 /// 1. null characters (U+0000) are encoded as 2 bytes: 0xC0 0x80 (0x00 in UTF-8). So that 
@@ -112,7 +107,7 @@ pub(crate) fn mutf8_to_utf8(mutf8: &[u8]) -> AsmResult<Vec<u8>> {
 pub(crate) fn mutf8_to_string(mutf8: &[u8]) -> AsmResult<StrRef> {
     let utf8 = mutf8_to_utf8(mutf8)?;
     match String::from_utf8(utf8) {
-        Ok(str) => Ok(str.as_rc()),
+        Ok(str) => Ok(str.to_ref()),
         Err(e) => Err(AsmErr::ReadUTF8(e.to_string())),
     }
 }
@@ -155,7 +150,7 @@ pub(crate) fn utf8_to_mutf8(utf8: &[u8]) -> AsmResult<Vec<u8>> {
         // 4 bytes
         if byte1 >= 0xF0 && byte1 <= 0xF4 {
             let byte4 = utf8[current_offset + 3];
-            let code = ((byte1 as u32 & 0x07) << 18) | ((byte2 as u32 & 0x3F) << 12) | 
+            let code = ((byte1 as u32 & 0x07) << 18) | ((byte2 as u32 & 0x3F) << 12) |
                 ((byte3 as u32 & 0x3F) << 6) | (byte4 as u32 & 0x3F);
             let code = code - 0x010000;
             mutf8.push(0xED);
@@ -171,73 +166,3 @@ pub(crate) fn utf8_to_mutf8(utf8: &[u8]) -> AsmResult<Vec<u8>> {
     };
     Ok(mutf8)
 }
-
-pub(crate) trait ToRc<T> {
-    fn rc(self) -> Rc<T>;
-}
-
-impl<T> ToRc<T> for T {
-    fn rc(self) -> Rc<T> { Rc::new(self) }
-}
-
-pub(crate) trait VecEx<T> {
-    fn map_res<R>(&self, f: impl FnMut(&T) -> AsmResult<R>) -> AsmResult<Vec<R>>;
-    fn map<R>(&self, f: impl FnMut(&T) -> R) -> Vec<R>;
-}
-
-impl<T> VecEx<T> for Vec<T> {
-    #[inline]
-    fn map_res<R>(&self, f: impl FnMut(&T) -> AsmResult<R>) -> AsmResult<Vec<R>> {
-        self.iter().map(f).collect()
-    }
-
-    #[inline]
-    fn map<R>(&self, f: impl FnMut(&T) -> R) -> Vec<R> {
-        self.iter().map(f).collect()
-    }
-}
-
-pub struct OnceAsmVec<T> {
-    tag: &'static str,
-    vec: OnceCell<Vec<T>>,
-}
-
-impl<T> OnceAsmVec<T> {
-    pub fn new(tag: &'static str) -> Self {
-        Self { tag, vec: OnceCell::new() }
-    }
-
-    pub fn to_vec(self) -> Vec<T> {
-        self.vec.into_inner().unwrap_or_default()
-    }
-}
-
-impl<T: Debug> OnceAsmVec<T> {
-    pub fn put(&self, vec: Vec<T>) -> AsmResult<()> {
-        self.vec.set(vec).map_err(|origin| {
-            let err_msg = format!("{} already initialized with {:?}", self.tag, origin);
-            AsmErr::IllegalArgument(err_msg)
-        })
-    }
-}
-
-macro_rules! once_vec_builder {
-    {
-        $(let $name:ident: $vecType:ty;)*
-    } => {
-        $(
-            let $name = OnceAsmVec::<$vecType>::new(stringify!($name));
-        )*
-    };
-}
-
-macro_rules! once_vec_unpack {
-    { $($name:ident),* } => {
-        $(
-            let $name = $name.to_vec();
-        )*
-    };
-}
-
-pub(crate) use once_vec_builder;
-pub(crate) use once_vec_unpack;

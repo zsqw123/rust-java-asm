@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::impls::jvms::r::util::ToRcRef;
+use crate::*;
 use crate::node::element::{AnnotationNode, LabelNode};
 
 #[derive(Clone, Debug)]
@@ -214,29 +214,3 @@ pub struct ModuleProvidesValue {
     /// The internal names of the implementations of the service interface.
     pub providers: Vec<InternalNameRef>,
 }
-
-pub type StrRef = Rc<str>;
-
-/// eg: java/lang/Class
-pub type InternalNameRef = StrRef; 
-
-/// eg: java.lang.Class
-pub type QualifiedNameRef = StrRef;
-
-pub type DescriptorRef = StrRef;
-
-impl ToRcRef<str> for &str {
-    #[inline]
-    fn as_rc(&self) -> StrRef {
-        Rc::from(self.as_ref())
-    }
-}
-
-impl ToRcRef<str> for String {
-    #[inline]
-    fn as_rc(&self) -> StrRef {
-        Rc::from(self.as_ref())
-    }
-}
-
-

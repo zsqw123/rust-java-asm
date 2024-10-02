@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::rc::Rc;
 
 use crate::err::AsmErr;
-use crate::impls::computable::ComputableMap;
+use crate::impls::ComputableMap;
 use crate::jvms::element::{AttributeInfo, ClassFile, MethodInfo};
 use crate::node::element::{Attribute, BootstrapMethodAttr};
 use crate::node::values::ConstValue;

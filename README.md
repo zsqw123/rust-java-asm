@@ -31,6 +31,8 @@ see some examples.
   - [ ] Write back attributes into Class / Field / Method / Code
   - [ ] Method frames
 - [ ] **Not Start**, Implement ASM features (eg. auto calculate frame/stack etc.)
+- [ ] Smali liked output.
+- [ ] Dex interop. (https://source.android.com/docs/core/runtime/dex-format)
 
 ### Goals
 

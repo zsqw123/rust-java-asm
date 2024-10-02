@@ -4,10 +4,8 @@ use crate::err::AsmResult;
 
 use crate::impls::node::r::impls::from_jvms_internal;
 use crate::jvms::element::ClassFile;
-use crate::JvmsClassReader;
+use crate::jvms::JvmsClassReader;
 use crate::node::element::ClassNode;
-
-pub mod option;
 
 impl ClassNode {
     pub fn from_jvms(jvms_file: ClassFile) -> AsmResult<ClassNode> {
