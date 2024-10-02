@@ -4,8 +4,8 @@ use std::rc::Rc;
 
 use crate::err::AsmErr;
 use crate::impls::ComputableMap;
-use crate::jvms::element::{AttributeInfo, ClassFile, MethodInfo};
-use crate::node::element::{Attribute, BootstrapMethodAttr};
+use crate::jvms::element::ClassFile;
+use crate::node::element::BootstrapMethodAttr;
 use crate::node::values::ConstValue;
 
 pub struct ConstPool {
@@ -19,7 +19,6 @@ pub(crate) struct ClassNodeContext {
     pub bootstrap_methods: OnceCell<Vec<BootstrapMethodAttr>>,
 }
 
-pub type Attrs = Vec<(AttributeInfo, Attribute)>;
 pub type ConstComputableMap = ComputableMap<u16, ConstValue, AsmErr>;
 
 impl ClassNodeContext {
@@ -34,17 +33,17 @@ impl ClassNodeContext {
         let bootstrap_methods = OnceCell::default();
         ClassNodeContext {
             jvms_file: Rc::clone(&jvms_file),
-            cp,
-            bootstrap_methods,
+            cp, bootstrap_methods,
         }
     }
 
     // unsafe function, but only for internal use.
+    // we will ensure that bootstrap methods are correctly initialized before using it.
+    #[inline]
     pub fn require_bms(&self) -> &Vec<BootstrapMethodAttr> {
         self.bootstrap_methods.get().expect("bootstrap methods not initialized yet.")
     }
 }
-
 
 impl ConstPool {
     pub(crate) fn err<D: Display>(&self, msg: D) -> AsmErr {
@@ -53,9 +52,4 @@ impl ConstPool {
             None => AsmErr::ResolveNode(msg.to_string()),
         }
     }
-}
-
-pub(crate) struct MethodNodeContext {
-    pub jvms_file: Rc<ClassFile>,
-    pub method_info: Rc<MethodInfo>,
 }

@@ -17,7 +17,7 @@ impl<T: Debug> OnceAsmVec<T> {
     pub fn put(&self, vec: Vec<T>) -> AsmResult<()> {
         self.vec.set(vec).map_err(|origin| {
             let err_msg = format!("{} already initialized with {:?}", self.tag, origin);
-            AsmErr::IllegalArgument(err_msg)
+            AsmErr::IllegalFormat(err_msg)
         })
     }
 }

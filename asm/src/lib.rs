@@ -15,6 +15,10 @@ pub mod jvms;
 /// Quite similar with [ASM Tree API](https://asm.ow2.io/javadoc/org/objectweb/asm/tree/package-summary.html)
 pub mod node;
 
+/// dex interop for read dalvik bytecode.
+/// - [DEX Format](https://source.android.com/docs/core/runtime/dex-format)
+pub mod dex;
+
 mod err;
 mod pub_jvms_utils;
 mod pub_refs;

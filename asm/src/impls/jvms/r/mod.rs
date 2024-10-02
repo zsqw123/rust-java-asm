@@ -1,3 +1,8 @@
+pub use java_asm_macro::ReadFrom;
+
+use crate::AsmErr;
+use crate::err::AsmResult;
+
 pub(crate) mod jvms_reader;
 pub(crate) mod util;
 pub(crate) mod transform;
@@ -9,64 +14,59 @@ pub struct ReadContext<'a> {
 }
 
 impl ReadContext<'_> {
-    pub fn copy(&mut self) -> ReadContext {
-        ReadContext { bytes: self.bytes, index: self.index }
-    }
-
     #[inline]
-    pub fn paired(&mut self) -> (&[u8], &mut usize) {
-        (self.bytes, self.index)
+    pub fn get_and_inc(&mut self) -> AsmResult<u8> {
+        let current_index = *self.index;
+        let content = self.bytes.get(current_index).copied()
+            .ok_or_else(|| AsmErr::OutOfRange(current_index))?;
+        *self.index += 1;
+        Ok(content)
     }
 }
 
-pub use java_asm_macro::FromReadContext;
-use crate::err::AsmResult;
-
-pub trait FromReadContext<T> {
-    fn from_context(context: &mut ReadContext) -> AsmResult<T>;
+pub trait ReadFrom where Self: Sized {
+    fn read_from(context: &mut ReadContext) -> AsmResult<Self>;
 }
 
 impl ReadContext<'_> {
-    pub fn read<T: FromReadContext<T>>(&mut self) -> AsmResult<T> {
-        T::from_context(self)
+    #[inline]
+    pub fn read<T: ReadFrom>(&mut self) -> AsmResult<T> {
+        T::read_from(self)
     }
 
-    pub fn read_vec<T: FromReadContext<T>>(&mut self, vec_size: usize) -> AsmResult<Vec<T>> {
-        let mut vec = Vec::<T>::with_capacity(vec_size);
+    #[inline]
+    pub fn read_vec<T: ReadFrom>(&mut self, vec_size: usize) -> AsmResult<Vec<T>> {
+        let mut vec = Vec::with_capacity(vec_size);
         for _ in 0..vec_size {
-            vec.push(self.copy().read()?);
+            vec.push(self.read()?);
         }
         Ok(vec)
     }
 }
 
-impl FromReadContext<u8> for u8 {
-    fn from_context(context: &mut ReadContext) -> AsmResult<u8> {
-        let (bytes, index) = context.paired();
-        let content = bytes[*index];
-        *index += 1;
-        Ok(content)
+impl ReadFrom for u8 {
+    #[inline]
+    fn read_from(context: &mut ReadContext) -> AsmResult<u8> {
+        context.get_and_inc()
     }
 }
 
-impl FromReadContext<u16> for u16 {
-    fn from_context(context: &mut ReadContext) -> AsmResult<u16> {
-        let (bytes, index) = context.paired();
-        let h = (bytes[*index] as u16) << 8;
-        let l = bytes[*index + 1] as u16;
-        *index += 2;
+impl ReadFrom for u16 {
+    #[inline]
+    fn read_from(context: &mut ReadContext) -> AsmResult<u16> {
+        let h = (context.get_and_inc()? as u16) << 8;
+        let l = context.get_and_inc()? as u16;
         Ok(h | l)
     }
 }
 
-impl FromReadContext<u32> for u32 {
-    fn from_context(context: &mut ReadContext) -> AsmResult<u32> {
-        let (bytes, index) = context.paired();
-        let a = (bytes[*index] as u32) << 24;
-        let b = (bytes[*index + 1] as u32) << 16;
-        let c = (bytes[*index + 2] as u32) << 8;
-        let d = bytes[*index + 3] as u32;
-        *index += 4;
+impl ReadFrom for u32 {
+    #[inline]
+    fn read_from(context: &mut ReadContext) -> AsmResult<u32> {
+        let a = (context.get_and_inc()? as u32) << 24;
+        let b = (context.get_and_inc()? as u32) << 16;
+        let c = (context.get_and_inc()? as u32) << 8;
+        let d = context.get_and_inc()? as u32;
         Ok(a | b | c | d)
     }
 }

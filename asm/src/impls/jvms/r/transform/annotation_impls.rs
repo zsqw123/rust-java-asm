@@ -1,11 +1,11 @@
 use crate::err::{AsmErr, AsmResult};
-use crate::impls::jvms::r::{FromReadContext, ReadContext};
+use crate::impls::jvms::r::{ReadFrom, ReadContext};
 
 use crate::jvms::attr::annotation::{AnnotationElementValue, AnnotationElementValueInfo};
 use crate::jvms::attr::type_annotation::{TypeAnnotation, TypeAnnotationTargetInfo};
 
-impl FromReadContext<AnnotationElementValueInfo> for AnnotationElementValueInfo {
-    fn from_context(context: &mut ReadContext) -> AsmResult<AnnotationElementValueInfo> {
+impl ReadFrom for AnnotationElementValueInfo {
+    fn read_from(context: &mut ReadContext) -> AsmResult<AnnotationElementValueInfo> {
         let tag = context.read()?;
         let value = match tag {
             // byte, char, double, float, int, long, short, boolean, String
@@ -27,7 +27,7 @@ impl FromReadContext<AnnotationElementValueInfo> for AnnotationElementValueInfo 
                 let values = context.read_vec(num_values as usize)?;
                 AnnotationElementValue::Array { num_values, values }
             },
-            _ => return Err(AsmErr::IllegalArgument(
+            _ => return Err(AsmErr::IllegalFormat(
                 format!("unknown tag `{}` when reading an annotation element value.", tag))
             ),
         };
@@ -39,8 +39,8 @@ impl FromReadContext<AnnotationElementValueInfo> for AnnotationElementValueInfo 
 // type annotations impls
 // ---------------------------
 
-impl FromReadContext<TypeAnnotation> for TypeAnnotation {
-    fn from_context(context: &mut ReadContext) -> AsmResult<TypeAnnotation> {
+impl ReadFrom for TypeAnnotation {
+    fn read_from(context: &mut ReadContext) -> AsmResult<TypeAnnotation> {
         let target_type = context.read()?;
         let target_info = match target_type {
             0x00 | 0x01 => TypeAnnotationTargetInfo::TypeParameter { type_parameter_index: context.read()? },
@@ -63,7 +63,7 @@ impl FromReadContext<TypeAnnotation> for TypeAnnotation {
                 offset: context.read()?,
                 type_argument_index: context.read()?,
             },
-            _ => return Err(AsmErr::IllegalArgument(
+            _ => return Err(AsmErr::IllegalFormat(
                 format!("unknown target type {} when reading a type annotation.", target_type))
             ),
         };

@@ -35,10 +35,10 @@ use crate::impls::ToStringRef;
 /// 1111 0___, 10__ ____, 10__ ____, 10__ ____
 /// 1111 0100, 1000 1111, 1011 1111, 1011 1111
 ///
-/// MUTF8, 6 byte, 21bit, 10000 -> 10FFFF
-/// 1110 1101, 1010 ____, 10__ ____ // 10 byte
+/// MUTF8, 6 byte, 20bit, 10000 -> 10FFFF
+/// 1110 1101, 1010 ____, 10__ ____ // high 10 bit
 ///      ~~~~    ~~ UTF16 high surrogate
-/// 1110 1101, 1011 ____, 10__ ____ // 10 byte
+/// 1110 1101, 1011 ____, 10__ ____ // low 10 bit
 ///      ~~~~    ~~ UTF16 low surrogate
 /// ``` 
 /// MUTF-8 uses 20 bit to encode 4 byte UTF-8 which needs 21 bit to encode.

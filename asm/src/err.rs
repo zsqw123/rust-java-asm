@@ -3,11 +3,20 @@ use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub enum AsmErr {
-    ContentReadErr(Rc<io::Error>),
-    ContentWriteErr(Rc<io::Error>),
-    IllegalArgument(String),
+    // something wrong when trying to access invalid index.
+    // e.g. `constant_pool_count` declared it is 3, but `constant_pool` has only 2 elements.
+    OutOfRange(usize),
+    // io error while reading content.
+    IOReadErr(Rc<io::Error>),
+    // io error while writing content.
+    IOWriteErr(Rc<io::Error>),
+    // illegal format with custom messages.
+    IllegalFormat(String),
+    // illegal utf8 format when reading an utf8 character from the constant pool.
     ReadUTF8(String),
+    // illegal format when resolve jvms file into a node file.
     ResolveNode(String),
+    // unknown instruction.
     UnknownInsn(u8),
 }
 

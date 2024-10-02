@@ -1,4 +1,4 @@
-use java_asm_macro::{FromReadContext, IntoWriteContext};
+use java_asm_macro::{ReadFrom, WriteInto};
 use crate::jvms::attr::annotation::AnnotationElement;
 
 // type_annotation {
@@ -22,7 +22,7 @@ use crate::jvms::attr::annotation::AnnotationElement;
 //         element_value value;
 //     } element_value_pairs[num_element_value_pairs];
 // }
-#[derive(Clone, Debug, IntoWriteContext)]
+#[derive(Clone, Debug, WriteInto)]
 pub struct TypeAnnotation {
     pub target_type: u8,
     pub target_info: TypeAnnotationTargetInfo,
@@ -32,7 +32,7 @@ pub struct TypeAnnotation {
     pub element_value_pairs: Vec<AnnotationElement>,
 }
 
-#[derive(Clone, Debug, IntoWriteContext)]
+#[derive(Clone, Debug, WriteInto)]
 pub enum TypeAnnotationTargetInfo {
     TypeParameter { type_parameter_index: u8 },
     SuperType { supertype_index: u16 },
@@ -51,7 +51,7 @@ pub enum TypeAnnotationTargetInfo {
 //     u2 length;
 //     u2 index;
 // }
-#[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
+#[derive(Clone, Copy, Debug, ReadFrom, WriteInto)]
 pub struct TypeAnnotationTargetInfoLocalVarTable {
     pub start_pc: u16,
     pub length: u16,
@@ -64,7 +64,7 @@ pub struct TypeAnnotationTargetInfoLocalVarTable {
 //         u1 type_argument_index;
 //     } path[path_length];
 // }
-#[derive(Clone, Debug, FromReadContext, IntoWriteContext)]
+#[derive(Clone, Debug, ReadFrom, WriteInto)]
 pub struct TypeAnnotationTargetPath {
     pub path_length: u8,
     #[index(path_length)]
@@ -75,7 +75,7 @@ pub struct TypeAnnotationTargetPath {
 //     u1 type_path_kind;
 //     u1 type_argument_index;
 // }
-#[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
+#[derive(Clone, Copy, Debug, ReadFrom, WriteInto)]
 pub struct TypeAnnotationTargetPathInfo {
     pub type_path_kind: u8,
     pub type_argument_index: u8,

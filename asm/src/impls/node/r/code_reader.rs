@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
 use crate::err::{AsmErr, AsmResult, AsmResultExt};
-use crate::impls::node::r::node_reader::ClassNodeContext;
 use crate::impls::{once_vec_builder, once_vec_unpack};
+use crate::impls::node::r::node_reader::ClassNodeContext;
 use crate::impls::OnceAsmVec;
+use crate::impls::VecEx;
 use crate::jvms::attr::StackMapFrame;
 use crate::node::element::{Attribute, CodeAttribute, CodeBodyNode, LocalVariableNode, TypeAnnotationNode};
+use crate::node::InsnNode;
 use crate::node::values::{BootstrapMethodArgument, ConstDynamic, ConstValue, LocalVariableInfo, LocalVariableTypeInfo};
 use crate::Opcodes;
-use crate::impls::VecEx;
-use crate::node::InsnNode;
 
 impl ClassNodeContext {
     pub fn read_code_body(&self, code_attr: CodeAttribute) -> AsmResult<CodeBodyNode> {
@@ -168,8 +168,10 @@ impl ClassNodeContext {
                     )?;
                     let bm_handle = &bsm_attr.method_handle;
                     let ConstValue::MethodHandle(handle) = (*bm_handle).as_ref() else {
-                        let err_msg = "MethodHandle in BootstrapMethodAttr must be a MethodHandle";
-                        AsmErr::IllegalArgument(err_msg.to_string()).e()?
+                        let err_msg = format!(
+                            "MethodHandle in BootstrapMethodAttr(index: {}) must be a correct MethodHandle",
+                            bootstrap_method_attr_index);
+                        AsmErr::IllegalFormat(err_msg.to_string()).e()?
                     };
                     let bsm = handle.clone();
                     let const_dynamic = ConstDynamic { name, desc, bsm, bsm_args };
@@ -315,7 +317,7 @@ fn const_to_bsm_arg(c: ConstValue) -> AsmResult<BootstrapMethodArgument> {
         ConstValue::MethodHandle(h) => Ok(BootstrapMethodArgument::Handle(h)),
         _ => {
             let err_msg = format!("cannot convert correspond const value to bootstrap method argument: {:?}", c);
-            Err(AsmErr::IllegalArgument(err_msg))
+            Err(AsmErr::IllegalFormat(err_msg))
         },
     }
 }

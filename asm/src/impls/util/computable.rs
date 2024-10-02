@@ -30,6 +30,7 @@ pub trait CacheAccessor<K, V, E> where K: Clone + Eq + Hash {
 impl<T, K, V, E> CacheAccessor<K, V, E> for T
     where T: CacheableOwner<K, V, E>,
           K: Clone + Eq + Hash {
+    #[inline]
     fn get(&self, key: &K) -> ResultRc<V, E> {
         let map_ref = self.cache_map().0.borrow();
         return if let Some(value) = map_ref.get(key) {

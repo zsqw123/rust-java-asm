@@ -1,12 +1,12 @@
 use crate::err::{AsmErr, AsmResult};
 
 use crate::constants::Constants;
-use crate::impls::jvms::r::{FromReadContext, ReadContext};
+use crate::impls::jvms::r::{ReadFrom, ReadContext};
 use crate::jvms::attr::Attribute;
 use crate::jvms::element::{AttributeInfo, ClassFile, Const, CPInfo, FieldInfo, MethodInfo};
 
-impl FromReadContext<ClassFile> for ClassFile {
-    fn from_context(context: &mut ReadContext) -> AsmResult<ClassFile> {
+impl ReadFrom for ClassFile {
+    fn read_from(context: &mut ReadContext) -> AsmResult<ClassFile> {
         let magic: u32 = context.read()?;
         let minor_version: u16 = context.read()?;
         let major_version: u16 = context.read()?;
@@ -57,10 +57,10 @@ fn cp_infos_from_context(context: &mut ReadContext, max_len: usize) -> AsmResult
     Ok(result)
 }
 
-impl FromReadContext<AttributeInfo> for AttributeInfo {
+impl ReadFrom for AttributeInfo {
     /// Returns raw attributes in this section,
     /// All attributes will be treated at [Attribute::Custom]
-    fn from_context(context: &mut ReadContext) -> AsmResult<AttributeInfo> {
+    fn read_from(context: &mut ReadContext) -> AsmResult<AttributeInfo> {
         let attribute_name_index: u16 = context.read()?;
         let attribute_length: u32 = context.read()?;
         let attribute_vec: Vec<u8> = context.read_vec(attribute_length as usize)?;
@@ -87,7 +87,7 @@ impl Const {
                         let length: u16 = context.read()?;
                         Const::Utf8 { length, bytes: context.read_vec(length as usize)? }
                     }
-                    _ => return Err(AsmErr::IllegalArgument(
+                    _ => return Err(AsmErr::IllegalFormat(
                         format!("unknown const tag in const pool: {}", tag),
                     )),
                 }

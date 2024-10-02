@@ -9,14 +9,14 @@ pub fn read_utf8_from_cp(index: usize, cp: &Vec<CPInfo>) -> AsmResult<StrRef> {
     let CPInfo { tag, info } = cp_info;
     let tag = *tag;
     if tag != Constants::CONSTANT_Utf8 {
-        return AsmErr::IllegalArgument(
+        return AsmErr::IllegalFormat(
             format!("cannot read utf8 from constant pool, current cp tag: {}, index: {}", tag, index)
         ).e();
     };
     if let Const::Utf8 { bytes, .. } = info {
         return mutf8_to_string(bytes);
     };
-    AsmErr::IllegalArgument(
+    AsmErr::IllegalFormat(
         format!("cannot read utf8 from constant pool, index: {}", index)
     ).e()
 }

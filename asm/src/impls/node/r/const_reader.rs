@@ -29,7 +29,7 @@ macro_rules! read_const {
         $(pub fn $name(&self, index: u16) -> AsmResult<$ret> {
             let constant = self.get_res(index)?;
             let ConstValue::$variant( $($arg),* ) = constant.as_ref() else {
-                return AsmErr::IllegalArgument(
+                return AsmErr::IllegalFormat(
                     format!("cannot read const value from constant pool, cp_index: {}, constant: {:?}, required: ConstValue::{}",
                         index, constant, stringify!($variant))
                 ).e();
@@ -48,7 +48,7 @@ macro_rules! read_const_curly {
         $(pub fn $name(&self, index: u16) -> AsmResult<$ret> {
             let constant = self.get_res(index)?;
             let ConstValue::$variant{ $($arg),* } = constant.as_ref() else {
-                return AsmErr::IllegalArgument(
+                return AsmErr::IllegalFormat(
                     format!("cannot read const value from constant pool, cp_index: {}, constant: {:?}, required: ConstValue::{}",
                         index, constant, stringify!($variant))
                 ).e();
@@ -89,6 +89,7 @@ impl ConstPool {
             .unwrap_or_else(|_| (*Constants::OBJECT_INTERNAL_NAME).to_ref())
     }
 
+    #[inline]
     pub fn get_res(&self, index: u16) -> AsmResult<Rc<ConstValue>> {
         self.get(&index).clone_if_error()
     }
@@ -150,5 +151,6 @@ impl ConstPool {
 
 impl Deref for ClassNodeContext {
     type Target = ConstPool;
+    #[inline]
     fn deref(&self) -> &ConstPool { &self.cp }
 }

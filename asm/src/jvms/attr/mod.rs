@@ -1,4 +1,4 @@
-use java_asm_macro::{FromReadContext, IntoWriteContext};
+use java_asm_macro::{ReadFrom, WriteInto};
 
 use crate::jvms::attr::annotation::{AnnotationElementValueInfo, AnnotationInfo, ParameterAnnotationInfo};
 use crate::jvms::attr::module::{ModuleExports, ModuleOpens, ModuleProvides, ModuleRequires};
@@ -10,7 +10,7 @@ pub mod annotation;
 pub mod module;
 pub mod type_annotation;
 
-#[derive(Clone, Debug, IntoWriteContext)]
+#[derive(Clone, Debug, WriteInto)]
 pub enum Attribute {
     Custom(Vec<u8>),
     // ConstantValue_attribute {
@@ -339,7 +339,7 @@ pub enum Attribute {
 //     u2 inner_name_index; // CONSTANT_Utf8_info
 //     u2 inner_class_access_flags;
 // }
-#[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
+#[derive(Clone, Copy, Debug, ReadFrom, WriteInto)]
 pub struct InnerClassInfo {
     pub inner_class_info_index: u16,
     pub outer_class_info_index: u16,
@@ -351,7 +351,7 @@ pub struct InnerClassInfo {
 //     u2 start_pc;
 //     u2 line_number;
 // }
-#[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
+#[derive(Clone, Copy, Debug, ReadFrom, WriteInto)]
 pub struct LineNumberTableInfo {
     pub start_pc: LabelNode,
     pub line_number: u16,
@@ -364,7 +364,7 @@ pub struct LineNumberTableInfo {
 //     u2 descriptor_index; // CONSTANT_Utf8_info
 //     u2 index;
 // }
-#[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
+#[derive(Clone, Copy, Debug, ReadFrom, WriteInto)]
 pub struct LocalVariableTableInfo {
     pub start_pc: LabelNode,
     pub length: u16,
@@ -381,7 +381,7 @@ pub struct LocalVariableTableInfo {
 //     u2 signature_index; // CONSTANT_Utf8_info
 //     u2 index;
 // }
-#[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
+#[derive(Clone, Copy, Debug, ReadFrom, WriteInto)]
 pub struct LocalVariableTypeTableInfo {
     pub start_pc: LabelNode,
     pub length: u16,
@@ -402,7 +402,7 @@ pub struct LocalVariableTypeTableInfo {
 //     Object_variable_info; // ITEM_Object CONSTANT_Class_info
 //     Uninitialized_variable_info; // ITEM_Uninitialized
 // }
-#[derive(Clone, Copy, Debug, IntoWriteContext)]
+#[derive(Clone, Copy, Debug, WriteInto)]
 pub enum VerificationTypeInfo {
     Top { tag: u8 },
     Integer { tag: u8 },
@@ -424,7 +424,7 @@ pub enum VerificationTypeInfo {
 //     append_frame; // APPEND; /* 252-254 */
 //     full_frame; // FULL_FRAME; /* 255 */
 // }
-#[derive(Clone, Debug, IntoWriteContext)]
+#[derive(Clone, Debug, WriteInto)]
 pub enum StackMapFrame {
     SameFrame { frame_type: u8 },
     SameFrameExtended { frame_type: u8, offset_delta: u16 },
@@ -459,7 +459,7 @@ pub enum StackMapFrame {
 //     u2 handler_pc;
 //     u2 catch_type; // CONSTANT_Class_info
 // }
-#[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
+#[derive(Clone, Copy, Debug, ReadFrom, WriteInto)]
 pub struct ExceptionTable {
     pub start_pc: LabelNode,
     pub end_pc: LabelNode,
@@ -472,7 +472,7 @@ pub struct ExceptionTable {
 //     u2 num_bootstrap_arguments;
 //     u2 bootstrap_arguments[num_bootstrap_arguments];  // valid index in const_pool
 // }
-#[derive(Clone, Debug, FromReadContext, IntoWriteContext)]
+#[derive(Clone, Debug, ReadFrom, WriteInto)]
 pub struct BootstrapMethod {
     pub bootstrap_method_ref: u16,
     pub num_bootstrap_arguments: u16,
@@ -484,7 +484,7 @@ pub struct BootstrapMethod {
 //     u2 name_index;
 //     u2 access_flags;
 // }
-#[derive(Clone, Copy, Debug, FromReadContext, IntoWriteContext)]
+#[derive(Clone, Copy, Debug, ReadFrom, WriteInto)]
 pub struct MethodParameter {
     pub name_index: u16,
     pub access_flags: u16,
@@ -496,7 +496,7 @@ pub struct MethodParameter {
 //     u2             attributes_count;
 //     attribute_info attributes[attributes_count];
 // }
-#[derive(Clone, Debug, FromReadContext, IntoWriteContext)]
+#[derive(Clone, Debug, ReadFrom, WriteInto)]
 pub struct RecordComponentInfo {
     pub name_index: u16,
     pub descriptor_index: u16,

@@ -1,10 +1,10 @@
 use crate::err::{AsmErr, AsmResult};
-use crate::impls::jvms::r::{FromReadContext, ReadContext};
+use crate::impls::jvms::r::{ReadFrom, ReadContext};
 use crate::impls::jvms::r::frame::Frame;
 use crate::jvms::attr::{StackMapFrame, VerificationTypeInfo};
 
-impl FromReadContext<VerificationTypeInfo> for VerificationTypeInfo {
-    fn from_context(context: &mut ReadContext) -> AsmResult<VerificationTypeInfo> {
+impl ReadFrom for VerificationTypeInfo {
+    fn read_from(context: &mut ReadContext) -> AsmResult<VerificationTypeInfo> {
         let tag: u8 = context.read()?;
         let type_info = match tag {
             Frame::ITEM_Top => VerificationTypeInfo::Top { tag },
@@ -16,7 +16,7 @@ impl FromReadContext<VerificationTypeInfo> for VerificationTypeInfo {
             Frame::ITEM_Uninitialized => VerificationTypeInfo::Uninitialized { tag, offset: context.read()? },
             Frame::ITEM_Long => VerificationTypeInfo::Long { tag },
             Frame::ITEM_Double => VerificationTypeInfo::Double { tag },
-            _ => return Err(AsmErr::IllegalArgument(
+            _ => return Err(AsmErr::IllegalFormat(
                 format!("unknown frame tag: {}", tag)
             ))
         };
@@ -24,8 +24,8 @@ impl FromReadContext<VerificationTypeInfo> for VerificationTypeInfo {
     }
 }
 
-impl FromReadContext<StackMapFrame> for StackMapFrame {
-    fn from_context(context: &mut ReadContext) -> AsmResult<StackMapFrame> {
+impl ReadFrom for StackMapFrame {
+    fn read_from(context: &mut ReadContext) -> AsmResult<StackMapFrame> {
         let frame_type: u8 = context.read()?;
         let frame = match frame_type {
             0..=63 => StackMapFrame::SameFrame { frame_type },
@@ -62,7 +62,7 @@ impl FromReadContext<StackMapFrame> for StackMapFrame {
                     frame_type, offset_delta, number_of_locals, locals, number_of_stack_items, stack,
                 }
             },
-            _ => return Err(AsmErr::IllegalArgument(
+            _ => return Err(AsmErr::IllegalFormat(
                 format!("unknown frame type: {}", frame_type)
             ))
         };
