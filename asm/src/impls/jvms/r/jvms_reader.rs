@@ -73,7 +73,7 @@ impl ReadFrom for AttributeInfo {
 }
 
 impl Const {
-    #[allow(unused_variables)]
+    #[allow(unused_variables)] // rust can not analyze the usages which captured by macro.
     fn from_context(context: &mut ReadContext, tag: u8) -> AsmResult<Const> {
         macro_rules! match_context {
             {$($constName:ident => $constType:ident {

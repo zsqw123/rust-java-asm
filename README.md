@@ -38,8 +38,9 @@ see some examples.
 
 1. Fully read and write Java class file with JVMS format.
 2. Partially implement ASM features in rust, but provides some better operations in rust.
-3. Support much newer Java version (Java 21 currently).
-4. Not depends on any of other rust libraries, build everything from std lib.
+3. Support much newer Java version (higher priority for LTS, Java 21 currently).
+4. Not depends on any of other rust libraries at runtime, build everything from std only. (but some proc marco's
+   dependencies are used for generate some template codes. e.g. `quote` and `syn`)
 
 ---
 
