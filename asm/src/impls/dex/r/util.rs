@@ -1,43 +1,7 @@
 use crate::{AsmErr, AsmResult};
+use crate::dex::elements::*;
 use crate::err::AsmResultOkExt;
 use crate::impls::jvms::r::{ReadContext, ReadFrom};
-
-// dex types
-pub type DByte = i8;
-pub type DUByte = u8;
-pub type DShort = i16;
-pub type DUShort = u16;
-pub type DInt = i32;
-pub type DUInt = u32;
-pub type DLong = i64;
-pub type DULong = u64;
-
-pub struct DSleb128(u32);
-pub struct DULeb128(u32);
-pub struct DULeb128P1(u32);
-
-impl DSleb128 {
-    #[inline]
-    pub const fn value(&self) -> i32 {
-        self.0 as i32
-    }
-}
-
-impl DULeb128 {
-    #[inline]
-    pub const fn value(&self) -> u32 {
-        self.0
-    }
-}
-
-impl DULeb128P1 {
-    // -1 is used for representing null
-    #[inline]
-    pub const fn value(&self) -> Option<u32> {
-        let internal = self.0;
-        if internal == 0 { None } else { Some(internal - 1) }
-    }
-}
 
 impl ReadFrom for DByte {
     #[inline]
