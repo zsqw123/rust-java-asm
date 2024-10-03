@@ -25,8 +25,7 @@ impl JvmsClassReader {
     }
 
     pub fn read_class_bytes(bytes: &[u8]) -> AsmResult<ClassFile> {
-        let index = &mut 0;
-        let raw_file = ClassFile::read_from(&mut ReadContext { bytes, index })?;
+        let raw_file = ClassFile::read_from(&mut ReadContext::big_endian(bytes))?;
         let transformed = transform_class_file(raw_file)?;
         Ok(transformed)
     }

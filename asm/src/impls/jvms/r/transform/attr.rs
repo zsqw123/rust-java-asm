@@ -12,7 +12,7 @@ pub(crate) fn transform_attr(attribute_info: &AttributeInfo, cp: &Vec<CPInfo>) -
     let attribute_length = attribute_info.attribute_length;
     let info = attribute_info.info.clone();
     let Attribute::Custom(bytes) = info else { return Ok(attribute_info.clone()); };
-    let mut context = ReadContext { bytes: &bytes, index: &mut 0 };
+    let mut context = ReadContext::big_endian(&bytes);
     let utf8 = read_utf8_from_cp(attribute_name_index as usize, cp)?;
     let attr = match utf8.as_ref() {
         Constants::CONSTANT_VALUE => Attribute::ConstantValue {

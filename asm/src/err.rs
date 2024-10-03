@@ -18,6 +18,8 @@ pub enum AsmErr {
     ResolveNode(String),
     // unknown instruction.
     UnknownInsn(u8),
+    // invalid leb128 format for dex at specific offset.
+    InvalidLEB128(usize),
 }
 
 impl AsmErr {
