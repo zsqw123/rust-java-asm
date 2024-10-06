@@ -42,55 +42,117 @@ pub struct Header {
 
 #[derive(Copy, Clone, Debug)]
 pub struct StringId {
-    pub string_data_off: DUInt,
+    pub string_data_off: DUInt, // StringData, offset from the start of the file
 }
 
+#[derive(Clone, Debug)]
 pub struct StringData {
+    /// The size of the string, in UTF-16 code units, this is the decoded length of the string,
+    /// and the encoded length is implied by position of `\0` in the data. (because the MUTF-8
+    /// format will not include a `\0` in the encoded data)
     pub utf16_size: DULeb128,
+    /// A series of MUTF-8 bytes followed by a single '\0' byte.
     pub data: Vec<u8>,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct TypeId {
-    pub descriptor_idx: DUInt,
+    pub descriptor_idx: DUInt, // index into `string_ids` for the descriptor string
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct ProtoId {
-    pub shorty_idx: DUInt,
-    pub return_type_idx: DUInt,
-    pub parameters_off: DUInt,
+    pub shorty_idx: DUInt,      // index into `string_ids` for shorty descriptor
+    pub return_type_idx: DUInt, // index into `type_ids` for return type
+    pub parameters_off: DUInt, // offset from the start of the file to the `type_list` for the parameters
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct FieldId {
-    pub class_idx: DUShort,
-    pub type_idx: DUShort,
-    pub name_idx: DUInt,
+    pub class_idx: DUShort, // index into `type_ids` for the definer
+    pub type_idx: DUShort,  // index into `type_ids` for the type
+    pub name_idx: DUInt,    // index into `string_ids` for the name
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct MethodId {
-    pub class_idx: DUShort,
-    pub proto_idx: DUShort,
-    pub name_idx: DUInt,
+    pub class_idx: DUShort, // index into `type_ids` for the definer
+    pub proto_idx: DUShort, // index into `proto_ids` for the prototype
+    pub name_idx: DUInt,    // index into `string_ids` for the name
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct ClassDef {
+    /// index into `type_ids`
     pub class_idx: DUInt,
     pub access_flags: DUInt,
+    /// index into `type_ids`, or NO_INDEX if this class has no superclass
     pub superclass_idx: DUInt,
+    /// offset from the start of the file to the list of interfaces, or 0 if there are no interfaces
+    /// for this class. Must be an offset of a `type_list` structure.
     pub interfaces_off: DUInt,
-    pub source_file_idx: DUInt,
+    pub source_file_idx: DUInt, // index into `string_ids` for the source file name, or NO_INDEX
+    /// offset from the start of the file to the `annotations_directory_item` or 0 if not present.
     pub annotations_off: DUInt,
+    /// offset from the start of the file to the `class_data_item` or 0 if not present.
     pub class_data_off: DUInt,
+    /// offset from the start of the file to the list of `encoded_array_item`, or 0 if not present.
+    /// Same order of the static fields in the `field_list`.
     pub static_values_off: DUInt,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct CallSiteId {
+    /// offset from the start of the file to the `call_site_item`
     pub call_site_off: DUInt,
+}
+
+/// The call site item is an encoded array of the following form:
+/// 1. A method handle representing the bootstrap linker method (VALUE_METHOD_HANDLE).
+/// 2. A method name that the bootstrap linker should resolve (VALUE_STRING).
+/// 3. A method type corresponding to the type of the method name to be resolved (VALUE_METHOD_TYPE).
+/// ... Any additional arguments are constant values passed to the bootstrap linker method.
+pub type CallSiteItem = EncodedArray;
+
+#[derive(Clone, Debug)]
+pub enum EncodedValue {
+    Byte(DByte),
+    Short(DShort),
+    Char(DUShort),
+    Int(DInt),
+    Long(DLong),
+    Float([DUByte; 4]),                 // IEEE754 32-bit
+    Double([DUByte; 8]),                // IEEE754 64-bit
+    MethodType(DUInt),                  // index into `proto_ids`
+    MethodHandle(DUInt),                // index into `method_handles`
+    String(DUInt),                      // index into `string_ids`
+    Type(DUInt),                        // index into `type_ids`
+    Field(DUInt),                       // index into `field_ids`
+    Method(DUInt),                      // index into `method_ids`
+    Enum(DUInt),                        // index into `field_ids`
+    Array(Vec<Self>),                   // `encoded_array`
+    Annotation(Vec<EncodedAnnotation>), // `encoded_annotation`
+    Null,
+    Boolean(bool),
+}
+
+#[derive(Clone, Debug)]
+pub struct EncodedArray {
+    pub size: DULeb128,
+    pub values: Vec<EncodedValue>,
+}
+
+#[derive(Clone, Debug)]
+pub struct EncodedAnnotation {
+    pub type_idx: DULeb128, // index into `type_ids`
+    pub size: DULeb128,     // size of name-value mappings
+    pub elements: Vec<EncodedAnnotationAttribute>,
+}
+
+#[derive(Clone, Debug)]
+pub struct EncodedAnnotationAttribute {
+    pub name_idx: DULeb128, // index into `string_ids`
+    pub value: EncodedValue,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -117,6 +179,8 @@ pub struct DSleb128(pub(crate) u32);
 pub struct DULeb128(pub(crate) u32);
 #[derive(Copy, Clone, Debug)]
 pub struct DULeb128P1(pub(crate) u32);
+
+pub const NO_INDEX: u32 = 0xFFFFFFFF;
 
 impl DSleb128 {
     #[inline]
