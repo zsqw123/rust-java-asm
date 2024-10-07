@@ -16,6 +16,9 @@ pub struct JavaParameterAccessFlags;
 pub struct JavaModuleAccessFlags;
 pub struct JavaModuleRequireAccessFlags;
 
+pub struct NewArrayTypeOperand;
+pub struct MethodHandleKind;
+
 #[const_container(u32)]
 impl JavaVersions {
     // Java ClassFile versions (the minor version is stored in the 16 most significant bits, and the
@@ -138,6 +141,35 @@ impl JavaModuleRequireAccessFlags {
     pub const ACC_MANDATED: u16 = 0x8000;
 }
 
+#[const_container(u8)]
+impl NewArrayTypeOperand {
+    // Possible values for the type operand of the NEWARRAY instruction.
+    // See https://docs.oracle.com/javase/specs/jvms/se9/html/jvms-6.html#jvms-6.5.newarray.
+    pub const T_BOOLEAN: u8 = 4;
+    pub const T_CHAR: u8 = 5;
+    pub const T_FLOAT: u8 = 6;
+    pub const T_DOUBLE: u8 = 7;
+    pub const T_BYTE: u8 = 8;
+    pub const T_SHORT: u8 = 9;
+    pub const T_INT: u8 = 10;
+    pub const T_LONG: u8 = 11;
+}
+
+#[const_container(u8)]
+impl MethodHandleKind {
+    // Possible values for the reference_kind field of CONSTANT_MethodHandle_info structures.
+    // See https://docs.oracle.com/javase/specs/jvms/se9/html/jvms-4.html#jvms-4.4.8.
+    pub const H_GETFIELD: u8 = 1;
+    pub const H_GETSTATIC: u8 = 2;
+    pub const H_PUTFIELD: u8 = 3;
+    pub const H_PUTSTATIC: u8 = 4;
+    pub const H_INVOKEVIRTUAL: u8 = 5;
+    pub const H_INVOKESTATIC: u8 = 6;
+    pub const H_INVOKESPECIAL: u8 = 7;
+    pub const H_NEWINVOKESPECIAL: u8 = 8;
+    pub const H_INVOKEINTERFACE: u8 = 9;
+}
+
 #[allow(non_upper_case_globals)]
 impl Constants {
     // The ClassFile attribute names, in the order they are defined in
@@ -195,15 +227,4 @@ impl Constants {
     pub const CONSTANT_Package: u8 = 20;
     
     pub const OBJECT_INTERNAL_NAME: &'static str = "java/lang/Object";
-
-
-    pub const REF_getField: u8 = 1;
-    pub const REF_getStatic: u8 = 2;
-    pub const REF_putField: u8 = 3;
-    pub const REF_putStatic: u8 = 4;
-    pub const REF_invokeVirtual: u8 = 5;
-    pub const REF_invokeStatic: u8 = 6;
-    pub const REF_invokeSpecial: u8 = 7;
-    pub const REF_newInvokeSpecial: u8 = 8;
-    pub const REF_invokeInterface: u8 = 9;
 }

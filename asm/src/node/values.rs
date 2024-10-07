@@ -109,10 +109,7 @@ pub enum BootstrapMethodArgument {
 
 #[derive(Clone, Debug)]
 pub struct Handle {
-    /// The kind of this handle. Should be one of the following value:
-    /// [Opcodes::H_GETFIELD], [Opcodes::H_GETSTATIC], [Opcodes::H_PUTFIELD], [Opcodes::H_PUTSTATIC],
-    /// [Opcodes::H_INVOKEVIRTUAL], [Opcodes::H_INVOKESTATIC], [Opcodes::H_INVOKESPECIAL],
-    /// [Opcodes::H_NEWINVOKESPECIAL], [Opcodes::H_INVOKEINTERFACE].
+    /// The kind of this handle. See: [MethodHandleKind]
     pub reference_kind: u8,
     // The internal name of the class to which the field or method belongs.
     pub owner: StrRef,

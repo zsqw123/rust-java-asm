@@ -1,3 +1,5 @@
+use java_asm_macro::const_container;
+
 /**
  * The JVM opcodes, access flags and array type codes. This interface does not define all the JVM
  * opcodes because some opcodes are automatically handled. For example, the xLOAD and xSTORE opcodes
@@ -9,30 +11,8 @@
  */
 pub struct Opcodes;
 
+#[const_container(u8)]
 impl Opcodes {
-    // Possible values for the type operand of the NEWARRAY instruction.
-    // See https://docs.oracle.com/javase/specs/jvms/se9/html/jvms-6.html#jvms-6.5.newarray.
-    pub const T_BOOLEAN: u8 = 4;
-    pub const T_CHAR: u8 = 5;
-    pub const T_FLOAT: u8 = 6;
-    pub const T_DOUBLE: u8 = 7;
-    pub const T_BYTE: u8 = 8;
-    pub const T_SHORT: u8 = 9;
-    pub const T_INT: u8 = 10;
-    pub const T_LONG: u8 = 11;
-
-    // Possible values for the reference_kind field of CONSTANT_MethodHandle_info structures.
-    // See https://docs.oracle.com/javase/specs/jvms/se9/html/jvms-4.html#jvms-4.4.8.
-    pub const H_GETFIELD: u8 = 1;
-    pub const H_GETSTATIC: u8 = 2;
-    pub const H_PUTFIELD: u8 = 3;
-    pub const H_PUTSTATIC: u8 = 4;
-    pub const H_INVOKEVIRTUAL: u8 = 5;
-    pub const H_INVOKESTATIC: u8 = 6;
-    pub const H_INVOKESPECIAL: u8 = 7;
-    pub const H_NEWINVOKESPECIAL: u8 = 8;
-    pub const H_INVOKEINTERFACE: u8 = 9;
-
     // The JVM opcode values (with the MethodVisitor method name used to visit them in comment, and
     // where '-' means 'same method name as on the previous line').
     // See https://docs.oracle.com/javase/specs/jvms/se9/html/jvms-6.html.
