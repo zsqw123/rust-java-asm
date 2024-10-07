@@ -1,7 +1,8 @@
-pub use java_asm_macro::ReadFrom;
-
-use crate::AsmErr;
 use crate::err::AsmResult;
+use crate::AsmErr;
+pub use java_asm_macro::ReadFrom;
+use std::array::from_fn;
+use std::fmt::Debug;
 
 pub(crate) mod jvms_reader;
 pub(crate) mod util;
@@ -14,17 +15,30 @@ pub struct ReadContext<'a> {
     pub endian: bool, // true: big endian, false: little endian
 }
 
-impl <'a> ReadContext<'a> {
+impl<'a> ReadContext<'a> {
     pub fn big_endian(bytes: &'a [u8]) -> Self {
         Self { bytes, index: 0, endian: true }
     }
-    
+
     pub fn little_endian(bytes: &'a [u8]) -> Self {
         Self { bytes, index: 0, endian: false }
     }
 }
 
 impl ReadContext<'_> {
+    /// Move current index cursor to the next alignment position or keep it unchanged if it's
+    /// already positioned at an alignment position.
+    /// An alignment position's index should be a multiple of `alignment_byte_size`.
+    #[inline]
+    pub fn align(&mut self, alignment_byte_size: u16) {
+        if alignment_byte_size == 0 { return; }
+        let alignment_size = alignment_byte_size as usize;
+        let current_index = self.index;
+        let align = current_index % alignment_size;
+        if align == 0 { return; }
+        self.index = current_index + alignment_size - align;
+    }
+
     #[inline]
     pub fn get_and_inc(&mut self) -> AsmResult<u8> {
         let current_index = self.index;
@@ -46,7 +60,8 @@ impl ReadContext<'_> {
     }
 
     #[inline]
-    pub fn read_vec<T: ReadFrom>(&mut self, vec_size: usize) -> AsmResult<Vec<T>> {
+    pub fn read_vec<T: ReadFrom>(&mut self, vec_size: impl Into<usize>) -> AsmResult<Vec<T>> {
+        let vec_size = vec_size.into();
         let mut vec = Vec::with_capacity(vec_size);
         for _ in 0..vec_size {
             vec.push(self.read()?);
@@ -109,3 +124,32 @@ impl ReadFrom for u64 {
     }
 }
 
+impl<T: ReadFrom, const N: usize> ReadFrom for [T; N] {
+    #[inline]
+    fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
+        let array = from_fn_res(|_| context.read())?;
+        Ok(array)
+    }
+}
+
+/// Create an array of size `N` by calling the closure `cb` with the index of the element.
+/// Returns first `Err` if any `Err` is returned by the `F`.
+fn from_fn_res<T, const N: usize, F, E>(mut cb: F) -> Result<[T; N], E>
+where
+    E: Clone + Debug,
+    F: FnMut(usize) -> Result<T, E>,
+{
+    let mut first_err = None;
+    let res_arr: [Result<T, E>; N] = from_fn(|i| {
+        match cb(i) {
+            Ok(v) => Ok(v),
+            Err(e) => {
+                if first_err.is_none() { first_err = Some(e.clone()); }
+                Err(e)
+            },
+        }
+    });
+    if let Some(e) = first_err { return Err(e); }
+    let array: [T; N] = res_arr.map(Result::unwrap);
+    Ok(array)
+}

@@ -16,13 +16,13 @@ impl ReadFrom for ClassFile {
         let this_class: u16 = context.read()?;
         let super_class: u16 = context.read()?;
         let interfaces_count: u16 = context.read()?;
-        let interfaces: Vec<u16> = context.read_vec::<u16>(interfaces_count as usize)?;
+        let interfaces: Vec<u16> = context.read_vec::<u16>(interfaces_count)?;
         let fields_count: u16 = context.read()?;
-        let fields: Vec<FieldInfo> = context.read_vec(fields_count as usize)?;
+        let fields: Vec<FieldInfo> = context.read_vec(fields_count)?;
         let methods_count: u16 = context.read()?;
-        let methods: Vec<MethodInfo> = context.read_vec(methods_count as usize)?;
+        let methods: Vec<MethodInfo> = context.read_vec(methods_count)?;
         let attributes_count: u16 = context.read()?;
-        let attributes: Vec<AttributeInfo> = context.read_vec(attributes_count as usize)?;
+        let attributes: Vec<AttributeInfo> = context.read_vec(attributes_count)?;
         let cf = ClassFile {
             magic, minor_version, major_version,
             constant_pool_count, constant_pool,

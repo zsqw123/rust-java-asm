@@ -4,14 +4,18 @@ use quote::{format_ident, quote, quote_spanned};
 use syn::{Attribute, Data, DataStruct, DeriveInput, Field, Fields, Ident, parse_macro_input};
 use syn::__private::TokenStream2;
 use syn::spanned::Spanned;
+use crate::alignment::alignment_for_specific_input;
 
 pub(crate) fn auto_read_bytes(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
+    let alignment = alignment_for_specific_input(&derive_input);
     let name = derive_input.ident;
 
     let Data::Struct(data) = derive_input.data else {
         unimplemented!("unsupported data type for auto read bytes, only struct is supported.")
     };
+    
+    let align_tokens = align(alignment);
     let read_all_data = read_fields(&data.fields);
     let all_field_names = all_field_names(&data);
     let build_item = match data.fields {
@@ -28,12 +32,18 @@ pub(crate) fn auto_read_bytes(input: TokenStream) -> TokenStream {
         impl #from_read_context_path for #name {
             #[inline]
             fn read_from(context: &mut #read_context_path) -> #asm_result_path<#name> {
+                #align_tokens
                 #read_all_data
                 #build_item
             }
         }
     };
     TokenStream::from(generated)
+}
+
+fn align(alignment: u16) -> TokenStream2 {
+    if alignment == 0 { return quote! {}; };
+    quote! { context.align(#alignment); }
 }
 
 fn read_fields(fields: &Fields) -> TokenStream2 {

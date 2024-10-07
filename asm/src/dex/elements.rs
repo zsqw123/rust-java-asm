@@ -1,3 +1,5 @@
+use java_asm_macro::ReadFrom;
+
 #[derive(Clone, Debug)]
 pub struct DexFile {
     pub header: Header,
@@ -13,7 +15,8 @@ pub struct DexFile {
     pub link_data: Vec<u8>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, ReadFrom)]
+#[align(4)]
 pub struct Header {
     pub magic: [u8; 8],  // should be "dex\n039\0", and 039 is the dex version number
     pub checksum: DUInt, // adler32 checksum of the rest of the file (everything except magic and this field)
@@ -40,7 +43,8 @@ pub struct Header {
     pub data_off: DUInt,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, ReadFrom)]
+#[align(4)]
 pub struct StringId {
     pub string_data_off: DUInt, // StringData, offset from the start of the file
 }
@@ -55,33 +59,38 @@ pub struct StringData {
     pub data: Vec<u8>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, ReadFrom)]
+#[align(4)]
 pub struct TypeId {
     pub descriptor_idx: DUInt, // index into `string_ids` for the descriptor string
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, ReadFrom)]
+#[align(4)]
 pub struct ProtoId {
     pub shorty_idx: DUInt,      // index into `string_ids` for shorty descriptor
     pub return_type_idx: DUInt, // index into `type_ids` for return type
     pub parameters_off: DUInt, // offset from the start of the file to the `type_list` for the parameters
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, ReadFrom)]
+#[align(4)]
 pub struct FieldId {
     pub class_idx: DUShort, // index into `type_ids` for the definer
     pub type_idx: DUShort,  // index into `type_ids` for the type
     pub name_idx: DUInt,    // index into `string_ids` for the name
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, ReadFrom)]
+#[align(4)]
 pub struct MethodId {
     pub class_idx: DUShort, // index into `type_ids` for the definer
     pub proto_idx: DUShort, // index into `proto_ids` for the prototype
     pub name_idx: DUInt,    // index into `string_ids` for the name
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, ReadFrom)]
+#[align(4)]
 pub struct ClassDef {
     /// index into `type_ids`
     pub class_idx: DUInt,
@@ -101,7 +110,16 @@ pub struct ClassDef {
     pub static_values_off: DUInt,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug, ReadFrom)]
+#[align(4)]
+pub struct TypeList {
+    pub size: DUInt,
+    #[index(size)]
+    pub type_id_indices: Vec<DUInt>, // index into `type_ids`
+}
+
+#[derive(Copy, Clone, Debug, ReadFrom)]
+#[align(4)]
 pub struct CallSiteId {
     /// offset from the start of the file to the `call_site_item`
     pub call_site_off: DUInt,
@@ -155,7 +173,8 @@ pub struct EncodedAnnotationAttribute {
     pub value: EncodedValue,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, ReadFrom)]
+#[align(4)]
 pub struct MethodHandle {
     pub method_handle_type: DUShort,
     pub unused_stub_0: DUShort, // android reserved, don't know why.

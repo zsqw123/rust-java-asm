@@ -54,7 +54,7 @@ impl ReadFrom for TypeAnnotation {
             0x17 => TypeAnnotationTargetInfo::Throws { throws_type_index: context.read()? },
             0x40 | 0x41 => {
                 let table_length = context.read()?;
-                let table = context.read_vec(table_length as usize)?;
+                let table = context.read_vec(table_length)?;
                 TypeAnnotationTargetInfo::LocalVar { table_length, table }
             },
             0x42 => TypeAnnotationTargetInfo::Catch { exception_table_index: context.read()? },

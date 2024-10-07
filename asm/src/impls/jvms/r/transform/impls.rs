@@ -50,14 +50,14 @@ impl ReadFrom for StackMapFrame {
             252..=254 => StackMapFrame::AppendFrame {
                 frame_type,
                 offset_delta: context.read()?,
-                locals: context.read_vec((frame_type - 251) as usize)?,
+                locals: context.read_vec(frame_type - 251)?,
             },
             255 => {
                 let offset_delta: u16 = context.read()?;
                 let number_of_locals: u16 = context.read()?;
-                let locals: Vec<VerificationTypeInfo> = context.read_vec(number_of_locals as usize)?;
+                let locals: Vec<VerificationTypeInfo> = context.read_vec(number_of_locals)?;
                 let number_of_stack_items: u16 = context.read()?;
-                let stack: Vec<VerificationTypeInfo> = context.read_vec(number_of_stack_items as usize)?;
+                let stack: Vec<VerificationTypeInfo> = context.read_vec(number_of_stack_items)?;
                 StackMapFrame::FullFrame {
                     frame_type, offset_delta, number_of_locals, locals, number_of_stack_items, stack,
                 }
