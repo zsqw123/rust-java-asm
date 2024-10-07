@@ -70,6 +70,21 @@ impl ReadContext<'_> {
     }
 }
 
+// Into<usize> might be implemented for u32 in future rust versions and rust compiler
+// disallow us to implement trait like `IntoReadIndex` for `u32` and also implement
+// for all `Into<usize>` types. So the best way is wrap this index into our struct.
+// 
+// the compiler error is: upstream crates may add a new impl of trait `std::convert::From<u32>` 
+// for type `usize` in future versions
+#[derive(Copy, Clone, Debug, ReadFrom)]
+pub struct U32BasedSize(pub u32);
+
+impl Into<usize> for U32BasedSize {
+    fn into(self) -> usize {
+        self.0 as usize
+    }
+}
+
 impl ReadFrom for u8 {
     #[inline]
     fn read_from(context: &mut ReadContext) -> AsmResult<u8> {

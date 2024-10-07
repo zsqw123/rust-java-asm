@@ -75,7 +75,7 @@ fn build_read_bytes_for_field(field: &Field, ident: &Ident) -> TokenStream2 {
     let field_name = find_index_field_name(&field.attrs);
     match field_name {
         Some(field_name) => quote_spanned! { field.span() =>
-            let #ident = context.read_vec(#field_name as usize)?;
+            let #ident = context.read_vec(#field_name)?;
         },
         None => quote_spanned! { field.span() =>
             let #ident = context.read::<#ty>()?;

@@ -1,4 +1,5 @@
 use java_asm_macro::ReadFrom;
+use crate::impls::jvms::r::U32BasedSize;
 
 #[derive(Clone, Debug)]
 pub struct DexFile {
@@ -46,7 +47,7 @@ pub struct Header {
 #[derive(Clone, Debug, ReadFrom)]
 #[align(4)]
 pub struct MapList {
-    pub size: DUInt,
+    pub size: U32BasedSize,
     #[index(size)]
     pub items: Vec<MapItem>,
 }
@@ -127,11 +128,40 @@ pub struct ClassDef {
 }
 
 #[derive(Clone, Debug, ReadFrom)]
+pub struct ClassDataItem {
+    pub static_fields_size: DULeb128,
+    pub instance_fields_size: DULeb128,
+    pub direct_methods_size: DULeb128,
+    pub virtual_methods_size: DULeb128,
+    #[index(static_fields_size)]
+    pub static_fields: Vec<EncodedField>,
+    #[index(instance_fields_size)]
+    pub instance_fields: Vec<EncodedField>,
+    #[index(direct_methods_size)]
+    pub direct_methods: Vec<EncodedMethod>,
+    #[index(virtual_methods_size)]
+    pub virtual_methods: Vec<EncodedMethod>,
+}
+
+#[derive(Copy, Clone, Debug, ReadFrom)]
+pub struct EncodedField {
+    pub field_idx_diff: DULeb128,
+    pub access_flags: DULeb128,
+}
+
+#[derive(Copy, Clone, Debug, ReadFrom)]
+pub struct EncodedMethod {
+    pub method_idx_diff: DULeb128,
+    pub access_flags: DULeb128,
+    pub code_off: DULeb128,
+}
+
+#[derive(Clone, Debug, ReadFrom)]
 #[align(4)]
 pub struct TypeList {
-    pub size: DUInt,
+    pub size: U32BasedSize,
     #[index(size)]
-    pub type_id_indices: Vec<DUInt>, // index into `type_ids`
+    pub type_id_indices: Vec<DUShort>, // index into `type_ids`
 }
 
 #[derive(Copy, Clone, Debug, ReadFrom)]
