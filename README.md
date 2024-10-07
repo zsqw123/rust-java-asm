@@ -33,7 +33,7 @@ see some examples.
 - [ ] **Not Start**, Implement ASM features (eg. auto calculate frame/stack etc.)
 - [ ] Smali liked output.
 - [ ] Dex interop. (https://source.android.com/docs/core/runtime/dex-format)
-  - [ ] Basic structure for dex file metadata
+  - [x] Basic structure for dex file metadata
   - [ ] Instructions
   - [ ] Annotations
   - [ ] Debug info

@@ -145,15 +145,55 @@ pub struct ClassDataItem {
 
 #[derive(Copy, Clone, Debug, ReadFrom)]
 pub struct EncodedField {
+    /// index into `field_ids`, diff with previous encoded field
     pub field_idx_diff: DULeb128,
+    /// see [crate::dex::FieldAccessFlags]
     pub access_flags: DULeb128,
 }
 
 #[derive(Copy, Clone, Debug, ReadFrom)]
 pub struct EncodedMethod {
+    /// index into `method_ids`, diff with previous encoded method
     pub method_idx_diff: DULeb128,
+    /// see [crate::dex::MethodAccessFlags]
     pub access_flags: DULeb128,
+    /// offset from the start of the file to the `code_item`, 
+    /// or 0 if this method is abstract or native
     pub code_off: DULeb128,
+}
+
+pub struct CodeItem {
+    pub registers_size: DUShort,
+    pub ins_size: DUShort,
+    pub outs_size: DUShort,
+    pub tries_size: DUShort,
+    pub debug_info_off: DUInt,
+    pub insns_size: DUInt,
+    pub insns: Vec<DUShort>,
+    // pub padding: Vec<DUShort>,
+    pub tries: Vec<TryItem>,
+    pub handlers: Vec<EncodedCatchHandler>,
+}
+
+#[derive(Copy, Clone, Debug, ReadFrom)]
+pub struct TryItem {
+    pub start_addr: DUInt,
+    /// The last code unit covered (inclusive) is `start_addr + insn_count - 1`.
+    pub insn_count: DUShort,
+    /// offset in bytes from the start of the associated `encoded_catch_hander_list` 
+    /// to the `encoded_catch_handler`
+    pub handler_off: DUShort,
+}
+
+pub struct EncodedCatchHandler {
+    pub handlers: Vec<EncodedTypeAddrPair>,
+    pub catch_all_addr: Option<DULeb128>,
+}
+
+#[derive(Copy, Clone, Debug, ReadFrom)]
+pub struct EncodedTypeAddrPair {
+    pub type_idx: DULeb128,
+    pub addr: DULeb128,
 }
 
 #[derive(Clone, Debug, ReadFrom)]
