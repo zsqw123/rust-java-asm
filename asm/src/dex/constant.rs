@@ -38,33 +38,53 @@ impl AccessFlags {
     pub const ACC_PROTECTED: DUInt = 0x0004;
     pub const ACC_STATIC: DUInt = 0x0008;
     pub const ACC_FINAL: DUInt = 0x0010;
+    pub const ACC_ABSTRACT: DUInt = 0x0400;
     pub const UNUSED: DUInt = 0x8000;
     pub const ACC_SYNTHETIC: DUInt = 0x1000;
-}
-
-#[const_container(DUInt)]
-impl ClassAccessFlags {
-    pub const ACC_INTERFACE: DUInt = 0x0200;
-    pub const ACC_ABSTRACT: DUInt = 0x0400;
-    pub const ACC_ANNOTATION: DUInt = 0x2000;
     pub const ACC_ENUM: DUInt = 0x4000;
 }
 
 #[const_container(DUInt)]
+impl ClassAccessFlags {
+    pub const ACC_PUBLIC: DUInt = AccessFlags::ACC_PUBLIC;
+    pub const ACC_PRIVATE: DUInt = AccessFlags::ACC_PRIVATE;
+    pub const ACC_PROTECTED: DUInt = AccessFlags::ACC_PROTECTED;
+    pub const ACC_STATIC: DUInt = AccessFlags::ACC_STATIC;
+    pub const ACC_FINAL: DUInt = AccessFlags::ACC_FINAL;
+    pub const ACC_INTERFACE: DUInt = 0x0200;
+    pub const ACC_ABSTRACT: DUInt = AccessFlags::ACC_ABSTRACT;
+    pub const ACC_SYNTHETIC: DUInt = AccessFlags::ACC_SYNTHETIC;
+    pub const ACC_ANNOTATION: DUInt = 0x2000;
+    pub const ACC_ENUM: DUInt = AccessFlags::ACC_ENUM;
+}
+
+#[const_container(DUInt)]
 impl MethodAccessFlags {
+    pub const ACC_PUBLIC: DUInt = AccessFlags::ACC_PUBLIC;
+    pub const ACC_PRIVATE: DUInt = AccessFlags::ACC_PRIVATE;
+    pub const ACC_PROTECTED: DUInt = AccessFlags::ACC_PROTECTED;
+    pub const ACC_STATIC: DUInt = AccessFlags::ACC_STATIC;
+    pub const ACC_FINAL: DUInt = AccessFlags::ACC_FINAL;
     pub const ACC_SYNCHRONIZED: DUInt = 0x0020;
     pub const ACC_BRIDGE: DUInt = 0x0040;
     pub const ACC_VARARGS: DUInt = 0x0080;
     pub const ACC_NATIVE: DUInt = 0x0100;
-    pub const ACC_ABSTRACT: DUInt = 0x0400;
+    pub const ACC_ABSTRACT: DUInt = AccessFlags::ACC_ABSTRACT;
     pub const ACC_STRICT: DUInt = 0x0800;
+    pub const ACC_SYNTHETIC: DUInt = AccessFlags::ACC_SYNTHETIC;
     pub const ACC_CONSTRUCTOR: DUInt = 0x10000;
     pub const ACC_DECLARED_SYNCHRONIZED: DUInt = 0x20000;
 }
 
 #[const_container(DUInt)]
 impl FieldAccessFlags {
+    pub const ACC_PUBLIC: DUInt = AccessFlags::ACC_PUBLIC;
+    pub const ACC_PRIVATE: DUInt = AccessFlags::ACC_PRIVATE;
+    pub const ACC_PROTECTED: DUInt = AccessFlags::ACC_PROTECTED;
+    pub const ACC_STATIC: DUInt = AccessFlags::ACC_STATIC;
+    pub const ACC_FINAL: DUInt = AccessFlags::ACC_FINAL;
     pub const ACC_VOLATILE: DUInt = 0x0040;
     pub const ACC_TRANSIENT: DUInt = 0x0080;
+    pub const ACC_SYNTHETIC: DUInt = AccessFlags::ACC_SYNTHETIC;
     pub const ACC_ENUM: DUInt = 0x4000;
 }

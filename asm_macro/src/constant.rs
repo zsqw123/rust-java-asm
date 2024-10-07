@@ -23,7 +23,7 @@ pub fn const_container_impl(attr: TokenStream, item: TokenStream) -> TokenStream
     result.into()
 }
 
-/// #[const_container(DUShort)] -> DUShort
+// #[const_container(DUShort)] -> DUShort
 fn get_type_path_from_attr(attr: &AttributeArgs) -> &Path {
     let const_type_path_attr = attr.get(0)
         .expect("const_container attribute must have a type argument");
@@ -73,7 +73,7 @@ fn generate_const_container_impl(
 ) -> TokenStream2 {
     let const_name_match_arms = const_items.iter().map(|(expr, ident)| {
         let ident_str = ident.to_string();
-        quote! { #expr => Some(#ident_str), }
+        quote! { #struct_ident::#ident => Some(#ident_str), }
     });
 
     let const_container_path = quote! { crate::ConstContainer };
