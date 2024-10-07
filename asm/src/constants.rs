@@ -1,7 +1,8 @@
 use java_asm_macro::const_container;
 
-pub trait ConstContainer<C> {
-    fn const_name(c: C) -> Option<&'static str>;
+pub trait ConstContainer {
+    type ConstType;
+    fn const_name(c: Self::ConstType) -> Option<&'static str>;
 }
 
 pub struct Constants;

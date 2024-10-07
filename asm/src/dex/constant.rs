@@ -1,4 +1,4 @@
-use crate::dex::elements::{DUInt, DUShort};
+use crate::dex::elements::{DUByte, DUInt, DUShort};
 use java_asm_macro::const_container;
 
 pub struct MapListTypeConst;
@@ -12,6 +12,8 @@ impl MapListTypeConst {
     pub const TYPE_FIELD_ID_ITEM: DUShort = 0x0004;
     pub const TYPE_METHOD_ID_ITEM: DUShort = 0x0005;
     pub const TYPE_CLASS_DEF_ITEM: DUShort = 0x0006;
+    pub const TYPE_CALL_SITE_ID_ITEM: DUShort = 0x0007;
+    pub const TYPE_METHOD_HANDLE_ITEM: DUShort = 0x0008;
     pub const TYPE_MAP_LIST: DUShort = 0x1000;
     pub const TYPE_TYPE_LIST: DUShort = 0x1001;
     pub const TYPE_ANNOTATION_SET_REF_LIST: DUShort = 0x1002;
@@ -87,4 +89,42 @@ impl FieldAccessFlags {
     pub const ACC_TRANSIENT: DUInt = 0x0080;
     pub const ACC_SYNTHETIC: DUInt = AccessFlags::ACC_SYNTHETIC;
     pub const ACC_ENUM: DUInt = 0x4000;
+}
+
+struct EncodedValueType;
+#[const_container(DUByte)]
+impl EncodedValueType {
+    pub const VALUE_BYTE: DUByte = 0x00;
+    pub const VALUE_SHORT: DUByte = 0x02;
+    pub const VALUE_CHAR: DUByte = 0x03;
+    pub const VALUE_INT: DUByte = 0x04;
+    pub const VALUE_LONG: DUByte = 0x06;
+    pub const VALUE_FLOAT: DUByte = 0x10;
+    pub const VALUE_DOUBLE: DUByte = 0x11;
+    pub const VALUE_METHOD_TYPE: DUByte = 0x15;
+    pub const VALUE_METHOD_HANDLE: DUByte = 0x16;
+    pub const VALUE_STRING: DUByte = 0x17;
+    pub const VALUE_TYPE: DUByte = 0x18;
+    pub const VALUE_FIELD: DUByte = 0x19;
+    pub const VALUE_METHOD: DUByte = 0x1a;
+    pub const VALUE_ENUM: DUByte = 0x1b;
+    pub const VALUE_ARRAY: DUByte = 0x1c;
+    pub const VALUE_ANNOTATION: DUByte = 0x1d;
+    pub const VALUE_NULL: DUByte = 0x1e;
+    pub const VALUE_BOOLEAN: DUByte = 0x1f;
+}
+
+struct MethodHandleType;
+
+#[const_container(DUByte)]
+impl MethodHandleType {
+    pub const METHOD_HANDLE_TYPE_STATIC_PUT: DUByte = 0x00;
+    pub const METHOD_HANDLE_TYPE_STATIC_GET: DUByte = 0x01;
+    pub const METHOD_HANDLE_TYPE_INSTANCE_PUT: DUByte = 0x02;
+    pub const METHOD_HANDLE_TYPE_INSTANCE_GET: DUByte = 0x03;
+    pub const METHOD_HANDLE_TYPE_INVOKE_STATIC: DUByte = 0x04;
+    pub const METHOD_HANDLE_TYPE_INVOKE_INSTANCE: DUByte = 0x05;
+    pub const METHOD_HANDLE_TYPE_INVOKE_CONSTRUCTOR: DUByte = 0x06;
+    pub const METHOD_HANDLE_TYPE_INVOKE_DIRECT: DUByte = 0x07;
+    pub const METHOD_HANDLE_TYPE_INVOKE_INTERFACE: DUByte = 0x08;
 }

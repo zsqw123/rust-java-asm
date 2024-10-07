@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::__private::TokenStream2;
-use syn::{parse_macro_input, AttributeArgs, Expr, Ident, ImplItem, ItemImpl, Meta, NestedMeta, Path, Type};
+use syn::{parse_macro_input, AttributeArgs, Expr, Ident, ImplItem, ImplItemConst, ItemImpl, Meta, NestedMeta, Path, Type};
 
 pub fn const_container_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
     // read generic argument C from attr
@@ -10,7 +10,7 @@ pub fn const_container_impl(attr: TokenStream, item: TokenStream) -> TokenStream
     let const_type_path_attr = get_type_path_from_attr(&attr_input);
 
     let item_impl = parse_macro_input!(item as ItemImpl);
-    let impl_ident = get_ident_from_impl(&item_impl);
+    let impl_ident: &Type = &item_impl.self_ty;
     let const_items = read_const_items_from_impl_body(&item_impl, const_type_path_attr);
     let const_container_impl = generate_const_container_impl(
         impl_ident, const_type_path_attr, const_items,
@@ -62,10 +62,6 @@ fn read_const_items_from_impl_body(
     }).collect()
 }
 
-fn get_ident_from_impl(impl_item: &ItemImpl) -> &Type {
-    &impl_item.self_ty
-}
-
 fn generate_const_container_impl(
     struct_ident: &Type,
     const_type_path: &Path,
@@ -79,8 +75,9 @@ fn generate_const_container_impl(
     let const_container_path = quote! { crate::ConstContainer };
 
     let const_container_impl = quote! {
-        impl #const_container_path<#const_type_path> for #struct_ident {
-            fn const_name(c: #const_type_path) -> Option<&'static str> {
+        impl #const_container_path for #struct_ident {
+            type ConstType = #const_type_path;
+            fn const_name(c: Self::ConstType) -> Option<&'static str> {
                 match c {
                     #(#const_name_match_arms)*
                     _ => None,
