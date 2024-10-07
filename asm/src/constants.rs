@@ -1,3 +1,7 @@
+pub trait ConstContainer<C> {
+    fn const_name(c: C) -> Option<&'static str>;
+}
+
 pub struct Constants;
 
 #[allow(non_upper_case_globals)]

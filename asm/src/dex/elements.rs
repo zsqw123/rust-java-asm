@@ -43,6 +43,22 @@ pub struct Header {
     pub data_off: DUInt,
 }
 
+#[derive(Clone, Debug, ReadFrom)]
+#[align(4)]
+pub struct MapList {
+    pub size: DUInt,
+    #[index(size)]
+    pub items: Vec<MapItem>,
+}
+
+#[derive(Copy, Clone, Debug, ReadFrom)]
+pub struct MapItem {
+    pub type_value: DUShort,
+    pub unused: DUShort, // reserved
+    pub size: DUInt, // count of items to be found at the specified offset
+    pub offset: DUInt, // offset from the start of the file
+}
+
 #[derive(Copy, Clone, Debug, ReadFrom)]
 #[align(4)]
 pub struct StringId {
