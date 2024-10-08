@@ -1,8 +1,7 @@
-use syn::DeriveInput;
+use syn::Attribute;
 
-/// return bytes count for alignment
-pub fn alignment_for_specific_input(derive_input: &DeriveInput) -> u16 {
-    let attrs = &derive_input.attrs;
+/// return: bytes count for alignment
+pub fn find_alignment_in_attributes(attrs: &Vec<Attribute>) -> u16 {
     for attr in attrs {
         if !attr.path.is_ident("align") { continue }
         let Ok(alignment) = attr.parse_args::<syn::LitInt>()
