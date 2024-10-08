@@ -1,6 +1,6 @@
 pub mod elements;
 
-pub use opcodes::Opcodes;
+pub use opcodes::*;
 pub use constant::*;
 
 mod opcodes;
