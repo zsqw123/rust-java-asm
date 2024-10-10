@@ -53,7 +53,7 @@ impl Reader for F11n {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
         let (literalB, vA) = context.read()?;
         let opcode = context.get_and_inc()?;
-        let literalB = I4(literalB.0);
+        let literalB = I4::from_u4(literalB);
         Ok(F11n { opcode, vA, literalB })
     }
 }
