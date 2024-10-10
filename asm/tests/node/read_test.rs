@@ -1,7 +1,6 @@
-use std::time::Instant;
-use java_asm::node::element::ClassNode;
-
 use crate::jvms::read_test::read_jvms;
+use java_asm::node::element::ClassNode;
+use std::time::Instant;
 
 #[test]
 fn read_node() {

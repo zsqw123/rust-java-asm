@@ -1,11 +1,12 @@
 #![allow(non_snake_case)]
 
 use crate::dex::insn_syntax::*;
-use crate::impls::dex::r::util::{destruct_u8, I4, U4};
+use crate::impls::dex::r::util::{destruct_u8};
 use crate::impls::jvms::r::ReadContext;
 use crate::impls::jvms::r::ReadFrom as Reader;
 use crate::AsmResult;
 use java_asm_macro::ReadFrom;
+use crate::dex::{I4, U4};
 
 macro_rules! simple_impl {
     ($type:ty, $($field:ident),*) => {

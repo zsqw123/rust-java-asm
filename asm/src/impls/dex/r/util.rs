@@ -1,9 +1,8 @@
 use crate::{AsmErr, AsmResult};
 use crate::dex::elements::*;
+use crate::dex::U4;
 use crate::err::AsmResultOkExt;
 use crate::impls::jvms::r::{ReadContext, ReadFrom};
-
-
 
 #[inline]
 pub fn destruct_u8(v: u8) -> (U4, U4) {
