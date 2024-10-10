@@ -3,10 +3,7 @@ use crate::dex::elements::*;
 use crate::err::AsmResultOkExt;
 use crate::impls::jvms::r::{ReadContext, ReadFrom};
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq)]
-pub struct U4(pub u8); // top 4 bits is always be 0
-#[derive(Copy, Debug, Clone, PartialEq, Eq)]
-pub struct I4(pub u8); // top 4 bits is always be 0
+
 
 #[inline]
 pub fn destruct_u8(v: u8) -> (U4, U4) {
