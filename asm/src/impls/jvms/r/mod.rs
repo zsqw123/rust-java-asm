@@ -38,7 +38,17 @@ impl ReadContext<'_> {
         if align == 0 { return; }
         self.index = current_index + alignment_size - align;
     }
+    
+    #[inline]
+    pub fn get_at(&self, index: usize) -> AsmResult<u8> {
+        self.bytes.get(index).copied().ok_or_else(|| AsmErr::OutOfRange(index))
+    }
 
+    #[inline]
+    pub fn get_cur(&self) -> AsmResult<u8> {
+        self.get_at(self.index)
+    }
+    
     #[inline]
     pub fn get_and_inc(&mut self) -> AsmResult<u8> {
         let current_index = self.index;

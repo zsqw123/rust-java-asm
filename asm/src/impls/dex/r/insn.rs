@@ -1,12 +1,14 @@
 #![allow(non_snake_case)]
 
+use crate::dex::insn::DexInsn;
 use crate::dex::insn_syntax::*;
-use crate::impls::dex::r::util::{destruct_u8};
+use crate::dex::{I4, U4};
+use crate::err::AsmResultOkExt;
+use crate::impls::dex::r::util::destruct_u8;
 use crate::impls::jvms::r::ReadContext;
 use crate::impls::jvms::r::ReadFrom as Reader;
-use crate::AsmResult;
+use crate::{AsmErr, AsmResult};
 use java_asm_macro::ReadFrom;
-use crate::dex::{I4, U4};
 
 macro_rules! simple_impl {
     ($type:ty, $($field:ident),*) => {
@@ -158,3 +160,102 @@ impl Reader for F45cc {
 
 simple_impl!(F4rcc, literalA, opcode, constB, vC, constH);
 simple_impl!(F51l, vA, opcode, literalB);
+
+impl Reader for DexInsn {
+    fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
+        let cur_index = context.index;
+        let opcode = context.get_at(cur_index + 1)?;
+        if opcode == 0x00 {
+            return read_payload(context)
+        }
+        macro_rules! match_opcodes {
+            ($($opcode:pat = $variant:ident,)*) => {
+                match opcode {
+                    $(
+                        $opcode => Ok(DexInsn::$variant(context.read()?)),
+                    )*
+                    _ => return Err(AsmErr::UnknownInsn(opcode)),
+                }
+            };
+        }
+
+        match_opcodes! {
+            0x01 = Move,
+            0x02 = MoveFrom16,
+            0x03 = Move16,
+            0x04 = MoveWide,
+            0x05 = MoveWideFrom16,
+            0x06 = MoveWide16,
+            0x07 = MoveObject,
+            0x08 = MoveObjectFrom16,
+            0x09 = MoveObject16,
+            0x0a = MoveResult,
+            0x0b = MoveResultWide,
+            0x0c = MoveResultObject,
+            0x0d = MoveException,
+            0x0e = ReturnVoid,
+            0x0f = Return,
+            0x10 = ReturnWide,
+            0x11 = ReturnObject,
+            0x12 = Const4,
+            0x13 = Const16,
+            0x14 = Const,
+            0x15 = ConstHigh16,
+            0x16 = ConstWide16,
+            0x17 = ConstWide32,
+            0x18 = ConstWide,
+            0x19 = ConstWideHigh16,
+            0x1a = ConstString,
+            0x1b = ConstStringJumbo,
+            0x1c = ConstClass,
+            0x1d = MonitorEnter,
+            0x1e = MonitorExit,
+            0x1f = CheckCast,
+            0x20 = InstanceOf,
+            0x21 = ArrayLength,
+            0x22 = NewInstance,
+            0x23 = NewArray,
+            0x24 = FilledNewArray,
+            0x25 = FilledNewArrayRange,
+            0x26 = FillArrayData,
+            0x27 = Throw,
+            0x28 = Goto,
+            0x29 = Goto16,
+            0x2a = Goto32,
+            0x2b = PackedSwitch,
+            0x2c = SparseSwitch,
+            0x2d..=0x31 = Cmpkind,
+            0x32..=0x37 = IfTest,
+            0x38..=0x3d = IfTestz,
+            0x3e..=0x43 = NotUsed, // not used
+            0x44..=0x51 = ArrayOp,
+            0x52..=0x5f = IInstanceOp,
+            0x60..=0x6d = SInstanceOp,
+            0x6e..=0x72 = InvokeKind,
+            0x73 = NotUsed, // not used
+            0x74..=0x78 = InvokeKindRange,
+            0x79..=0x7a = NotUsed, // not used
+            0x7b..=0x8f = Unop,
+            0x90..=0xaf = Binop,
+            0xb0..=0xcf = Binop2Addr,
+            0xd0..=0xd7 = BinopLit16,
+            0xd8..=0xe2 = BinopLit8,
+            0xe3..=0xf9 = NotUsed, // not used
+            0xfa = InvokePoly,
+            0xfb = InvokePolyRange,
+            0xfc = InvokeCustom,
+            0xfd = InvokeCustomRange,
+            0xfe = ConstMethodHandle,
+            0xff = ConstMethodType,
+        }
+    }
+}
+fn read_payload(context: &mut ReadContext) -> AsmResult<DexInsn> {
+    let ident = context.get_cur()?;
+    match ident {
+        0x01 => DexInsn::PackedSwitchPayload(context.read()?),
+        0x02 => DexInsn::SparseSwitchPayload(context.read()?),
+        0x03 => DexInsn::FillArrayDataPayload(context.read()?),
+        _ => return Err(AsmErr::UnknownDexPayload(ident))
+    }.ok()
+}

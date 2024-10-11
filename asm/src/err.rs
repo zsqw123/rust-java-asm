@@ -20,6 +20,8 @@ pub enum AsmErr {
     UnknownInsn(u8),
     // invalid leb128 format for dex at specific offset.
     InvalidLEB128(usize),
+    // unknown dex payload format.
+    UnknownDexPayload(u8),
 }
 
 impl AsmErr {
