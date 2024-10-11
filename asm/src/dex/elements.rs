@@ -1,7 +1,7 @@
-use java_asm_macro::ReadFrom;
 use crate::impls::jvms::r::U32BasedSize;
+use java_asm_macro::ReadFrom;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DexFile {
     pub header: Header,
     pub string_ids: Vec<StringId>,
@@ -12,11 +12,14 @@ pub struct DexFile {
     pub class_defs: Vec<ClassDef>,
     pub call_site_ids: Vec<CallSiteId>,
     pub method_handles: Vec<MethodHandle>,
-    pub data: Vec<u8>,
-    pub link_data: Vec<u8>,
+    // we don't need to save the actual data chunk, every data item is indexed by
+    // using the offset from the start of the file.
+    // 
+    // pub data: Vec<u8>,
+    // pub link_data: Vec<u8>,
 }
 
-#[derive(Copy, Clone, Debug, ReadFrom)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct Header {
     pub magic: [u8; 8],  // should be "dex\n039\0", and 039 is the dex version number
@@ -44,7 +47,7 @@ pub struct Header {
     pub data_off: DUInt,
 }
 
-#[derive(Clone, Debug, ReadFrom)]
+#[derive(Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct MapList {
     pub size: U32BasedSize,
@@ -52,7 +55,7 @@ pub struct MapList {
     pub items: Vec<MapItem>,
 }
 
-#[derive(Copy, Clone, Debug, ReadFrom)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 pub struct MapItem {
     pub type_value: DUShort,
     pub unused: DUShort, // reserved
@@ -60,13 +63,13 @@ pub struct MapItem {
     pub offset: DUInt, // offset from the start of the file
 }
 
-#[derive(Copy, Clone, Debug, ReadFrom)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct StringId {
     pub string_data_off: DUInt, // StringData, offset from the start of the file
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StringData {
     /// The size of the string, in UTF-16 code units, this is the decoded length of the string,
     /// and the encoded length is implied by position of `\0` in the data. (because the MUTF-8
@@ -76,13 +79,13 @@ pub struct StringData {
     pub data: Vec<u8>,
 }
 
-#[derive(Copy, Clone, Debug, ReadFrom)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct TypeId {
     pub descriptor_idx: DUInt, // index into `string_ids` for the descriptor string
 }
 
-#[derive(Copy, Clone, Debug, ReadFrom)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct ProtoId {
     pub shorty_idx: DUInt,      // index into `string_ids` for shorty descriptor
@@ -90,7 +93,7 @@ pub struct ProtoId {
     pub parameters_off: DUInt, // offset from the start of the file to the `type_list` for the parameters
 }
 
-#[derive(Copy, Clone, Debug, ReadFrom)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct FieldId {
     pub class_idx: DUShort, // index into `type_ids` for the definer
@@ -98,7 +101,7 @@ pub struct FieldId {
     pub name_idx: DUInt,    // index into `string_ids` for the name
 }
 
-#[derive(Copy, Clone, Debug, ReadFrom)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct MethodId {
     pub class_idx: DUShort, // index into `type_ids` for the definer
@@ -106,7 +109,7 @@ pub struct MethodId {
     pub name_idx: DUInt,    // index into `string_ids` for the name
 }
 
-#[derive(Copy, Clone, Debug, ReadFrom)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct ClassDef {
     /// index into `type_ids`
@@ -127,7 +130,7 @@ pub struct ClassDef {
     pub static_values_off: DUInt,
 }
 
-#[derive(Clone, Debug, ReadFrom)]
+#[derive(Clone, Debug, Eq, PartialEq, ReadFrom)]
 pub struct ClassDataItem {
     pub static_fields_size: DULeb128,
     pub instance_fields_size: DULeb128,
@@ -143,7 +146,7 @@ pub struct ClassDataItem {
     pub virtual_methods: Vec<EncodedMethod>,
 }
 
-#[derive(Copy, Clone, Debug, ReadFrom)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 pub struct EncodedField {
     /// index into `field_ids`, diff with previous encoded field
     pub field_idx_diff: DULeb128,
@@ -151,7 +154,7 @@ pub struct EncodedField {
     pub access_flags: DULeb128,
 }
 
-#[derive(Copy, Clone, Debug, ReadFrom)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 pub struct EncodedMethod {
     /// index into `method_ids`, diff with previous encoded method
     pub method_idx_diff: DULeb128,
@@ -162,20 +165,26 @@ pub struct EncodedMethod {
     pub code_off: DULeb128,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CodeItem {
     pub registers_size: DUShort,
     pub ins_size: DUShort,
     pub outs_size: DUShort,
     pub tries_size: DUShort,
     pub debug_info_off: DUInt,
-    pub insns_size: DUInt,
-    pub insns: Vec<DUShort>,
-    // pub padding: Vec<DUShort>,
+    pub insn_container: InsnContainer,
     pub tries: Vec<TryItem>,
-    pub handlers: Vec<EncodedCatchHandler>,
+    pub handlers: EncodedCatchHandlerList,
 }
 
-#[derive(Copy, Clone, Debug, ReadFrom)]
+#[derive(Clone, Debug, Eq, PartialEq, ReadFrom)]
+pub struct InsnContainer {
+    pub insns_size: U32BasedSize,
+    #[index(insns_size)]
+    pub insns: Vec<DUShort>,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 pub struct TryItem {
     pub start_addr: DUInt,
     /// The last code unit covered (inclusive) is `start_addr + insn_count - 1`.
@@ -185,18 +194,27 @@ pub struct TryItem {
     pub handler_off: DUShort,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, ReadFrom, Default)]
+pub struct EncodedCatchHandlerList {
+    pub size: DULeb128,
+    #[index(size)]
+    pub list: Vec<EncodedCatchHandler>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EncodedCatchHandler {
+    pub size: DSleb128,
     pub handlers: Vec<EncodedTypeAddrPair>,
     pub catch_all_addr: Option<DULeb128>,
 }
 
-#[derive(Copy, Clone, Debug, ReadFrom)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 pub struct EncodedTypeAddrPair {
     pub type_idx: DULeb128,
     pub addr: DULeb128,
 }
 
-#[derive(Clone, Debug, ReadFrom)]
+#[derive(Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct TypeList {
     pub size: U32BasedSize,
@@ -204,7 +222,7 @@ pub struct TypeList {
     pub type_id_indices: Vec<DUShort>, // index into `type_ids`
 }
 
-#[derive(Copy, Clone, Debug, ReadFrom)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct CallSiteId {
     /// offset from the start of the file to the `call_site_item`
@@ -218,7 +236,7 @@ pub struct CallSiteId {
 /// ... Any additional arguments are constant values passed to the bootstrap linker method.
 pub type CallSiteItem = EncodedArray;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EncodedValue {
     Byte(DByte),
     Short(DShort),
@@ -240,26 +258,26 @@ pub enum EncodedValue {
     Boolean(bool),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EncodedArray {
     pub size: DULeb128,
     pub values: Vec<EncodedValue>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EncodedAnnotation {
     pub type_idx: DULeb128, // index into `type_ids`
     pub size: DULeb128,     // size of name-value mappings
     pub elements: Vec<EncodedAnnotationAttribute>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EncodedAnnotationAttribute {
     pub name_idx: DULeb128, // index into `string_ids`
     pub value: EncodedValue,
 }
 
-#[derive(Copy, Clone, Debug, ReadFrom)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct MethodHandle {
     pub method_handle_type: DUShort,
@@ -278,11 +296,11 @@ pub type DUInt = u32;
 pub type DLong = i64;
 pub type DULong = u64;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 pub struct DSleb128(pub(crate) u32);
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 pub struct DULeb128(pub(crate) u32);
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct DULeb128P1(pub(crate) u32);
 
 pub const NO_INDEX: u32 = 0xFFFFFFFF;
