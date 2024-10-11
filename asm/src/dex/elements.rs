@@ -10,11 +10,11 @@ pub struct DexFile {
     pub field_ids: Vec<FieldId>,
     pub method_ids: Vec<MethodId>,
     pub class_defs: Vec<ClassDef>,
-    pub call_site_ids: Vec<CallSiteId>,
-    pub method_handles: Vec<MethodHandle>,
     // we don't need to save the actual data chunk, every data item is indexed by
     // using the offset from the start of the file.
     // 
+    // pub call_site_ids: Vec<CallSiteId>,
+    // pub method_handles: Vec<MethodHandle>,
     // pub data: Vec<u8>,
     // pub link_data: Vec<u8>,
 }
@@ -31,19 +31,19 @@ pub struct Header {
     pub link_size: DUInt,   // size of the link section, or 0 if this file isn't statically linked
     pub link_off: DUInt, // offset from the start of the file to the link section, or 0 if link_size == 0
     pub map_off: DUInt,
-    pub string_ids_size: DUInt, // count of StringId items
+    pub string_ids_size: U32BasedSize, // count of StringId items
     pub string_ids_off: DUInt,  // offset from the start of the file to the StringId items
-    pub type_ids_size: DUInt,   // count of TypeId items, at most 65535
+    pub type_ids_size: U32BasedSize,   // count of TypeId items, at most 65535
     pub type_ids_off: DUInt,
-    pub proto_ids_size: DUInt, // count of ProtoId items, at most 65535
+    pub proto_ids_size: U32BasedSize, // count of ProtoId items, at most 65535
     pub proto_ids_off: DUInt,
-    pub field_ids_size: DUInt, // count of FieldId items
+    pub field_ids_size: U32BasedSize, // count of FieldId items
     pub field_ids_off: DUInt,
-    pub method_ids_size: DUInt,
+    pub method_ids_size: U32BasedSize,
     pub method_ids_off: DUInt,
-    pub class_defs_size: DUInt,
+    pub class_defs_size: U32BasedSize,
     pub class_defs_off: DUInt,
-    pub data_size: DUInt, // size of the data section, must be an even multiple of sizeof(uint)
+    pub data_size: U32BasedSize, // size of the data section, must be an even multiple of sizeof(uint)
     pub data_off: DUInt,
 }
 

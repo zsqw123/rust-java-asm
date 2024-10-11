@@ -1,4 +1,4 @@
-use crate::dex::elements::{CodeItem, DSleb128, EncodedCatchHandler};
+use crate::dex::elements::{CodeItem, DSleb128, DexFile, EncodedCatchHandler, Header};
 use crate::err::AsmResultOkExt;
 use crate::impls::jvms::r::{ReadContext, ReadFrom};
 use crate::AsmResult;
@@ -41,5 +41,22 @@ impl ReadFrom for EncodedCatchHandler {
             None
         };
         Ok(EncodedCatchHandler { size, handlers, catch_all_addr })
+    }
+}
+
+impl ReadFrom for DexFile {
+    fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
+        let header: Header = context.read()?;
+        let string_ids = context.read_vec(header.string_ids_size)?;
+        let type_ids = context.read_vec(header.type_ids_size)?;
+        let proto_ids = context.read_vec(header.proto_ids_size)?;
+        let field_ids = context.read_vec(header.field_ids_size)?;
+        let method_ids = context.read_vec(header.method_ids_size)?;
+        let class_defs = context.read_vec(header.class_defs_size)?;
+        DexFile {
+            header, 
+            string_ids, type_ids, proto_ids, field_ids, method_ids,
+            class_defs, 
+        }.ok()
     }
 }
