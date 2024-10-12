@@ -22,29 +22,49 @@ pub struct DexFile {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct Header {
-    pub magic: [u8; 8],  // should be "dex\n039\0", and 039 is the dex version number
-    pub checksum: DUInt, // adler32 checksum of the rest of the file (everything except magic and this field)
-    pub signature: [u8; 20], // SHA-1 hash of the rest of the file (everything except magic, checksum, and this field)
+    /// should be "dex\n039\0", and 039 is the dex version number
+    pub magic: [u8; 8],
+    /// adler32 checksum of the rest of the file (everything except magic and this field)
+    pub checksum: DUInt,
+    /// SHA-1 hash of the rest of the file (everything except magic, checksum, and this field)
+    pub signature: [u8; 20], 
+    /// size of the entire file (including the header), in bytes
     pub file_size: DUInt,
-    pub header_size: DUInt, // length of this section
-    pub endian_tag: DUInt,  // 0x12345678 for little-endian, 0x78563412 for big-endian
-    pub link_size: DUInt,   // size of the link section, or 0 if this file isn't statically linked
-    pub link_off: DUInt, // offset from the start of the file to the link section, or 0 if link_size == 0
+    /// length of this section
+    pub header_size: DUInt,
+    /// [Header::LITTLE_ENDIAN_TAG] or [Header::BIG_ENDIAN_TAG]
+    pub endian_tag: DUInt,
+    /// size of the link section, or 0 if this file isn't statically linked
+    pub link_size: DUInt,
+    /// offset from the start of the file to the link section, or 0 if link_size == 0
+    pub link_off: DUInt, 
+    /// offset from the start of the file to the data chunk with `map_item` format
     pub map_off: DUInt,
-    pub string_ids_size: U32BasedSize, // count of StringId items
-    pub string_ids_off: DUInt,  // offset from the start of the file to the StringId items
-    pub type_ids_size: U32BasedSize,   // count of TypeId items, at most 65535
+    /// count of StringId items
+    pub string_ids_size: U32BasedSize,
+    /// offset from the start of the file to the StringId items
+    pub string_ids_off: DUInt,
+    /// count of TypeId items, at most 65535
+    pub type_ids_size: U32BasedSize,   
     pub type_ids_off: DUInt,
-    pub proto_ids_size: U32BasedSize, // count of ProtoId items, at most 65535
+    /// count of ProtoId items, at most 65535
+    pub proto_ids_size: U32BasedSize, 
     pub proto_ids_off: DUInt,
-    pub field_ids_size: U32BasedSize, // count of FieldId items
+    /// count of FieldId items
+    pub field_ids_size: U32BasedSize,
     pub field_ids_off: DUInt,
     pub method_ids_size: U32BasedSize,
     pub method_ids_off: DUInt,
     pub class_defs_size: U32BasedSize,
     pub class_defs_off: DUInt,
-    pub data_size: U32BasedSize, // size of the data section, must be an even multiple of sizeof(uint)
+    /// size of the data section, must be an even multiple of sizeof(uint)
+    pub data_size: U32BasedSize, 
     pub data_off: DUInt,
+}
+
+impl Header {
+    pub const LITTLE_ENDIAN_TAG: u32 = 0x12345678;
+    pub const BIG_ENDIAN_TAG: u32 = 0x78563412;
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, ReadFrom)]

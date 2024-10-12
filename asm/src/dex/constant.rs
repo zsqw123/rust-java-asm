@@ -1,4 +1,4 @@
-use crate::dex::elements::{DUByte, DUInt, DUShort};
+use crate::dex::raw::{DUByte, DUInt, DUShort};
 use java_asm_macro::const_container;
 
 pub struct MapListTypeConst;

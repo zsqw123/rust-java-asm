@@ -1,12 +1,12 @@
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::io::{BufWriter, Read, Write};
 
 use crate::err::{AsmErr, AsmResult};
-use crate::impls::jvms::r::{ReadFrom, ReadContext};
+use crate::impls::jvms::r::{ReadContext, ReadFrom};
 
 use crate::impls::jvms::r::transform::transform_class_file;
 use crate::impls::jvms::w::WriteContext;
-use crate::jvms::element::ClassFile;
 use crate::impls::ToRc;
+use crate::jvms::element::ClassFile;
 
 pub mod element;
 pub mod attr;
@@ -15,12 +15,10 @@ pub struct JvmsClassReader;
 
 impl JvmsClassReader {
     pub fn read_class_file<T: Read>(read: T) -> AsmResult<ClassFile> {
-        let mut reader = BufReader::new(read);
-        let mut bytes = [];
-        let read_result = reader.read(&mut bytes);
-        if let Err(e) = read_result {
-            return Err(AsmErr::IOReadErr(e.rc()));
-        };
+        let mut reader = read;
+        let mut bytes = vec![];
+        reader.read_to_end(&mut bytes)
+            .map_err(|e| AsmErr::IOReadErr(e.rc()))?;
         Self::read_class_bytes(&bytes)
     }
 

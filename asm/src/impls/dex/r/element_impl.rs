@@ -1,4 +1,4 @@
-use crate::dex::elements::{CodeItem, DSleb128, DexFile, EncodedCatchHandler, Header};
+use crate::dex::raw::{CodeItem, DSleb128, DexFile, EncodedCatchHandler, Header};
 use crate::err::AsmResultOkExt;
 use crate::impls::jvms::r::{ReadContext, ReadFrom};
 use crate::AsmResult;
