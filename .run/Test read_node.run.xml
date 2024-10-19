@@ -1,5 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Test read_node" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+    <option name="buildProfileId" value="test" />
     <target name="@@@LOCAL@@@" />
     <option name="command" value="test --package java_asm --test main node::read_test::read_node -- --exact" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />

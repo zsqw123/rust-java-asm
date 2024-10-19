@@ -1,54 +1,55 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::hash::Hash;
+use crate::{AsmErr, AsmResult};
+use std::cell::UnsafeCell;
 use std::rc::Rc;
 
-pub type ResultRc<V, E> = Result<Rc<V>, Rc<E>>;
+pub enum InnerValue<V> {
+    UnInit,
+    Initialized(V),
+}
 
-pub(crate) struct ComputableMap<K, V, E>(RefCell<HashMap<K, ResultRc<V, E>>>);
+impl<V> Default for InnerValue<V> {
+    fn default() -> Self { InnerValue::UnInit }
+}
 
-impl<K, V, E> Default for ComputableMap<K, V, E>
-    where K: Clone + Eq + Hash {
-    fn default() -> Self {
-        Self(Default::default())
+pub struct ComputableSizedVec<V> {
+    vec_ref: Vec<UnsafeCell<InnerValue<Rc<V>>>>,
+}
+
+impl<V> ComputableSizedVec<V> {
+    pub fn new(size: usize) -> Self {
+        let mut vec = Vec::with_capacity(size);
+        vec.resize_with(size, || Default::default());
+        Self { vec_ref: vec }
     }
 }
 
-pub trait CacheableOwner<K, V, E, MapRef = ComputableMap<K, V, E>>
-    where K: Clone + Eq + Hash {
-    fn cache_map(&self) -> &MapRef;
-    fn compute(&self, key: &K) -> Result<V, E>;
+pub trait ComputableSizedVecOwner<V> {
+    fn computable_vec(&self) -> &ComputableSizedVec<V>;
+    fn compute(&self, index: usize) -> AsmResult<V>;
 }
 
-pub trait CacheAccessor<K, V, E> where K: Clone + Eq + Hash {
-    /// Get the value from the map.
-    /// Compute it and insert the cloned key if the value is not existed,
-    /// and insert the computed value into the map.
-    fn get(&self, key: &K) -> ResultRc<V, E>;
+pub trait ComputableSizedVecAccessor<V> {
+    /// Get the value at the index, compute value if needed.
+    /// Returns None if the `index` is out of range. 
+    fn get_or_compute(&self, index: usize) -> AsmResult<Rc<V>>;
 }
 
-impl<T, K, V, E> CacheAccessor<K, V, E> for T
-    where T: CacheableOwner<K, V, E>,
-          K: Clone + Eq + Hash {
-    #[inline]
-    fn get(&self, key: &K) -> ResultRc<V, E> {
-        let map_ref = self.cache_map().0.borrow();
-        return if let Some(value) = map_ref.get(key) {
-            match value.as_ref() {
-                Ok(v) => Ok(Rc::clone(v)),
-                Err(e) => Err(Rc::clone(e)),
+impl<T, V> ComputableSizedVecAccessor<V> for T
+where
+    T: ComputableSizedVecOwner<V>,
+{
+    fn get_or_compute(&self, index: usize) -> AsmResult<Rc<V>> {
+        let cell = self.computable_vec().vec_ref.get(index)
+            .ok_or_else(|| AsmErr::OutOfRange(index))?;
+        let inner = unsafe { &mut *cell.get() };
+        match inner {
+            InnerValue::UnInit => {
+                let value = Rc::new(self.compute(index)?);
+                let copied = Rc::clone(&value);
+                *inner = InnerValue::Initialized(value);
+                Ok(copied)
             }
-        } else {
-            drop(map_ref);
-            let computed = match self.compute(key) {
-                Ok(v) => Ok(Rc::new(v)),
-                Err(e) => Err(Rc::new(e)),
-            };
-            let returned = computed.clone();
-            let mut mut_map_ref = self.cache_map().0.borrow_mut();
-            mut_map_ref.insert(key.clone(), computed);
-            returned
+            InnerValue::Initialized(value) => Ok(Rc::clone(value))
         }
     }
 }
-

@@ -1,16 +1,15 @@
+use crate::err::AsmErr;
+use crate::impls::ComputableSizedVec;
+use crate::jvms::element::ClassFile;
+use crate::node::element::BootstrapMethodAttr;
+use crate::node::values::ConstValue;
 use std::cell::OnceCell;
 use std::fmt::Display;
 use std::rc::Rc;
 
-use crate::err::AsmErr;
-use crate::impls::ComputableMap;
-use crate::jvms::element::ClassFile;
-use crate::node::element::BootstrapMethodAttr;
-use crate::node::values::ConstValue;
-
 pub struct ConstPool {
     pub jvms_file: Rc<ClassFile>,
-    pub pool: Rc<ConstComputableMap>,
+    pub pool: ComputableSizedVec<ConstValue>,
 }
 
 pub(crate) struct ClassNodeContext {
@@ -19,13 +18,12 @@ pub(crate) struct ClassNodeContext {
     pub bootstrap_methods: OnceCell<Vec<BootstrapMethodAttr>>,
 }
 
-pub type ConstComputableMap = ComputableMap<u16, ConstValue, AsmErr>;
-
 impl ClassNodeContext {
     pub fn new(jvms_file: Rc<ClassFile>) -> ClassNodeContext {
+        let const_pool_size = jvms_file.constant_pool.len();
         let const_pool = ConstPool {
             jvms_file: Rc::clone(&jvms_file),
-            pool: Default::default(),
+            pool: ComputableSizedVec::new(const_pool_size),
         };
         // attrs need to be read entirely, because we need to traverse the attributes
         // when constructing the class node, we just uses LazyCell for read it lazily.

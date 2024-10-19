@@ -39,14 +39,14 @@ impl ConstPool {
                 max_stack, max_locals, code, exception_table,
                 attributes: jvms_attributes, ..
             } => {
-                let exception_table = exception_table.map(|et| {
+                let exception_table = exception_table.iter().map(|et| {
                     ExceptionTable {
                         start: et.start_pc,
                         end: et.end_pc,
                         handler: et.handler_pc,
                         catch_type: self.read_class_info(et.catch_type).ok(),
                     }
-                });
+                }).collect();
                 let mut attributes = vec![];
                 for attr in jvms_attributes {
                     let attribute_info = attr.clone();

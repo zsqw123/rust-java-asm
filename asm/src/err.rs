@@ -5,6 +5,7 @@ use std::rc::Rc;
 pub enum AsmErr {
     // something wrong when trying to access invalid index.
     // e.g. `constant_pool_count` declared it is 3, but `constant_pool` has only 2 elements.
+    // e.g. `this_class` declared it is 3, but `constant_pool` has only 2 elements.
     OutOfRange(usize),
     // io error while reading content.
     IOReadErr(Rc<io::Error>),
@@ -58,15 +59,5 @@ impl<T> AsmResultExt<T> for Option<T> {
             Some(v) => Ok(v),
             None => when_none(),
         }
-    }
-}
-
-pub trait AsmResultRcExt<T> {
-    fn clone_if_error(self) -> AsmResult<T>;
-}
-
-impl<T> AsmResultRcExt<T> for Result<T, Rc<AsmErr>> {
-    fn clone_if_error(self) -> AsmResult<T> {
-        self.map_err(|e| (*e).clone())
     }
 }

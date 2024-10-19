@@ -1,22 +1,21 @@
 use std::ops::Deref;
 use std::rc::Rc;
 
-use crate::*;
 use crate::constants::Constants;
-use crate::err::{AsmErr, AsmResult, AsmResultRcExt};
-use crate::impls::{mutf8_to_string, ToStringRef};
-use crate::impls::{CacheableOwner, CacheAccessor};
-use crate::impls::node::r::node_reader::{ClassNodeContext, ConstComputableMap, ConstPool};
+use crate::err::{AsmErr, AsmResult};
+use crate::impls::node::r::node_reader::{ClassNodeContext, ConstPool};
+use crate::impls::{mutf8_to_string, ComputableSizedVec, ComputableSizedVecAccessor, ComputableSizedVecOwner, ToStringRef};
 use crate::jvms::element::Const;
 use crate::node::values::{ConstValue, Handle};
+use crate::*;
 
-impl CacheableOwner<u16, ConstValue, AsmErr> for ConstPool {
-    fn cache_map(&self) -> &ConstComputableMap {
+impl ComputableSizedVecOwner<ConstValue> for ConstPool {
+    fn computable_vec(&self) -> &ComputableSizedVec<ConstValue> {
         &self.pool
     }
 
-    fn compute(&self, key: &u16) -> AsmResult<ConstValue> {
-        self.read_const(*key)
+    fn compute(&self, index: usize) -> AsmResult<ConstValue> {
+        self.read_const(index as u16)
     }
 }
 
@@ -91,7 +90,7 @@ impl ConstPool {
 
     #[inline]
     pub fn get_res(&self, index: u16) -> AsmResult<Rc<ConstValue>> {
-        self.get(&index).clone_if_error()
+        self.get_or_compute(index as usize)
     }
 
     fn read_const(&self, index: u16) -> AsmResult<ConstValue> {
