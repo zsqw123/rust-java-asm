@@ -183,7 +183,7 @@ pub struct EncodedMethod {
     pub method_idx_diff: DULeb128,
     /// see [crate::dex::MethodAccessFlags]
     pub access_flags: DULeb128,
-    /// offset from the start of the file to the [CodeItem], 
+    /// offset from the start of the file to the [CodeItem],
     /// or 0 if this method is abstract or native
     pub code_off: DULeb128,
 }

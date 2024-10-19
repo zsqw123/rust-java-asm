@@ -105,12 +105,12 @@ impl ReadFrom for u8 {
 impl ReadFrom for u16 {
     #[inline]
     fn read_from(context: &mut ReadContext) -> AsmResult<u16> {
-        let h = (context.get_and_inc()? as u16) << 8;
+        let h = context.get_and_inc()? as u16;
         let l = context.get_and_inc()? as u16;
         if context.endian {
-            Ok(h | l)
+            Ok(h << 8 | l)
         } else {
-            Ok(l | h)
+            Ok(l << 8 | h)
         }
     }
 }
@@ -118,14 +118,14 @@ impl ReadFrom for u16 {
 impl ReadFrom for u32 {
     #[inline]
     fn read_from(context: &mut ReadContext) -> AsmResult<u32> {
-        let a = (context.get_and_inc()? as u32) << 24;
-        let b = (context.get_and_inc()? as u32) << 16;
-        let c = (context.get_and_inc()? as u32) << 8;
+        let a = context.get_and_inc()? as u32;
+        let b = context.get_and_inc()? as u32;
+        let c = context.get_and_inc()? as u32;
         let d = context.get_and_inc()? as u32;
         if context.endian {
-            Ok(a | b | c | d)
+            Ok(a << 24 | b << 16 | c << 8 | d)
         } else {
-            Ok(d | c | b | a)
+            Ok(d << 24 | c << 16 | b << 8 | a)
         }
     }
 }
@@ -133,18 +133,18 @@ impl ReadFrom for u32 {
 impl ReadFrom for u64 {
     #[inline]
     fn read_from(context: &mut ReadContext) -> AsmResult<u64> {
-        let a = (context.get_and_inc()? as u64) << 56;
-        let b = (context.get_and_inc()? as u64) << 48;
-        let c = (context.get_and_inc()? as u64) << 40;
-        let d = (context.get_and_inc()? as u64) << 32;
-        let e = (context.get_and_inc()? as u64) << 24;
-        let f = (context.get_and_inc()? as u64) << 16;
-        let g = (context.get_and_inc()? as u64) << 8;
+        let a = context.get_and_inc()? as u64;
+        let b = context.get_and_inc()? as u64;
+        let c = context.get_and_inc()? as u64;
+        let d = context.get_and_inc()? as u64;
+        let e = context.get_and_inc()? as u64;
+        let f = context.get_and_inc()? as u64;
+        let g = context.get_and_inc()? as u64;
         let h = context.get_and_inc()? as u64;
         if context.endian {
-            Ok(a | b | c | d | e | f | g | h)
+            Ok(a << 56 | b << 48 | c << 40 | d << 32 | e << 24 | f << 16 | g << 8 | h)
         } else {
-            Ok(h | g | f | e | d | c | b | a)
+            Ok(h << 56 | g << 48 | f << 40 | e << 32 | d << 24 | c << 16 | b << 8 | a)
         }
     }
 }
