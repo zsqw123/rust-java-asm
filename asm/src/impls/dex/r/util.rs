@@ -1,5 +1,5 @@
 use crate::{AsmErr, AsmResult};
-use crate::dex::raw::*;
+use crate::dex::*;
 use crate::dex::U4;
 use crate::err::AsmResultOkExt;
 use crate::impls::jvms::r::{ReadContext, ReadFrom};

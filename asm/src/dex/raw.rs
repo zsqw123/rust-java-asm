@@ -1,3 +1,4 @@
+use crate::dex::insn::DexInsn;
 use crate::impls::jvms::r::U32BasedSize;
 use java_asm_macro::ReadFrom;
 
@@ -77,9 +78,11 @@ pub struct MapList {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 pub struct MapItem {
+    /// defined in [crate::dex::constant::MapListTypeConst]
     pub type_value: DUShort,
     pub unused: DUShort, // reserved
-    pub size: DUInt, // count of items to be found at the specified offset
+    /// count of items to be found at the specified offset
+    pub size: DUInt,
     pub offset: DUInt, // offset from the start of the file
 }
 
@@ -138,14 +141,14 @@ pub struct ClassDef {
     /// index into `type_ids`, or NO_INDEX if this class has no superclass
     pub superclass_idx: DUInt,
     /// offset from the start of the file to the list of interfaces, or 0 if there are no interfaces
-    /// for this class. Must be an offset of a `type_list` structure.
+    /// for this class. Must be an offset of a [TypeList] structure.
     pub interfaces_off: DUInt,
     pub source_file_idx: DUInt, // index into `string_ids` for the source file name, or NO_INDEX
     /// offset from the start of the file to the `annotations_directory_item` or 0 if not present.
     pub annotations_off: DUInt,
-    /// offset from the start of the file to the `class_data_item` or 0 if not present.
+    /// offset from the start of the file to the [ClassDataItem] or 0 if not present.
     pub class_data_off: DUInt,
-    /// offset from the start of the file to the list of `encoded_array_item`, or 0 if not present.
+    /// offset from the start of the file to the list of [EncodedArray], or 0 if not present.
     /// Same order of the static fields in the `field_list`.
     pub static_values_off: DUInt,
 }
@@ -180,7 +183,7 @@ pub struct EncodedMethod {
     pub method_idx_diff: DULeb128,
     /// see [crate::dex::MethodAccessFlags]
     pub access_flags: DULeb128,
-    /// offset from the start of the file to the `code_item`, 
+    /// offset from the start of the file to the [CodeItem], 
     /// or 0 if this method is abstract or native
     pub code_off: DULeb128,
 }
@@ -197,11 +200,10 @@ pub struct CodeItem {
     pub handlers: EncodedCatchHandlerList,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, ReadFrom)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InsnContainer {
-    pub insns_size: U32BasedSize,
-    #[index(insns_size)]
-    pub insns: Vec<DUShort>,
+    pub insns_size: DUInt,
+    pub insns: Vec<DexInsn>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]

@@ -1,4 +1,4 @@
-use crate::dex::raw::{CodeItem, DSleb128, DexFile, EncodedCatchHandler, Header};
+use crate::dex::{CodeItem, DSleb128, DUInt, DexFile, EncodedCatchHandler, Header, InsnContainer};
 use crate::err::AsmResultOkExt;
 use crate::impls::jvms::r::{ReadContext, ReadFrom};
 use crate::AsmResult;
@@ -26,6 +26,23 @@ impl ReadFrom for CodeItem {
             registers_size, ins_size, outs_size, tries_size,
             debug_info_off, insn_container, tries, handlers,
         }.ok()
+    }
+}
+
+impl ReadFrom for InsnContainer {
+    fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
+        let insns_size: DUInt = context.read()?;
+        let mut insns = Vec::new();
+        let len_of_insns = (insns_size * 2) as usize;
+        let mut cur = 0usize;
+        while cur < len_of_insns {
+            let start = context.index;
+            let insn = context.read()?;
+            insns.push(insn);
+            let end = context.index;
+            cur += end - start;
+        }
+        Ok(InsnContainer { insns_size, insns })
     }
 }
 

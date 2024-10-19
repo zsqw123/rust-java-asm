@@ -1,8 +1,8 @@
 pub use constants::*;
 pub use err::*;
+pub use opcodes::*;
 pub use pub_jvms_utils::*;
 pub use pub_refs::*;
-pub use opcodes::*;
 
 pub mod opcodes;
 pub mod constants;

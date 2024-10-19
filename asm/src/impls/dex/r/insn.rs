@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+use std::io::Read;
 use crate::dex::insn::DexInsn;
 use crate::dex::insn_syntax::*;
 use crate::dex::{I4, U4};
@@ -164,7 +165,7 @@ simple_impl!(F51l, vA, opcode, literalB);
 impl Reader for DexInsn {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
         let cur_index = context.index;
-        let opcode = context.get_at(cur_index + 1)?;
+        let opcode = context.byte_at(cur_index + 1)?;
         if opcode == 0x00 {
             return read_payload(context)
         }

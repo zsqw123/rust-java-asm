@@ -1,17 +1,17 @@
-pub mod raw;
+pub use raw::*;
 pub mod element;
 
-use crate::dex::raw::{ClassDef, DexFile};
+use crate::impls::jvms::r::ReadContext;
 use crate::impls::ToRc;
 use crate::{AsmErr, AsmResult};
 pub use constant::*;
 use std::io::Read;
 pub use util::*;
-use crate::impls::jvms::r::ReadContext;
 
 pub mod insn;
 pub mod insn_syntax;
 
+mod raw;
 mod constant;
 mod util;
 
@@ -31,6 +31,17 @@ impl DexFile {
     }
 }
 
-pub trait DexAccessor {
-    fn get_classes(&self) -> Vec<ClassDef>;
+pub struct DexFileAccessor<'a> {
+    pub file: DexFile,
+    pub bytes: &'a [u8],
+}
+
+impl<'a> DexFileAccessor<'a> {
+    pub fn get_class_data(&self, class_data_off: DUInt) -> AsmResult<ClassDataItem> {
+        self.get_data_impl(class_data_off)
+    }
+
+    pub fn get_code_item(&self, code_off: DUInt) -> AsmResult<CodeItem> {
+        self.get_data_impl(code_off)
+    }
 }
