@@ -5,7 +5,7 @@ use java_asm_macro::ReadFrom;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DexInsn {
-    Nop, // 0x00
+    Nop(F00x), // 0x00
     Move(F12x), // 0x01
     MoveFrom16(F22x), // 0x02
     Move16(F32x), // 0x03
