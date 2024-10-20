@@ -1,7 +1,7 @@
+use crate::AsmResult;
 use crate::dex::{CodeItem, DSleb128, DUInt, DexFile, EncodedCatchHandler, Header, InsnContainer};
 use crate::err::AsmResultOkExt;
 use crate::impls::jvms::r::{ReadContext, ReadFrom};
-use crate::AsmResult;
 
 impl ReadFrom for CodeItem {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
@@ -71,9 +71,9 @@ impl ReadFrom for DexFile {
         let method_ids = context.read_vec(header.method_ids_size)?;
         let class_defs = context.read_vec(header.class_defs_size)?;
         DexFile {
-            header, 
+            header,
             string_ids, type_ids, proto_ids, field_ids, method_ids,
-            class_defs, 
+            class_defs,
         }.ok()
     }
 }

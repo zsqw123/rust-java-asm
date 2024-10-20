@@ -1,13 +1,17 @@
-use crate::dex::CodeItem;
-use crate::Computable;
+use crate::dex::{CodeItem, DexFileAccessor};
+use crate::{AsmResult, Computable};
 use crate::{DescriptorRef, StrRef};
+
+pub trait AsElement<E> {
+    fn to_element(&self, accessor: &DexFileAccessor, previous: Option<&Self>) -> AsmResult<E>;
+}
 
 pub struct DexElement {
     
 }
 
 #[derive(Clone, Debug)]
-pub struct ClassElement {
+pub struct ClassContentElement {
     pub static_fields: Vec<FieldElement>,
     pub instance_fields: Vec<FieldElement>,
     pub direct_methods: Vec<MethodElement>,

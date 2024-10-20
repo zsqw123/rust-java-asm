@@ -7,6 +7,7 @@ use crate::{AsmErr, AsmResult};
 pub use constant::*;
 use std::io::Read;
 pub use util::*;
+use crate::dex::element::ClassContentElement;
 
 pub mod insn;
 pub mod insn_syntax;
@@ -37,8 +38,8 @@ pub struct DexFileAccessor<'a> {
 }
 
 impl<'a> DexFileAccessor<'a> {
-    pub fn get_class_data(&self, class_data_off: DUInt) -> AsmResult<ClassDataItem> {
-        self.get_data_impl(class_data_off)
+    pub fn get_class_data(&self, class_data_off: DUInt) -> AsmResult<ClassContentElement> {
+        self.get_data_impl::<ClassDataItem>(class_data_off)
     }
 
     pub fn get_code_item(&self, code_off: DUInt) -> AsmResult<CodeItem> {
