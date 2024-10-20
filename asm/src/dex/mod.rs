@@ -1,13 +1,13 @@
 pub use raw::*;
 pub mod element;
 
+use crate::dex::element::{AsElement, ClassContentElement};
 use crate::impls::jvms::r::ReadContext;
 use crate::impls::ToRc;
 use crate::{AsmErr, AsmResult};
 pub use constant::*;
 use std::io::Read;
 pub use util::*;
-use crate::dex::element::{AsElement, ClassContentElement};
 
 pub mod insn;
 pub mod insn_syntax;
@@ -42,7 +42,8 @@ impl<'a> DexFileAccessor<'a> {
         self.get_data_impl::<ClassDataItem>(class_data_off)?.to_element(&self, None)
     }
 
-    pub fn get_code_item(&self, code_off: DUInt) -> AsmResult<CodeItem> {
-        self.get_data_impl(code_off)
+    pub fn get_code_item(&self, code_off: DUInt) -> AsmResult<Option<CodeItem>> {
+        if code_off == 0 { return Ok(None); }
+        self.get_data_impl(code_off).map(Some)
     }
 }

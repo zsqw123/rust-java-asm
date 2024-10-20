@@ -1,5 +1,5 @@
-use crate::AsmResult;
-use crate::dex::{CodeItem, DSleb128, DUInt, DexFile, EncodedCatchHandler, Header, InsnContainer};
+use crate::{mutf8_to_string, AsmResult};
+use crate::dex::{CodeItem, DSleb128, DUInt, DULeb128, DexFile, EncodedCatchHandler, Header, InsnContainer, StringData};
 use crate::err::AsmResultOkExt;
 use crate::impls::jvms::r::{ReadContext, ReadFrom};
 
@@ -75,5 +75,19 @@ impl ReadFrom for DexFile {
             string_ids, type_ids, proto_ids, field_ids, method_ids,
             class_defs,
         }.ok()
+    }
+}
+
+impl ReadFrom for StringData {
+    fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
+        let utf16_size: DULeb128 = context.read()?;
+        let mut vec = Vec::new();
+        loop {
+            let current: u8 = context.read()?;
+            if current == 0 { break; }
+            vec.push(current);
+        }
+        let str_ref = mutf8_to_string(&vec)?;
+        Ok(StringData { utf16_size, str_ref })
     }
 }

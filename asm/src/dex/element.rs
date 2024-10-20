@@ -1,5 +1,5 @@
-use crate::dex::{CodeItem, DexFileAccessor};
-use crate::{AsmResult, Computable};
+use crate::dex::{DUInt, DexFileAccessor};
+use crate::AsmResult;
 use crate::{DescriptorRef, StrRef};
 
 pub trait AsElement<E> {
@@ -32,5 +32,5 @@ pub struct MethodElement {
     pub shorty_descriptor: DescriptorRef,
     pub return_type: DescriptorRef,
     pub parameters: Vec<DescriptorRef>,
-    pub code_item: Computable<CodeItem>,
+    pub code_off: DUInt,
 }

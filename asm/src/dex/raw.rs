@@ -1,6 +1,7 @@
 use crate::dex::insn::DexInsn;
 use crate::impls::jvms::r::U32BasedSize;
 use java_asm_macro::ReadFrom;
+use crate::StrRef;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DexFile {
@@ -89,7 +90,8 @@ pub struct MapItem {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct StringId {
-    pub string_data_off: DUInt, // StringData, offset from the start of the file
+    /// [StringData], offset from the start of the file
+    pub string_data_off: DUInt,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -98,8 +100,8 @@ pub struct StringData {
     /// and the encoded length is implied by position of `\0` in the data. (because the MUTF-8
     /// format will not include a `\0` in the encoded data)
     pub utf16_size: DULeb128,
-    /// A series of MUTF-8 bytes followed by a single '\0' byte.
-    pub data: Vec<u8>,
+    /// decoded string.
+    pub str_ref: StrRef,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
@@ -113,7 +115,8 @@ pub struct TypeId {
 pub struct ProtoId {
     pub shorty_idx: DUInt,      // index into `string_ids` for shorty descriptor
     pub return_type_idx: DUInt, // index into `type_ids` for return type
-    pub parameters_off: DUInt, // offset from the start of the file to the `type_list` for the parameters
+    /// [TypeList], offset from the start of the file, 0 if no parameters
+    pub parameters_off: DUInt,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
