@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 
 use crate::dex::{Opcode, I4, U4};
-use java_asm_macro::ReadFrom;
 
 macro_rules! syntax {
     (
@@ -19,24 +18,14 @@ macro_rules! syntax {
         )*
     }
 }
-#[derive(Copy, Debug, Clone, PartialEq, Eq, ReadFrom)]
-pub struct U16For1(u16);
-#[derive(Copy, Debug, Clone, PartialEq, Eq, ReadFrom)]
-pub struct U16For2(u16, u16);
-#[derive(Copy, Debug, Clone, PartialEq, Eq, ReadFrom)]
-pub struct U16For3(u16, u16, u16);
-#[derive(Copy, Debug, Clone, PartialEq, Eq, ReadFrom)]
-pub struct U16For4(u16, u16, u16, u16);
-#[derive(Copy, Debug, Clone, PartialEq, Eq, ReadFrom)]
-pub struct U16For5(u16, u16, u16, u16, u16);
 
 syntax! {
     F00x {};
     // XX|op
-    F10x { stub: u8, opcode: Opcode };
+    F10x { opcode: Opcode, stub: u8 };
     // B|A|op
-    F12x { opcode: Opcode, vA: U4, vB: U4 };
-    F11n { opcode: Opcode, vA: U4, literalB: I4 };
+    F12x { opcode: Opcode, vB: U4, vA: U4 };
+    F11n { opcode: Opcode, literalB: I4, vA: U4 };
     // AA|op
     F11x { opcode: Opcode, vA: u8 };
     F10t { opcode: Opcode, offsetA: i8 };

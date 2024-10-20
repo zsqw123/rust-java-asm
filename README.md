@@ -39,6 +39,7 @@ see some examples.
   - [ ] Debug info
   - [ ] Other formats
   - [ ] Separation for metadata with real data (e.g. instructions)
+- [ ] Isolate AsmResult as multiple different errors, and provide a better error message.
 
 ### Goals
 

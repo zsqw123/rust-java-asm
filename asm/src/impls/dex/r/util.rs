@@ -40,12 +40,12 @@ impl ReadFrom for DLong {
 impl ReadFrom for DULeb128 {
     #[inline]
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
-        let mut result = 0u32;
+        let mut result = 0u64;
         let mut shift = 0u8;
         let start_index = context.index;
         loop {
             let byte = u8::read_from(context)?;
-            let value = (byte & 0x7F) as u32;
+            let value = (byte & 0x7F) as u64;
             if context.endian {
                 result |= value;
             } else {
@@ -64,7 +64,7 @@ impl ReadFrom for DULeb128 {
             // in android dex format, the maximum length of LEB128 is 5 bytes
             return Err(AsmErr::InvalidLEB128(start_index));
         }
-        DULeb128(result).ok()
+        DULeb128(result as u32).ok()
     }
 }
 

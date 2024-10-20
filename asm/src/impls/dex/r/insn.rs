@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
 
-use std::io::Read;
 use crate::dex::insn::DexInsn;
 use crate::dex::insn_syntax::*;
 use crate::dex::{I4, U4};
@@ -9,7 +8,6 @@ use crate::impls::dex::r::util::destruct_u8;
 use crate::impls::jvms::r::ReadContext;
 use crate::impls::jvms::r::ReadFrom as Reader;
 use crate::{AsmErr, AsmResult};
-use java_asm_macro::ReadFrom;
 
 macro_rules! simple_impl {
     ($type:ty, $($field:ident),*) => {
@@ -30,54 +28,43 @@ impl Reader for (U4, U4) {
     }
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, ReadFrom)]
-pub struct U16For1(u16);
-#[derive(Copy, Debug, Clone, PartialEq, Eq, ReadFrom)]
-pub struct U16For2(u16, u16);
-#[derive(Copy, Debug, Clone, PartialEq, Eq, ReadFrom)]
-pub struct U16For3(u16, u16, u16);
-#[derive(Copy, Debug, Clone, PartialEq, Eq, ReadFrom)]
-pub struct U16For4(u16, u16, u16, u16);
-#[derive(Copy, Debug, Clone, PartialEq, Eq, ReadFrom)]
-pub struct U16For5(u16, u16, u16, u16, u16);
-
 simple_impl!(F00x,);
-simple_impl!(F10x, stub, opcode);
+simple_impl!(F10x, opcode, stub);
 
 impl Reader for F12x {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
-        let (vB, vA) = context.read()?;
         let opcode = context.get_and_inc()?;
+        let (vB, vA) = context.read()?;
         Ok(F12x { opcode, vA, vB })
     }
 }
 
 impl Reader for F11n {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
-        let (literalB, vA) = context.read()?;
         let opcode = context.get_and_inc()?;
+        let (literalB, vA) = context.read()?;
         let literalB = I4::from_u4(literalB);
         Ok(F11n { opcode, vA, literalB })
     }
 }
 
-simple_impl!(F11x, vA, opcode);
-simple_impl!(F10t, offsetA, opcode);
+simple_impl!(F11x, opcode, vA);
+simple_impl!(F10t, opcode, offsetA);
 
-simple_impl!(F20t, stub, opcode, offsetA);
-simple_impl!(F20bc, vA, opcode, constB);
-simple_impl!(F22x, vA, opcode, vB);
-simple_impl!(F21t, vA, opcode, offsetB);
-simple_impl!(F21s, vA, opcode, literalB);
-simple_impl!(F21h, vA, opcode, literalB);
-simple_impl!(F21c, vA, opcode, constB);
-simple_impl!(F23x, vA, opcode, vC, vB);
-simple_impl!(F22b, vA, opcode, literalC, vB);
+simple_impl!(F20t, opcode, stub, offsetA);
+simple_impl!(F20bc, opcode, vA, constB);
+simple_impl!(F22x, opcode, vA, vB);
+simple_impl!(F21t, opcode, vA, offsetB);
+simple_impl!(F21s, opcode, vA, literalB);
+simple_impl!(F21h, opcode, vA, literalB);
+simple_impl!(F21c, opcode, vA, constB);
+simple_impl!(F23x, opcode, vA, vB, vC);
+simple_impl!(F22b, opcode, vA, vB, literalC);
 
 impl Reader for F22t {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
-        let (vB, vA) = context.read()?;
         let opcode = context.read()?;
+        let (vB, vA) = context.read()?;
         let offsetC = context.read()?;
         Ok(F22t { opcode, vA, vB, offsetC })
     }
@@ -85,8 +72,8 @@ impl Reader for F22t {
 
 impl Reader for F22s {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
-        let (vB, vA) = context.read()?;
         let opcode = context.read()?;
+        let (vB, vA) = context.read()?;
         let literalC = context.read()?;
         Ok(F22s { opcode, vA, vB, literalC })
     }
@@ -94,8 +81,8 @@ impl Reader for F22s {
 
 impl Reader for F22c {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
-        let (vB, vA) = context.read()?;
         let opcode = context.read()?;
+        let (vB, vA) = context.read()?;
         let constC = context.read()?;
         Ok(F22c { opcode, vA, vB, constC })
     }
@@ -103,26 +90,26 @@ impl Reader for F22c {
 
 impl Reader for F22cs {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
-        let (vB, vA) = context.read()?;
         let opcode = context.read()?;
+        let (vB, vA) = context.read()?;
         let constC = context.read()?;
         Ok(F22cs { opcode, vA, vB, constC })
     }
 }
 
-simple_impl!(F30t, stub, opcode, offsetA);
-simple_impl!(F32x, stub, opcode, vA, vB);
-simple_impl!(F31i, vA, opcode, literalB);
-simple_impl!(F31t, vA, opcode, offsetB);
-simple_impl!(F31c, vA, opcode, constB);
+simple_impl!(F30t, opcode, stub, offsetA);
+simple_impl!(F32x, opcode, stub, vA, vB);
+simple_impl!(F31i, opcode, vA, literalB);
+simple_impl!(F31t, opcode, vA, offsetB);
+simple_impl!(F31c, opcode, vA, constB);
 
 impl Reader for F35c {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
-        let (vA, vG) = context.read()?;
         let opcode = context.read()?;
+        let (vA, vG) = context.read()?;
         let constB = context.read()?;
-        let (vF, vE) = context.read()?;
         let (vD, vC) = context.read()?;
+        let (vF, vE) = context.read()?;
         Ok(F35c { opcode, vA, vC, vD, vE, vF, vG, constB })
     }
 }
@@ -143,29 +130,28 @@ impl Reader for F35mi {
     }
 }
 
-simple_impl!(F3rc, vA, opcode, vB, vC);
-simple_impl!(F3rms, vA, opcode, vB, vC);
-simple_impl!(F3rmi, vA, opcode, vB, vC);
+simple_impl!(F3rc, opcode, vA, vB, vC);
+simple_impl!(F3rms, opcode, vA, vB, vC);
+simple_impl!(F3rmi, opcode, vA, vB, vC);
 
 impl Reader for F45cc {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
-        let (vA, vG) = context.read()?;
         let opcode = context.read()?;
+        let (vA, vG) = context.read()?;
         let constB = context.read()?;
-        let constH = context.read()?;
-        let (vF, vE) = context.read()?;
         let (vD, vC) = context.read()?;
+        let (vF, vE) = context.read()?;
+        let constH = context.read()?;
         Ok(F45cc { opcode, vA, vC, vD, vE, vF, vG, constB, constH })
     }
 }
 
-simple_impl!(F4rcc, literalA, opcode, constB, vC, constH);
-simple_impl!(F51l, vA, opcode, literalB);
+simple_impl!(F4rcc, opcode, literalA, constB, vC, constH);
+simple_impl!(F51l, opcode, vA, literalB);
 
 impl Reader for DexInsn {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
-        let cur_index = context.index;
-        let opcode = context.byte_at(cur_index + 1)?;
+        let opcode = context.get_cur()?;
         if opcode == 0x00 {
             return read_payload(context)
         }
@@ -254,6 +240,10 @@ impl Reader for DexInsn {
 fn read_payload(context: &mut ReadContext) -> AsmResult<DexInsn> {
     let ident = context.get_cur()?;
     match ident {
+        0x00 => {
+            context.index += 1;
+            DexInsn::Nop
+        },
         0x01 => DexInsn::PackedSwitchPayload(context.read()?),
         0x02 => DexInsn::SparseSwitchPayload(context.read()?),
         0x03 => DexInsn::FillArrayDataPayload(context.read()?),
