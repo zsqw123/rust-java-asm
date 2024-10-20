@@ -1,3 +1,4 @@
+pub use computable::*;
 pub use constants::*;
 pub use err::*;
 pub use opcodes::*;
@@ -22,5 +23,7 @@ pub mod dex;
 mod err;
 mod pub_jvms_utils;
 mod pub_refs;
+mod computable;
+
 
 pub(crate) mod impls;

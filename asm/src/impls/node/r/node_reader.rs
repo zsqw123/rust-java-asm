@@ -1,5 +1,5 @@
 use crate::err::AsmErr;
-use crate::impls::ComputableSizedVec;
+use crate::ComputableSizedVec;
 use crate::jvms::element::ClassFile;
 use crate::node::element::BootstrapMethodAttr;
 use crate::node::values::ConstValue;

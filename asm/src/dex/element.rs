@@ -1,5 +1,5 @@
 use crate::dex::CodeItem;
-use crate::impls::Computable;
+use crate::Computable;
 use crate::{DescriptorRef, StrRef};
 
 pub struct DexElement {
