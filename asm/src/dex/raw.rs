@@ -171,7 +171,7 @@ pub struct ClassDataItem {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 pub struct EncodedField {
-    /// index into `field_ids`, diff with previous encoded field
+    /// index into `field_ids`[FieldId], diff with previous encoded field
     pub field_idx_diff: DULeb128,
     /// see [crate::dex::FieldAccessFlags]
     pub access_flags: DULeb128,
@@ -179,7 +179,7 @@ pub struct EncodedField {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 pub struct EncodedMethod {
-    /// index into `method_ids`, diff with previous encoded method
+    /// index into `method_ids`[MethodId], diff with previous encoded method
     pub method_idx_diff: DULeb128,
     /// see [crate::dex::MethodAccessFlags]
     pub access_flags: DULeb128,
