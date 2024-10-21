@@ -85,7 +85,7 @@ impl ConstPool {
     #[inline]
     pub fn read_class_info_or_default(&self, index: u16) -> StrRef {
         self.read_class_info(index)
-            .unwrap_or_else(|_| (*Constants::OBJECT_INTERNAL_NAME).to_ref())
+            .unwrap_or_else(|_| Constants::OBJECT_INTERNAL_NAME.to_ref())
     }
 
     #[inline]

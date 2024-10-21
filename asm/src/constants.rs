@@ -1,8 +1,16 @@
 use java_asm_macro::const_container;
 
 pub trait ConstContainer {
-    type ConstType;
+    type ConstType: ToString + Copy;
     fn const_name(c: Self::ConstType) -> Option<&'static str>;
+
+    #[inline]
+    fn const_name_or_default(c: Self::ConstType, prefix: &'static str) -> String {
+        match Self::const_name(c) {
+            None => format!("{prefix}_{}", c.to_string()),
+            Some(c) => c.to_string(),
+        }
+    }
 }
 
 pub struct Constants;

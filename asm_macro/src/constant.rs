@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::__private::TokenStream2;
-use syn::{parse_macro_input, AttributeArgs, Expr, Ident, ImplItem, ImplItemConst, ItemImpl, Meta, NestedMeta, Path, Type};
+use syn::{parse_macro_input, AttributeArgs, Expr, Ident, ImplItem, ItemImpl, Meta, NestedMeta, Path, Type};
 
 pub fn const_container_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
     // read generic argument C from attr
@@ -68,7 +68,7 @@ fn generate_const_container_impl(
     const_items: Vec<(Expr, Ident)>,
 ) -> TokenStream2 {
     let const_name_match_arms = const_items.iter().map(|(expr, ident)| {
-        let ident_str = ident.to_string();
+        let ident_str = ident.to_string().to_ascii_lowercase();
         quote! { #struct_ident::#ident => Some(#ident_str), }
     });
 

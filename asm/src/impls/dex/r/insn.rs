@@ -241,7 +241,7 @@ fn read_payload(context: &mut ReadContext) -> AsmResult<DexInsn> {
     let ident = context.get_cur()?;
     match ident {
         0x00 => {
-            context.index += 1;
+            context.index += 2;
             DexInsn::Nop(F00x {})
         },
         0x01 => DexInsn::PackedSwitchPayload(context.read()?),
