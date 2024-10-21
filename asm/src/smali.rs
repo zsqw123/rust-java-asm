@@ -1,4 +1,6 @@
+use std::fmt::{write, Debug};
 use crate::impls::ToStringRef;
+use crate::node::InsnNode;
 use crate::StrRef;
 
 pub struct SmaliNode {
@@ -35,6 +37,37 @@ impl SmaliNode {
     #[inline]
     pub fn add_child(&mut self, child: SmaliNode) {
         self.children.push(child);
+    }
+
+    #[inline]
+    pub fn render(&self, indent: usize) -> String {
+        let mut result = String::new();
+        self.render_internal(indent, &mut result);
+        result
+    }
+    
+    fn render_internal(&self, ident_level: usize, result: &mut String) {
+        let indent_str = "    ".repeat(ident_level);
+        result.push_str(&indent_str);
+        result.push_str(&self.prefix);
+        if self.children.is_empty() && self.postfix.is_none() {
+            return;
+        }
+        for child in &self.children {
+            result.push('\n');
+            child.render_internal(ident_level + 1, result);
+        }
+        if let Some(postfix) = &self.postfix {
+            result.push('\n');
+            result.push_str(&indent_str);
+            result.push_str(&postfix);
+        }
+    }
+}
+
+impl Debug for InsnNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_smali().render(0))
     }
 }
 

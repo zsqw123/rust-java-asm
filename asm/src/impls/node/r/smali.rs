@@ -15,11 +15,7 @@ impl ToSmali for InsnNode {
         match self {
             InsnNode::FieldInsnNode {
                 opcode, owner, name, desc
-            } => {
-                let opcode_name = insn_name(opcode);
-                let raw = format!("{opcode_name} {owner}.{name} {desc}");
-                SmaliNode::new(raw)
-            }
+            } => SmaliNode::new(format!("{} {owner}.{name} {desc}", insn_name(opcode))),
             InsnNode::IIncInsnNode { var, incr } =>
                 SmaliNode::new(format!("iinc {var} {incr}")),
             InsnNode::NoOperand { opcode } =>
@@ -31,7 +27,12 @@ impl ToSmali for InsnNode {
             InsnNode::InvokeDynamicInsnNode(const_dynamic) => const_dynamic.to_smali(),
             InsnNode::JumpInsnNode { opcode, label } =>
                 SmaliNode::new(format!("{} {label}", insn_name(opcode))),
-            InsnNode::LdcInsnNode(constant) => constant.to_smali(),
+            InsnNode::LdcInsnNode(constant) => {
+                let constant_smali = constant.to_smali();
+                SmaliNode::new_with_children(
+                    format!("ldc {}", constant_smali.prefix), constant_smali.children,
+                )
+            }
             InsnNode::TableSwitchInsnNode { default, min, max, labels } => {
                 let current = format!("tableswitch {default} {min} {max}");
                 let children = labels.iter().map(|label| label.to_smali()).collect();
@@ -91,7 +92,7 @@ impl ToSmali for ConstValue {
 impl ToSmali for ConstDynamic {
     fn to_smali(&self) -> SmaliNode {
         let ConstDynamic { name, desc, bsm, bsm_args } = self;
-        let prefix = format!("const-dynamic {name} {desc} {bsm}");
+        let prefix = format!("invoke-dynamic {name} {desc} {bsm}");
         let children = bsm_args.iter().map(|arg| arg.to_smali()).collect();
         SmaliNode::new_with_children(prefix, children)
     }

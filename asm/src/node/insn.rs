@@ -5,7 +5,7 @@ use crate::node::element::LabelNode;
 use crate::node::values::{ConstDynamic, ConstValue};
 
 //noinspection SpellCheckingInspection
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum InsnNode {
     FieldInsnNode {
         opcode: u8, // GETSTATIC, PUTSTATIC, GETFIELD, PUTFIELD
