@@ -1,7 +1,7 @@
-use crate::{mutf8_to_string, AsmResult};
-use crate::dex::{CodeItem, DSleb128, DUInt, DULeb128, DexFile, EncodedCatchHandler, Header, InsnContainer, StringData};
+use crate::dex::{CodeItem, DSleb128, DUByte, DUInt, DULeb128, DexFile, EncodedCatchHandler, EncodedValue, EncodedValueType, Header, InsnContainer, StringData};
 use crate::err::AsmResultOkExt;
-use crate::impls::jvms::r::{ReadContext, ReadFrom};
+use crate::impls::jvms::r::*;
+use crate::{mutf8_to_string, AsmErr, AsmResult};
 
 impl ReadFrom for CodeItem {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
@@ -78,6 +78,190 @@ impl ReadFrom for DexFile {
         }.ok()
     }
 }
+
+impl ReadFrom for EncodedValue {
+    fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
+        let header_byte: u8 = context.read()?;
+        let value_arg = header_byte & 0x1F;
+        let value_type = header_byte & 0xE0;
+        let encoded_value = match value_type {
+            EncodedValueType::VALUE_BYTE =>
+                EncodedValue::Byte(context.read()?),
+            EncodedValueType::VALUE_SHORT =>
+                EncodedValue::Short(read_i16(context, value_arg)?),
+            EncodedValueType::VALUE_CHAR =>
+                EncodedValue::Char(read_u16(context, value_arg)?),
+            EncodedValueType::VALUE_INT =>
+                EncodedValue::Int(read_i32(context, value_arg)?),
+            EncodedValueType::VALUE_LONG =>
+                EncodedValue::Long(read_i64(context, value_arg)?),
+            EncodedValueType::VALUE_FLOAT =>
+                EncodedValue::Float(read_f32(context, value_arg)?),
+            EncodedValueType::VALUE_DOUBLE =>
+                EncodedValue::Double(read_f64(context, value_arg)?),
+            EncodedValueType::VALUE_METHOD_TYPE =>
+                EncodedValue::MethodType(read_u32_based_size(context, value_arg)?),
+            EncodedValueType::VALUE_METHOD_HANDLE =>
+                EncodedValue::MethodHandle(read_u32_based_size(context, value_arg)?),
+            EncodedValueType::VALUE_STRING =>
+                EncodedValue::String(read_u32_based_size(context, value_arg)?),
+            EncodedValueType::VALUE_TYPE =>
+                EncodedValue::Type(read_u32_based_size(context, value_arg)?),
+            EncodedValueType::VALUE_FIELD =>
+                EncodedValue::Field(read_u32_based_size(context, value_arg)?),
+            EncodedValueType::VALUE_METHOD =>
+                EncodedValue::Method(read_u32_based_size(context, value_arg)?),
+            EncodedValueType::VALUE_ENUM =>
+                EncodedValue::Enum(read_u32_based_size(context, value_arg)?),
+            EncodedValueType::VALUE_ARRAY =>
+                EncodedValue::Array(context.read()?),
+            EncodedValueType::VALUE_ANNOTATION =>
+                EncodedValue::Annotation(context.read()?),
+            EncodedValueType::VALUE_NULL =>
+                EncodedValue::Null,
+            EncodedValueType::VALUE_BOOLEAN =>
+                EncodedValue::Boolean(value_arg != 0),
+            _ => return AsmErr::IllegalFormat(
+                format!("Unknown encoded value type: {:#X} at offset {:#X} of dex file.", value_type, context.index)
+            ).e(),
+        };
+        Ok(encoded_value)
+    }
+}
+
+fn read_u16(context: &mut ReadContext, value_arg: u8) -> AsmResult<u16> {
+    let value = if value_arg == 0 { // 1 byte
+        u8::read_from(context)? as u16
+    } else { // 2 bytes
+        u16::read_from(context)?
+    };
+    Ok(value)
+}
+
+fn read_u32(context: &mut ReadContext, value_arg: u8) -> AsmResult<u32> {
+    let value = if value_arg == 0 { // 1 byte
+        u8::read_from(context)? as u32
+    } else if value_arg == 1 { // 2 bytes
+        u16::read_from(context)? as u32
+    } else if value_arg == 2 { // 3 bytes
+        U24::read_from(context)?.0
+    } else { // 4 bytes
+        u32::read_from(context)?
+    };
+    Ok(value)
+}
+
+fn read_u32_based_size(context: &mut ReadContext, value_arg: u8) -> AsmResult<U32BasedSize> {
+    let value = U32BasedSize(read_u32(context, value_arg)?);
+    Ok(value)
+}
+
+fn read_u64(context: &mut ReadContext, value_arg: u8) -> AsmResult<u64> {
+    let value = if value_arg == 0 { // 1 byte
+        u8::read_from(context)? as u64
+    } else if value_arg == 1 { // 2 bytes
+        u16::read_from(context)? as u64
+    } else if value_arg == 2 { // 3 bytes
+        U24::read_from(context)?.0 as u64
+    } else if value_arg == 3 { // 4 bytes
+        u32::read_from(context)? as u64
+    } else if value_arg == 4 { // 5 bytes
+        U40::read_from(context)?.0
+    } else if value_arg == 5 { // 6 bytes
+        U48::read_from(context)?.0
+    } else if value_arg == 6 { // 7 bytes
+        U56::read_from(context)?.0
+    } else { // 8 bytes
+        u64::read_from(context)?
+    };
+    Ok(value)
+}
+
+fn read_i16(context: &mut ReadContext, value_arg: u8) -> AsmResult<i16> {
+    let value = if value_arg == 0 { // 1 byte
+        i8::read_from(context)? as i16
+    } else { // 2 bytes
+        i16::read_from(context)?
+    };
+    Ok(value)
+}
+
+fn read_i32(context: &mut ReadContext, value_arg: u8) -> AsmResult<i32> {
+    let value = if value_arg == 0 { // 1 byte
+        i8::read_from(context)? as i32
+    } else if value_arg == 1 { // 2 bytes
+        i16::read_from(context)? as i32
+    } else if value_arg == 2 { // 3 bytes
+        I24::read_from(context)?.0
+    } else { // 4 bytes
+        i32::read_from(context)?
+    };
+    Ok(value)
+}
+
+fn read_i64(context: &mut ReadContext, value_arg: u8) -> AsmResult<i64> {
+    let value = if value_arg == 0 { // 1 byte
+        i8::read_from(context)? as i64
+    } else if value_arg == 1 { // 2 bytes
+        i16::read_from(context)? as i64
+    } else if value_arg == 2 { // 3 bytes
+        I24::read_from(context)?.0 as i64
+    } else if value_arg == 3 { // 4 bytes
+        i32::read_from(context)? as i64
+    } else if value_arg == 4 { // 5 bytes
+        I40::read_from(context)?.0
+    } else if value_arg == 5 { // 6 bytes
+        I48::read_from(context)?.0
+    } else if value_arg == 6 { // 7 bytes
+        I56::read_from(context)?.0
+    } else { // 8 bytes
+        i64::read_from(context)?
+    };
+    Ok(value)
+}
+
+fn read_f32(context: &mut ReadContext, value_arg: u8) -> AsmResult<[DUByte; 4]> {
+    let mut res = [0u8; 4];
+    res[0] = context.read()?;
+    if value_arg > 0 {
+        res[1] = context.read()?;
+    }
+    if value_arg > 1 {
+        res[2] = context.read()?;
+    }
+    if value_arg > 2 {
+        res[3] = context.read()?;
+    }
+    Ok(res)
+}
+
+fn read_f64(context: &mut ReadContext, value_arg: u8) -> AsmResult<[DUByte; 8]> {
+    let mut res = [0u8; 8];
+    res[0] = context.read()?;
+    if value_arg > 0 {
+        res[1] = context.read()?;
+    }
+    if value_arg > 1 {
+        res[2] = context.read()?;
+    }
+    if value_arg > 2 {
+        res[3] = context.read()?;
+    }
+    if value_arg > 3 {
+        res[4] = context.read()?;
+    }
+    if value_arg > 4 {
+        res[5] = context.read()?;
+    }
+    if value_arg > 5 {
+        res[6] = context.read()?;
+    }
+    if value_arg > 6 {
+        res[7] = context.read()?;
+    }
+    Ok(res)
+}
+
 
 impl ReadFrom for StringData {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {

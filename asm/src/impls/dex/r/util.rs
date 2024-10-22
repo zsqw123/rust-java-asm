@@ -9,34 +9,6 @@ pub fn destruct_u8(v: u8) -> (U4, U4) {
     (U4(v >> 4), U4(v & 0x0F))
 }
 
-impl ReadFrom for DByte {
-    #[inline]
-    fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
-        u8::read_from(context).map(|v| v as i8)
-    }
-}
-
-impl ReadFrom for DShort {
-    #[inline]
-    fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
-        u16::read_from(context).map(|v| v as i16)
-    }
-}
-
-impl ReadFrom for DInt {
-    #[inline]
-    fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
-        u32::read_from(context).map(|v| v as i32)
-    }
-}
-
-impl ReadFrom for DLong {
-    #[inline]
-    fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
-        u64::read_from(context).map(|v| v as i64)
-    }
-}
-
 impl ReadFrom for DULeb128 {
     #[inline]
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {

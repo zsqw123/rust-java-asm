@@ -2,7 +2,7 @@ pub use raw::*;
 pub mod element;
 
 use crate::dex::element::{AsElement, ClassContentElement};
-use crate::impls::jvms::r::ReadContext;
+use crate::impls::jvms::r::{ReadContext, U32BasedSize};
 use crate::impls::ToRc;
 use crate::{AsmErr, AsmResult};
 pub use constant::*;
@@ -32,12 +32,41 @@ impl DexFile {
     }
 }
 
-pub struct DexFileAccessor<'a> {
+pub struct DexFileAccessor {
     pub file: DexFile,
-    pub bytes: &'a [u8],
+    pub bytes: Vec<u8>,
+    pub endian: bool,
+    pub call_site_ids: Vec<CallSiteId>,
+    pub method_handles: Vec<MethodHandle>,
 }
 
-impl<'a> DexFileAccessor<'a> {
+impl DexFileAccessor {
+    pub fn new(file: DexFile, bytes: Vec<u8>) -> Self {
+        let endian = file.header.endian_tag == Header::BIG_ENDIAN_TAG;
+        let map_list = Self::get_map_list(&bytes, &file.header, endian)
+            .unwrap_or_default();
+        let mut call_site_off = 0u32;
+        let mut call_site_size = U32BasedSize::default();
+        let mut method_handle_off = 0u32;
+        let mut method_handle_size = U32BasedSize::default();
+        for map_item in map_list.items {
+            match map_item.type_value {
+                MapListTypeConst::TYPE_CALL_SITE_ID_ITEM => {
+                    call_site_off = map_item.offset;
+                    call_site_size = map_item.size;
+                }
+                MapListTypeConst::TYPE_METHOD_HANDLE_ITEM => {
+                    method_handle_off = map_item.offset;
+                    method_handle_size = map_item.size;
+                }
+                _ => {}
+            }
+        }
+        let call_site_ids = Self::get_call_site_ids(&bytes, call_site_off, call_site_size, endian);
+        let method_handles = Self::get_method_handles(&bytes, method_handle_off, method_handle_size, endian);
+        Self { file, bytes, endian, call_site_ids, method_handles }
+    }
+
     pub fn get_class_data(&self, class_data_off: DUInt) -> AsmResult<ClassContentElement> {
         self.get_data_impl::<ClassDataItem>(class_data_off)?.to_element(&self, None)
     }

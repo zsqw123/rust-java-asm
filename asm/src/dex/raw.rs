@@ -1,7 +1,7 @@
 use crate::dex::insn::DexInsn;
 use crate::impls::jvms::r::U32BasedSize;
-use java_asm_macro::ReadFrom;
 use crate::StrRef;
+use java_asm_macro::ReadFrom;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DexFile {
@@ -69,7 +69,7 @@ impl Header {
     pub const BIG_ENDIAN_TAG: u32 = 0x78563412;
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, ReadFrom)]
+#[derive(Clone, Debug, Eq, PartialEq, ReadFrom, Default)]
 #[align(4)]
 pub struct MapList {
     pub size: U32BasedSize,
@@ -83,7 +83,7 @@ pub struct MapItem {
     pub type_value: DUShort,
     pub unused: DUShort, // reserved
     /// count of items to be found at the specified offset
-    pub size: DUInt,
+    pub size: U32BasedSize,
     pub offset: DUInt, // offset from the start of the file
 }
 
@@ -270,33 +270,35 @@ pub enum EncodedValue {
     Long(DLong),
     Float([DUByte; 4]),                 // IEEE754 32-bit
     Double([DUByte; 8]),                // IEEE754 64-bit
-    MethodType(DUInt),                  // index into `proto_ids`
-    MethodHandle(DUInt),                // index into `method_handles`
-    String(DUInt),                      // index into `string_ids`
-    Type(DUInt),                        // index into `type_ids`
-    Field(DUInt),                       // index into `field_ids`
-    Method(DUInt),                      // index into `method_ids`
-    Enum(DUInt),                        // index into `field_ids`
-    Array(Vec<Self>),                   // `encoded_array`
-    Annotation(Vec<EncodedAnnotation>), // `encoded_annotation`
+    MethodType(U32BasedSize),           // index into `proto_ids`
+    MethodHandle(U32BasedSize),         // index into `method_handles`
+    String(U32BasedSize),               // index into `string_ids`
+    Type(U32BasedSize),                 // index into `type_ids`
+    Field(U32BasedSize),                // index into `field_ids`
+    Method(U32BasedSize),               // index into `method_ids`
+    Enum(U32BasedSize),                 // index into `field_ids`
+    Array(EncodedArray),                // `encoded_array`
+    Annotation(EncodedAnnotation),      // `encoded_annotation`
     Null,
     Boolean(bool),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, ReadFrom)]
 pub struct EncodedArray {
     pub size: DULeb128,
+    #[index(size)]
     pub values: Vec<EncodedValue>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, ReadFrom)]
 pub struct EncodedAnnotation {
     pub type_idx: DULeb128, // index into `type_ids`
     pub size: DULeb128,     // size of name-value mappings
+    #[index(size)]
     pub elements: Vec<EncodedAnnotationAttribute>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, ReadFrom)]
 pub struct EncodedAnnotationAttribute {
     pub name_idx: DULeb128, // index into `string_ids`
     pub value: EncodedValue,

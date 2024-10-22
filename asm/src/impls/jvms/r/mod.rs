@@ -85,7 +85,7 @@ impl ReadContext<'_> {
 //
 // the compiler error is: upstream crates may add a new impl of trait `std::convert::From<u32>`
 // for type `usize` in future versions
-#[derive(Copy, Clone, Debug, PartialEq, Eq, ReadFrom)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ReadFrom, Default)]
 pub struct U32BasedSize(pub u32);
 
 impl Into<usize> for U32BasedSize {
@@ -95,57 +95,75 @@ impl Into<usize> for U32BasedSize {
     }
 }
 
+macro_rules! impl_read_from {
+    ($ty:ident, $size:literal) => {
+        impl ReadFrom for $ty {
+            #[inline]
+            fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
+                let mut result: $ty = 0;
+                for i in 0..$size {
+                    let byte = context.get_and_inc()? as $ty;
+                    if context.endian {
+                        result = (result << 8) | byte;
+                    } else {
+                        result = byte << (8 * i) | result;
+                    }
+                }
+                Ok(result)
+            }
+        }
+    };
+    ($ty:ident, $size:literal, $result_type:ty) => {
+        impl ReadFrom for $ty {
+            #[inline]
+            fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
+                let mut result: $result_type = 0;
+                for i in 0..$size {
+                    let byte = context.get_and_inc()? as $result_type;
+                    if context.endian {
+                        result = (result << 8) | byte;
+                    } else {
+                        result = byte << (8 * i) | result;
+                    }
+                }
+                Ok($ty(result))
+            }
+        }
+    };
+}
+
+
+pub struct U24(pub u32);
+pub struct U40(pub u64);
+pub struct U48(pub u64);
+pub struct U56(pub u64);
+
+pub struct I24(pub i32);
+pub struct I40(pub i64);
+pub struct I48(pub i64);
+pub struct I56(pub i64);
+
+impl_read_from!(u16, 2);
+impl_read_from!(U24, 3, u32);
+impl_read_from!(u32, 4);
+impl_read_from!(U40, 5, u64);
+impl_read_from!(U48, 6, u64);
+impl_read_from!(U56, 7, u64);
+impl_read_from!(u64, 8);
+
+impl_read_from!(i8, 1);
+impl_read_from!(i16, 2);
+impl_read_from!(I24, 3, i32);
+impl_read_from!(i32, 4);
+impl_read_from!(I40, 5, i64);
+impl_read_from!(I48, 6, i64);
+impl_read_from!(I56, 7, i64);
+impl_read_from!(i64, 8);
+
 impl ReadFrom for u8 {
     #[inline]
     fn read_from(context: &mut ReadContext) -> AsmResult<u8> {
         context.get_and_inc()
-    }
-}
-
-impl ReadFrom for u16 {
-    #[inline]
-    fn read_from(context: &mut ReadContext) -> AsmResult<u16> {
-        let h = context.get_and_inc()? as u16;
-        let l = context.get_and_inc()? as u16;
-        if context.endian {
-            Ok(h << 8 | l)
-        } else {
-            Ok(l << 8 | h)
-        }
-    }
-}
-
-impl ReadFrom for u32 {
-    #[inline]
-    fn read_from(context: &mut ReadContext) -> AsmResult<u32> {
-        let a = context.get_and_inc()? as u32;
-        let b = context.get_and_inc()? as u32;
-        let c = context.get_and_inc()? as u32;
-        let d = context.get_and_inc()? as u32;
-        if context.endian {
-            Ok(a << 24 | b << 16 | c << 8 | d)
-        } else {
-            Ok(d << 24 | c << 16 | b << 8 | a)
-        }
-    }
-}
-
-impl ReadFrom for u64 {
-    #[inline]
-    fn read_from(context: &mut ReadContext) -> AsmResult<u64> {
-        let a = context.get_and_inc()? as u64;
-        let b = context.get_and_inc()? as u64;
-        let c = context.get_and_inc()? as u64;
-        let d = context.get_and_inc()? as u64;
-        let e = context.get_and_inc()? as u64;
-        let f = context.get_and_inc()? as u64;
-        let g = context.get_and_inc()? as u64;
-        let h = context.get_and_inc()? as u64;
-        if context.endian {
-            Ok(a << 56 | b << 48 | c << 40 | d << 32 | e << 24 | f << 16 | g << 8 | h)
-        } else {
-            Ok(h << 56 | g << 48 | f << 40 | e << 32 | d << 24 | c << 16 | b << 8 | a)
-        }
     }
 }
 

@@ -91,7 +91,7 @@ impl FieldAccessFlags {
     pub const ACC_ENUM: DUInt = 0x4000;
 }
 
-struct EncodedValueType;
+pub struct EncodedValueType;
 #[const_container(DUByte)]
 impl EncodedValueType {
     pub const VALUE_BYTE: DUByte = 0x00;
@@ -114,7 +114,7 @@ impl EncodedValueType {
     pub const VALUE_BOOLEAN: DUByte = 0x1f;
 }
 
-struct MethodHandleType;
+pub struct MethodHandleType;
 
 #[const_container(DUByte)]
 impl MethodHandleType {
