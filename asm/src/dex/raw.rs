@@ -107,14 +107,14 @@ pub struct StringData {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct TypeId {
-    pub descriptor_idx: DUInt, // index into `string_ids` for the descriptor string
+    pub descriptor_idx: U32BasedSize, // index into `string_ids` for the descriptor string
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
 #[align(4)]
 pub struct ProtoId {
-    pub shorty_idx: DUInt,      // index into `string_ids` for shorty descriptor
-    pub return_type_idx: DUInt, // index into `type_ids` for return type
+    pub shorty_idx: U32BasedSize,      // index into `string_ids` for shorty descriptor
+    pub return_type_idx: U32BasedSize, // index into `type_ids` for return type
     /// [TypeList], offset from the start of the file, 0 if no parameters
     pub parameters_off: DUInt,
 }
@@ -124,7 +124,7 @@ pub struct ProtoId {
 pub struct FieldId {
     pub class_idx: DUShort, // index into `type_ids` for the definer
     pub type_idx: DUShort,  // index into `type_ids` for the type
-    pub name_idx: DUInt,    // index into `string_ids` for the name
+    pub name_idx: U32BasedSize,    // index into `string_ids` for the name
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]
@@ -132,7 +132,7 @@ pub struct FieldId {
 pub struct MethodId {
     pub class_idx: DUShort, // index into `type_ids` for the definer
     pub proto_idx: DUShort, // index into `proto_ids` for the prototype
-    pub name_idx: DUInt,    // index into `string_ids` for the name
+    pub name_idx: U32BasedSize,    // index into `string_ids` for the name
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ReadFrom)]

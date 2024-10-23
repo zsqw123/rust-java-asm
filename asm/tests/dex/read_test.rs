@@ -21,7 +21,7 @@ fn read_dex_test() {
     println!("{:#?}", demo_methods);
 }
 
-fn read_test_dex_file() -> DexFileAccessor<'static> {
+fn read_test_dex_file() -> DexFileAccessor {
     let start = Instant::now();
     let dex_file_bytes = include_bytes!("../res/dex/classes14.dex");
     let dex_file = DexFile::resolve_from_bytes(dex_file_bytes).unwrap();

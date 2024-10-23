@@ -217,7 +217,7 @@ impl Reader for DexInsn {
             0x3e..=0x43 = NotUsed, // not used
             0x44..=0x51 = ArrayOp,
             0x52..=0x5f = IInstanceOp,
-            0x60..=0x6d = SInstanceOp,
+            0x60..=0x6d = SStaticOp,
             0x6e..=0x72 = InvokeKind,
             0x73 = NotUsed, // not used
             0x74..=0x78 = InvokeKindRange,

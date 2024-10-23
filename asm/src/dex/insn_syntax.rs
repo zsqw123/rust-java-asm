@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::dex::{Opcode, I4, U4};
+use crate::impls::jvms::r::U32BasedSize;
 
 macro_rules! syntax {
     (
@@ -71,20 +72,20 @@ syntax! {
     // BB BB (hi)
     F31i { opcode: Opcode, vA: u8, literalB: i32 };
     F31t { opcode: Opcode, vA: u8, offsetB: i32 };
-    F31c { opcode: Opcode, vA: u8, constB: u32 };
+    F31c { opcode: Opcode, vA: u8, constB: U32BasedSize };
     // A|G|op
     // B B B B
     // F|E|D|C
-    F35c { opcode: Opcode, vA: U4, vC: U4, vD: U4, vE: U4, vF: U4, vG: U4, constB: u16 };
-    F35ms { opcode: Opcode, vA: U4, vC: U4, vD: U4, vE: U4, vF: U4, vG: U4, constB: u16 };
-    F35mi { opcode: Opcode, vA: U4, vC: U4, vD: U4, vE: U4, vF: U4, vG: U4, constB: u16 };
+    F35c { opcode: Opcode, a: U4, vC: U4, vD: U4, vE: U4, vF: U4, vG: U4, constB: u16 };
+    F35ms { opcode: Opcode, a: U4, vC: U4, vD: U4, vE: U4, vF: U4, vG: U4, constB: u16 };
+    F35mi { opcode: Opcode, a: U4, vC: U4, vD: U4, vE: U4, vF: U4, vG: U4, constB: u16 };
     // AA|op
     // BB|BB
     // CC|CC
     //      N = CC CC + AA - 1
-    F3rc { opcode: Opcode, vA: u8, vB: u16, vC: u16 };
-    F3rms { opcode: Opcode, vA: u8, vB: u16, vC: u16 };
-    F3rmi { opcode: Opcode, vA: u8, vB: u16, vC: u16 };
+    F3rc { opcode: Opcode, a: u8, constB: u16, vC: u16 };
+    F3rms { opcode: Opcode, a: u8, constB: u16, vC: u16 };
+    F3rmi { opcode: Opcode, a: u8, constB: u16, vC: u16 };
 }
 
 syntax! {
@@ -93,7 +94,7 @@ syntax! {
     // F|E|D|C
     // H H H H
     F45cc {
-        opcode: Opcode, vA: U4,
+        opcode: Opcode, a: U4,
         vC: U4, vD: U4, vE: U4, vF: U4, vG: U4,
         constB: u16, constH: u16
     };
@@ -103,7 +104,7 @@ syntax! {
     // HH HH
     //      N = CC CC + AA - 1
     F4rcc {
-        opcode: Opcode, literalA: u8,
+        opcode: Opcode, a: u8,
         constB: u16, constH: u16,
         vC: u16
     };

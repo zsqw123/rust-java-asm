@@ -56,7 +56,7 @@ pub enum DexInsn {
     // for 3e..43, map to 10x
     ArrayOp(F23x), // 0x44..0x51
     IInstanceOp(F22c), // 0x52..0x5f
-    SInstanceOp(F21c), // 0x60..0x6d
+    SStaticOp(F21c), // 0x60..0x6d
     InvokeKind(F35c), // 0x6e..0x72
     // for 73, unused, map to 10x
     InvokeKindRange(F3rc), // 0x74..0x78 

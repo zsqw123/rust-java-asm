@@ -1,13 +1,23 @@
-use std::fmt::{write, Debug};
 use crate::impls::ToStringRef;
 use crate::node::InsnNode;
 use crate::StrRef;
+use std::fmt::Debug;
 
 pub struct SmaliNode {
     pub prefix: StrRef,
     pub children: Vec<SmaliNode>,
     pub postfix: Option<StrRef>,
 }
+
+
+#[macro_export]
+macro_rules! smali {
+    ($($arg:tt)*) => {
+        SmaliNode::new(format!($($arg)*))
+    }
+}
+
+pub use smali;
 
 impl SmaliNode {
     pub fn new(current: impl ToStringRef) -> Self {
