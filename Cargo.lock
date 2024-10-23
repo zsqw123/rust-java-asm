@@ -4,14 +4,14 @@ version = 3
 
 [[package]]
 name = "java_asm"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "java_asm_macro",
 ]
 
 [[package]]
 name = "java_asm_macro"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "quote",
  "syn",

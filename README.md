@@ -31,14 +31,14 @@ see some examples.
   - [ ] Write back attributes into Class / Field / Method / Code
   - [ ] Method frames
 - [ ] **Not Start**, Implement ASM features (eg. auto calculate frame/stack etc.)
-- [ ] Smali liked output.
+- [x] Smali liked output.
 - [ ] Dex interop. (https://source.android.com/docs/core/runtime/dex-format)
   - [x] Basic structure for dex file metadata
-  - [ ] Instructions
-  - [ ] Annotations
+  - [x] Instructions
+  - [x] Annotations
   - [ ] Debug info
   - [ ] Other formats
-  - [ ] Separation for metadata with real data (e.g. instructions)
+  - [x] Separation for metadata with real data (e.g. instructions)
 - [ ] Isolate AsmResult as multiple different errors, and provide a better error message.
 
 ### Goals
