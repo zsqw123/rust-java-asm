@@ -106,47 +106,47 @@ simple_impl!(F31c, opcode, vA, constB);
 impl Reader for F35c {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
         let opcode = context.read()?;
-        let (vA, vG) = context.read()?;
+        let (a, vG) = context.read()?;
         let constB = context.read()?;
         let (vD, vC) = context.read()?;
         let (vF, vE) = context.read()?;
-        Ok(F35c { opcode, vA, vC, vD, vE, vF, vG, constB })
+        Ok(F35c { opcode, a, vC, vD, vE, vF, vG, constB })
     }
 }
 
 impl Reader for F35ms {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
         // similar format
-        let F35c { opcode, vA, vC, vD, vE, vF, vG, constB } = context.read()?;
-        Ok(F35ms { opcode, vA, vC, vD, vE, vF, vG, constB })
+        let F35c { opcode, a, vC, vD, vE, vF, vG, constB } = context.read()?;
+        Ok(F35ms { opcode, a, vC, vD, vE, vF, vG, constB })
     }
 }
 
 impl Reader for F35mi {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
         // similar format
-        let F35c { opcode, vA, vC, vD, vE, vF, vG, constB } = context.read()?;
-        Ok(F35mi { opcode, vA, vC, vD, vE, vF, vG, constB })
+        let F35c { opcode, a, vC, vD, vE, vF, vG, constB } = context.read()?;
+        Ok(F35mi { opcode, a, vC, vD, vE, vF, vG, constB })
     }
 }
 
-simple_impl!(F3rc, opcode, vA, vB, vC);
-simple_impl!(F3rms, opcode, vA, vB, vC);
-simple_impl!(F3rmi, opcode, vA, vB, vC);
+simple_impl!(F3rc, opcode, a, constB, vC);
+simple_impl!(F3rms, opcode, a, constB, vC);
+simple_impl!(F3rmi, opcode, a, constB, vC);
 
 impl Reader for F45cc {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
         let opcode = context.read()?;
-        let (vA, vG) = context.read()?;
+        let (a, vG) = context.read()?;
         let constB = context.read()?;
         let (vD, vC) = context.read()?;
         let (vF, vE) = context.read()?;
         let constH = context.read()?;
-        Ok(F45cc { opcode, vA, vC, vD, vE, vF, vG, constB, constH })
+        Ok(F45cc { opcode, a, vC, vD, vE, vF, vG, constB, constH })
     }
 }
 
-simple_impl!(F4rcc, opcode, literalA, constB, vC, constH);
+simple_impl!(F4rcc, opcode, a, constB, vC, constH);
 simple_impl!(F51l, opcode, vA, literalB);
 
 impl Reader for DexInsn {

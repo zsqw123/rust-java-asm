@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
 
-use crate::dex::insn::DexInsn;
+use crate::dex::insn::{DexInsn, FillArrayDataPayload, PackedSwitchPayload, SparseSwitchPayload};
 use crate::dex::insn_syntax::*;
-use crate::dex::{DexFileAccessor, U4};
+use crate::dex::{DUInt, DexFileAccessor, EncodedAnnotation, EncodedAnnotationAttribute, EncodedArray, EncodedValue, MethodHandle, MethodHandleType, U4};
 use crate::impls::ToStringRef;
-use crate::smali::{smali, SmaliNode, ToSmali};
-use crate::StrRef;
+use crate::smali::{smali, Dex2Smali, SmaliNode, ToSmali};
+use crate::{ConstContainer, StrRef};
 
 impl ToSmali for (DexFileAccessor, DexInsn) {
     fn to_smali(&self) -> SmaliNode {
@@ -172,7 +172,7 @@ impl ToSmali for (DexFileAccessor, DexInsn) {
                     0x5f => "iput-short",
                     _ => "instanceop",
                 };
-                smali!("{op_name} v{}, v{}, {}", vA, vB, accessor.opt_field(*constC))
+                smali!("{op_name} v{}, v{}, {}", vA, vB, render_field(accessor,*constC))
             }
             DexInsn::SStaticOp(F21c { opcode, vA, constB }) => {
                 let op_name = match opcode {
@@ -192,7 +192,7 @@ impl ToSmali for (DexFileAccessor, DexInsn) {
                     0x6d => "sput-short",
                     _ => "staticop",
                 };
-                smali!("{op_name} v{}, {}", vA, accessor.opt_field(*constB))
+                smali!("{op_name} v{}, {}", vA, render_field(accessor, *constB))
             }
             DexInsn::InvokeKind(F35c { opcode, a, vC, vD, vE, vF, vG, constB }) => {
                 let op_name = match opcode {
@@ -357,19 +357,26 @@ impl ToSmali for (DexFileAccessor, DexInsn) {
             DexInsn::InvokePolyRange(f4rcc) =>
                 render_invoke_poly_range(accessor, *f4rcc),
             DexInsn::InvokeCustom(F35c { a, vC, vD, vE, vF, vG, constB, .. }) =>
-                render_f35("invoke-custom", *a, render_call_site(accessor, *constB), *vC, *vD, *vE, *vF, *vG),
+                render_f35_smali("invoke-custom", *a, render_call_site(accessor, *constB), *vC, *vD, *vE, *vF, *vG),
             DexInsn::InvokeCustomRange(F3rc { a, constB, vC, .. }) =>
-                render_f3r("invoke-custom-range", *a, render_call_site(accessor, *constB), *vC),
+                render_f3r_smali("invoke-custom-range", *a, render_call_site(accessor, *constB), *vC),
             DexInsn::ConstMethodHandle(F21c { vA, constB, .. }) =>
-                smali!("const-method-handle v{}, {}", vA, render_method_handle(accessor, *constB)),
+                smali!("const-method-handle v{}, {}", vA, render_method_handle_str(accessor, *constB)),
             DexInsn::ConstMethodType(F21c { vA, constB, .. }) =>
                 smali!("const-method-type v{}, {}", vA, render_proto(accessor, *constB)),
             DexInsn::NotUsed(_) => smali!(""),
-            DexInsn::PackedSwitchPayload(_) => {}
-            DexInsn::SparseSwitchPayload(_) => {}
-            DexInsn::FillArrayDataPayload(_) => {}
+            DexInsn::PackedSwitchPayload(p) => p.to_smali(accessor),
+            DexInsn::SparseSwitchPayload(p) => p.to_smali(accessor),
+            DexInsn::FillArrayDataPayload(p) => p.to_smali(accessor),
         }
     }
+}
+
+fn render_field(accessor: &DexFileAccessor, field_idx: u16) -> StrRef {
+    accessor.get_field(field_idx)
+        .map(|f| f.to_string())
+        .unwrap_or_else(|_| format!("field_{}", field_idx))
+        .to_ref()
 }
 
 fn render_method(accessor: &DexFileAccessor, method_idx: u16) -> StrRef {
@@ -386,18 +393,20 @@ fn render_proto(accessor: &DexFileAccessor, proto_idx: u16) -> StrRef {
         .to_ref()
 }
 
-fn render_call_site(accessor: &DexFileAccessor, call_site_idx: u16) -> StrRef {
+fn render_call_site(accessor: &DexFileAccessor, call_site_idx: u16) -> SmaliNode {
     accessor.get_call_site(call_site_idx)
-        .map(|cs| cs.to_string())
-        .unwrap_or_else(|_| format!("call_site_{}", call_site_idx))
-        .to_ref()
+        .map(|cs| cs.to_smali(accessor))
+        .unwrap_or_else(|_| smali!("call_site_{}", call_site_idx))
 }
 
-fn render_method_handle(accessor: &DexFileAccessor, method_handle_idx: u16) -> StrRef {
+fn render_method_handle(accessor: &DexFileAccessor, method_handle_idx: u16) -> SmaliNode {
     accessor.get_method_handle(method_handle_idx)
-        .map(|mh| mh.to_string())
-        .unwrap_or_else(|_| format!("method_handle_{}", method_handle_idx))
-        .to_ref()
+        .map(|mh| mh.to_smali(accessor))
+        .unwrap_or_else(|_| smali!("method_handle_{}", method_handle_idx))
+}
+
+fn render_method_handle_str(accessor: &DexFileAccessor, method_handle_idx: u16) -> StrRef {
+    render_method_handle(accessor, method_handle_idx).prefix
 }
 
 fn render_invoke_poly(accessor: &DexFileAccessor, f45cc: F45cc) -> SmaliNode {
@@ -425,7 +434,7 @@ fn render_invoke_poly(accessor: &DexFileAccessor, f45cc: F45cc) -> SmaliNode {
         registers.push(format!("v{}", vG));
     };
     let registers = registers.join(", ");
-    smali!("{op_name} {{{registers}}} {method} {proto}")
+    smali!("invoke-polymorphic {{{registers}}} {method} {proto}")
 }
 
 fn render_invoke_poly_range(accessor: &DexFileAccessor, f4rcc: F4rcc) -> SmaliNode {
@@ -435,11 +444,11 @@ fn render_invoke_poly_range(accessor: &DexFileAccessor, f4rcc: F4rcc) -> SmaliNo
     let method = render_method(accessor, constB);
     let proto = render_proto(accessor, constH);
     let n = vC + (a as u16) - 1;
-    smali!("{op_name} v{vC}..v{n} {method} {proto}")
+    smali!("invoke-polymorphic/range v{vC}..v{n} {method} {proto}")
 }
 
-fn render_f35(
-    op_name: &'static str, a: U4, constB: StrRef,
+fn render_f35_smali(
+    op_name: &'static str, a: U4, constB: SmaliNode,
     vC: U4, vD: U4, vE: U4, vF: U4, vG: U4,
 ) -> SmaliNode {
     let a = a.0;
@@ -460,17 +469,145 @@ fn render_f35(
         registers.push(format!("v{}", vG));
     };
     let registers = registers.join(", ");
-    smali!(
-        "{op_name} {{{registers}}} {constB}"
-    )
+    if constB.children.is_empty() {
+        let constB = constB.prefix;
+        smali!("{op_name} {{{registers}}} {constB}")
+    } else {
+        let const_prefix = constB.prefix;
+        let const_children = constB.children;
+        SmaliNode::new_with_children(
+            format!("{op_name} {{{registers}}} {const_prefix}"), const_children,
+        )
+    }
+}
+
+fn render_f35(
+    op_name: &'static str, a: U4, constB: impl ToSmali,
+    vC: U4, vD: U4, vE: U4, vF: U4, vG: U4,
+) -> SmaliNode {
+    render_f35_smali(op_name, a, constB.to_smali(), vC, vD, vE, vF, vG)
+}
+
+fn render_f3r_smali(
+    op_name: &'static str, a: u8, constB: SmaliNode, vC: u16,
+) -> SmaliNode {
+    let vN = vC + (a as u16) - 1;
+    if constB.children.is_empty() {
+        let constB = constB.prefix;
+        smali!("{op_name} v{vC}..v{vN} {constB}")
+    } else {
+        let const_prefix = constB.prefix;
+        let const_children = constB.children;
+        SmaliNode::new_with_children(
+            format!("{op_name} v{vC}..v{vN} {const_prefix}"), const_children,
+        )
+    }
 }
 
 fn render_f3r(
-    op_name: &'static str, a: u8, constB: StrRef, vC: u16,
+    op_name: &'static str, a: u8, constB: impl ToSmali, vC: u16,
 ) -> SmaliNode {
-    let vN = vC + (a as u16) - 1;
-    smali!(
-        "{op_name} v{vC}..v{vN} {constB}"
-    )
+    render_f3r_smali(op_name, a, constB.to_smali(), vC)
+}
+
+impl Dex2Smali for MethodHandle {
+    fn to_smali(&self, dex_file_accessor: &DexFileAccessor) -> SmaliNode {
+        let handle_type = MethodHandleType::const_name_or_default(self.method_handle_type, "method");
+        let member_id = self.field_or_method_id;
+        let member = match self.method_handle_type {
+            0x00..=0x03 => render_field(dex_file_accessor, member_id),
+            0x04..=0x08 => render_method(dex_file_accessor, member_id),
+            _ => return smali!("{handle_type}@{member_id}"),
+        };
+        smali!("{handle_type} {member}")
+    }
+}
+
+impl Dex2Smali for EncodedArray {
+    fn to_smali(&self, dex_file_accessor: &DexFileAccessor) -> SmaliNode {
+        let mut values = Vec::with_capacity(self.values.len());
+        for value in self.values.iter() {
+            values.push(value.to_smali(dex_file_accessor));
+        }
+        SmaliNode::new_with_children_and_postfix(".array", values, ".end array")
+    }
+}
+
+impl Dex2Smali for EncodedValue {
+    fn to_smali(&self, dex_file_accessor: &DexFileAccessor) -> SmaliNode {
+        match self {
+            EncodedValue::Byte(v) => smali!("byte_{v}"),
+            EncodedValue::Short(v) => smali!("short_{v}"),
+            EncodedValue::Char(v) => smali!("char_{v}"),
+            EncodedValue::Int(v) => smali!("int_{v}"),
+            EncodedValue::Long(v) => smali!("long_{v}"),
+            EncodedValue::Float(v) => smali!("float_{}", f32::from_be_bytes(*v)),
+            EncodedValue::Double(v) => smali!("double_{}", f64::from_be_bytes(*v)),
+            EncodedValue::MethodType(v) => smali!("method_type_{}", render_proto(dex_file_accessor, v.0 as u16)),
+            EncodedValue::MethodHandle(v) => render_method_handle(dex_file_accessor, v.0 as u16),
+            EncodedValue::String(v) => smali!("string_{}", dex_file_accessor.opt_str(*v)),
+            EncodedValue::Type(v) => smali!("type_{}", dex_file_accessor.opt_type(*v)),
+            EncodedValue::Field(v) => smali!("field_{}", render_field(dex_file_accessor, v.0 as u16)),
+            EncodedValue::Method(v) => smali!("method_{}", render_method(dex_file_accessor, v.0 as u16)),
+            EncodedValue::Enum(v) => smali!("enum_{}", render_field(dex_file_accessor, v.0 as u16)),
+            EncodedValue::Array(v) => v.to_smali(dex_file_accessor),
+            EncodedValue::Annotation(v) => v.to_smali(dex_file_accessor),
+            EncodedValue::Null => smali!("null"),
+            EncodedValue::Boolean(v) => smali!("{v}"),
+        }
+    }
+}
+
+impl Dex2Smali for EncodedAnnotation {
+    fn to_smali(&self, dex_file_accessor: &DexFileAccessor) -> SmaliNode {
+        let annotation_type = dex_file_accessor.opt_type(self.type_idx);
+        let res: Vec<_> = self.elements.iter().map(|e| e.to_smali(dex_file_accessor)).collect();
+        if res.is_empty() {
+            smali!("annotation {annotation_type}")
+        } else {
+            SmaliNode::new_with_children_and_postfix(
+                format!(".annotation {annotation_type}"), res, ".end annotation",
+            )
+        }
+    }
+}
+
+impl Dex2Smali for EncodedAnnotationAttribute {
+    fn to_smali(&self, dex_file_accessor: &DexFileAccessor) -> SmaliNode {
+        let name = dex_file_accessor.opt_str(self.name_idx);
+        let value = self.value.to_smali(dex_file_accessor);
+        let prefix = format!("{} = {}", name, value.prefix);
+        SmaliNode::new_with_children(prefix, value.children)
+    }
+}
+
+impl Dex2Smali for PackedSwitchPayload {
+    fn to_smali(&self, _dex_file_accessor: &DexFileAccessor) -> SmaliNode {
+        let mut res = Vec::with_capacity(self.size as usize);
+        let first_key = self.first_key;
+        for i in 0..self.size {
+            res.push(smali!("{i} -> {}", first_key + (i as DUInt)));
+        }
+        SmaliNode::new_with_children_and_postfix(".packed-switch", res, ".end packed-switch")
+    }
+}
+
+impl Dex2Smali for SparseSwitchPayload {
+    fn to_smali(&self, _dex_file_accessor: &DexFileAccessor) -> SmaliNode {
+        let mut res = Vec::with_capacity(self.size as usize);
+        for i in 0..self.size {
+            res.push(smali!("{} -> {}", self.keys[i as usize], self.targets[i as usize]));
+        }
+        SmaliNode::new_with_children_and_postfix(".sparse-switch", res, ".end sparse-switch")
+    }
+}
+
+impl Dex2Smali for FillArrayDataPayload {
+    fn to_smali(&self, _dex_file_accessor: &DexFileAccessor) -> SmaliNode {
+        let size = self.size.0;
+        let data = self.data.iter().map(|b| format!("{b:02x}"))
+            .collect::<Vec<_>>().join(" ");
+        smali!("array-data size={size} {data}")
+    }
 }
 

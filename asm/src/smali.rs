@@ -3,6 +3,7 @@ use crate::node::InsnNode;
 use crate::StrRef;
 use std::fmt::Debug;
 
+#[derive(Clone)]
 pub struct SmaliNode {
     pub prefix: StrRef,
     pub children: Vec<SmaliNode>,
@@ -18,6 +19,7 @@ macro_rules! smali {
 }
 
 pub use smali;
+use crate::dex::DexFileAccessor;
 
 impl SmaliNode {
     pub fn new(current: impl ToStringRef) -> Self {
@@ -31,9 +33,9 @@ impl SmaliNode {
     }
 
     pub fn new_with_children_and_postfix(
-        prefix: impl ToStringRef, children: Vec<SmaliNode>, postfix: Option<StrRef>,
+        prefix: impl ToStringRef, children: Vec<SmaliNode>, postfix: impl ToStringRef,
     ) -> Self {
-        Self { prefix: prefix.to_ref(), children, postfix }
+        Self { prefix: prefix.to_ref(), children, postfix: Some(postfix.to_ref()) }
     }
 }
 
@@ -83,6 +85,10 @@ impl Debug for InsnNode {
 
 pub trait ToSmali {
     fn to_smali(&self) -> SmaliNode;
+}
+
+pub trait Dex2Smali {
+    fn to_smali(&self, dex_file_accessor: &DexFileAccessor) -> SmaliNode;
 }
 
 impl<T: ToStringRef> ToSmali for T {

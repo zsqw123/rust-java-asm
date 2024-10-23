@@ -116,15 +116,15 @@ impl EncodedValueType {
 
 pub struct MethodHandleType;
 
-#[const_container(DUByte)]
+#[const_container(DUShort)]
 impl MethodHandleType {
-    pub const METHOD_HANDLE_TYPE_STATIC_PUT: DUByte = 0x00;
-    pub const METHOD_HANDLE_TYPE_STATIC_GET: DUByte = 0x01;
-    pub const METHOD_HANDLE_TYPE_INSTANCE_PUT: DUByte = 0x02;
-    pub const METHOD_HANDLE_TYPE_INSTANCE_GET: DUByte = 0x03;
-    pub const METHOD_HANDLE_TYPE_INVOKE_STATIC: DUByte = 0x04;
-    pub const METHOD_HANDLE_TYPE_INVOKE_INSTANCE: DUByte = 0x05;
-    pub const METHOD_HANDLE_TYPE_INVOKE_CONSTRUCTOR: DUByte = 0x06;
-    pub const METHOD_HANDLE_TYPE_INVOKE_DIRECT: DUByte = 0x07;
-    pub const METHOD_HANDLE_TYPE_INVOKE_INTERFACE: DUByte = 0x08;
+    pub const METHOD_HANDLE_TYPE_STATIC_PUT: DUShort = 0x00;
+    pub const METHOD_HANDLE_TYPE_STATIC_GET: DUShort = 0x01;
+    pub const METHOD_HANDLE_TYPE_INSTANCE_PUT: DUShort = 0x02;
+    pub const METHOD_HANDLE_TYPE_INSTANCE_GET: DUShort = 0x03;
+    pub const METHOD_HANDLE_TYPE_INVOKE_STATIC: DUShort = 0x04;
+    pub const METHOD_HANDLE_TYPE_INVOKE_INSTANCE: DUShort = 0x05;
+    pub const METHOD_HANDLE_TYPE_INVOKE_CONSTRUCTOR: DUShort = 0x06;
+    pub const METHOD_HANDLE_TYPE_INVOKE_DIRECT: DUShort = 0x07;
+    pub const METHOD_HANDLE_TYPE_INVOKE_INTERFACE: DUShort = 0x08;
 }
