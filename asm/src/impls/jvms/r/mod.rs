@@ -151,7 +151,6 @@ impl_read_from!(U48, 6, u64);
 impl_read_from!(U56, 7, u64);
 impl_read_from!(u64, 8);
 
-impl_read_from!(i8, 1);
 impl_read_from!(i16, 2);
 impl_read_from!(I24, 3, i32);
 impl_read_from!(i32, 4);
@@ -159,6 +158,13 @@ impl_read_from!(I40, 5, i64);
 impl_read_from!(I48, 6, i64);
 impl_read_from!(I56, 7, i64);
 impl_read_from!(i64, 8);
+
+impl ReadFrom for i8 {
+    #[inline]
+    fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
+        Ok(context.get_and_inc()? as i8)
+    }
+}
 
 impl ReadFrom for u8 {
     #[inline]

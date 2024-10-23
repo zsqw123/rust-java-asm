@@ -2,14 +2,21 @@
 
 use crate::dex::insn::{DexInsn, FillArrayDataPayload, PackedSwitchPayload, SparseSwitchPayload};
 use crate::dex::insn_syntax::*;
-use crate::dex::{DUInt, DexFileAccessor, EncodedAnnotation, EncodedAnnotationAttribute, EncodedArray, EncodedValue, MethodHandle, MethodHandleType, U4};
+use crate::dex::{DUInt, DexFileAccessor, EncodedAnnotation, EncodedAnnotationAttribute, EncodedArray, EncodedValue, InsnContainer, MethodHandle, MethodHandleType, U4};
 use crate::impls::ToStringRef;
 use crate::smali::{smali, Dex2Smali, SmaliNode, ToSmali};
 use crate::{ConstContainer, StrRef};
 
-impl ToSmali for (DexFileAccessor, DexInsn) {
-    fn to_smali(&self) -> SmaliNode {
-        let (accessor, insn) = self;
+impl Dex2Smali for InsnContainer {
+    fn to_smali(&self, accessor: &DexFileAccessor) -> SmaliNode {
+        let insn_list = self.insns.iter().map(|insn| insn.to_smali(accessor)).collect();
+        SmaliNode::new_with_children_and_postfix(".code", insn_list, ".end code")
+    }
+}
+
+impl Dex2Smali for DexInsn {
+    fn to_smali(&self, accessor: &DexFileAccessor) -> SmaliNode {
+        let insn = self;
         match insn {
             DexInsn::Nop(_) => SmaliNode::new("nop"),
             DexInsn::Move(F12x { vA, vB, .. }) =>

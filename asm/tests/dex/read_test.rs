@@ -1,5 +1,6 @@
-use std::rc::Rc;
 use java_asm::dex::{DexFile, DexFileAccessor};
+use java_asm::smali::{Dex2Smali, SmaliNode};
+use std::rc::Rc;
 use std::time::Instant;
 
 #[test]
@@ -16,9 +17,20 @@ fn read_dex_test() {
         (Rc::clone(&m.name), code_item)
     }).collect::<Vec<_>>();
     println!("Methods instructions resolved in {:?}", resolve_start.elapsed());
+
+    let instructions = demo_methods.iter().map(|(method_name, code_item)| {
+        code_item.as_ref().map(|code_item| {
+            let container_smali = code_item.insn_container.to_smali(&dex_accessor);
+            let prefix = format!("method {}, {}", method_name, container_smali.prefix);
+            SmaliNode::new_with_children_and_postfix(
+                prefix, container_smali.children, container_smali.postfix.unwrap(),
+            ).render(0)
+        })
+    }).filter_map(|x| x).collect::<Vec<_>>();
     
     println!("{:#?}", demo_class_data);
     println!("{:#?}", demo_methods);
+    println!("instructions:\n{}", instructions.join("\n"));
 }
 
 fn read_test_dex_file() -> DexFileAccessor {
@@ -26,8 +38,5 @@ fn read_test_dex_file() -> DexFileAccessor {
     let dex_file_bytes = include_bytes!("../res/dex/classes14.dex");
     let dex_file = DexFile::resolve_from_bytes(dex_file_bytes).unwrap();
     println!("Dex file resolved in {:?}", start.elapsed());
-    DexFileAccessor {
-        file: dex_file,
-        bytes: dex_file_bytes,
-    }
+    DexFileAccessor::new(dex_file, dex_file_bytes.to_vec())
 }

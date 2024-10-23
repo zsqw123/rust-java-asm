@@ -192,7 +192,7 @@ impl Display for ProtoConst {
 impl Display for FieldConst {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
-            f, "{}->{}:{}",
+            f, "{} {} {}",
             self.class_type, self.field_name, self.field_type
         )
     }
@@ -201,7 +201,7 @@ impl Display for FieldConst {
 impl Display for MethodConst {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
-            f, "{}->{}:{}",
+            f, "{} {} {}",
             self.class_type, self.method_name, self.proto_const
         )
     }

@@ -88,7 +88,7 @@ pub trait ToSmali {
 }
 
 pub trait Dex2Smali {
-    fn to_smali(&self, dex_file_accessor: &DexFileAccessor) -> SmaliNode;
+    fn to_smali(&self, accessor: &DexFileAccessor) -> SmaliNode;
 }
 
 impl<T: ToStringRef> ToSmali for T {
