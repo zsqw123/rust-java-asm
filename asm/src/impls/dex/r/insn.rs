@@ -238,7 +238,7 @@ impl Reader for DexInsn {
     }
 }
 fn read_payload(context: &mut ReadContext) -> AsmResult<DexInsn> {
-    let ident = context.get_cur()?;
+    let ident = context.byte_at(context.index + 1)?;
     match ident {
         0x00 => {
             context.index += 2;

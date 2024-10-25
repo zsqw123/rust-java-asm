@@ -2,20 +2,51 @@
 
 use crate::dex::insn::{DexInsn, FillArrayDataPayload, PackedSwitchPayload, SparseSwitchPayload};
 use crate::dex::insn_syntax::*;
-use crate::dex::{DUInt, DexFileAccessor, EncodedAnnotation, EncodedAnnotationAttribute, EncodedArray, EncodedValue, InsnContainer, MethodHandle, MethodHandleType, U4};
+use crate::dex::{DexFileAccessor, EncodedAnnotation, EncodedAnnotationAttribute, EncodedArray, EncodedValue, InsnContainer, MethodHandle, MethodHandleType, U4};
 use crate::impls::ToStringRef;
 use crate::smali::{smali, Dex2Smali, SmaliNode, ToSmali};
 use crate::{ConstContainer, StrRef};
+use std::collections::HashMap;
 
 impl Dex2Smali for InsnContainer {
     fn to_smali(&self, accessor: &DexFileAccessor) -> SmaliNode {
-        let insn_list = self.insns.iter().map(|insn| insn.to_smali(accessor)).collect();
+        let max_index_str_len = 1 + (self.insns.len() + 1).ilog10() as usize;
+        let mut current_offset = 0usize;
+        let (payloads, insns): (Vec<_>, Vec<_>) = self.insns.iter()
+            .map(|insn| {
+                let insn_width = insn.insn_width();
+                let mapped = (current_offset, insn);
+                current_offset += insn_width;
+                mapped
+            })
+            .partition(|(_, insn)| match insn {
+                DexInsn::PackedSwitchPayload(_) |
+                DexInsn::SparseSwitchPayload(_) |
+                DexInsn::FillArrayDataPayload(_) => true,
+                _ => false,
+            });
+        let payload_map: HashMap<usize, &DexInsn> = HashMap::from_iter(payloads);
+        let payload_map = PayloadMap { payload_map };
+        let insn_list = insns.iter().map(|(offset, insn)| {
+            let offset = *offset;
+            let mut insn = insn.to_smali(accessor, offset, &payload_map);
+            insn.prefix = format!("{:0w$}: {}", offset, insn.prefix, w = max_index_str_len).to_ref();
+            insn
+        }).collect();
         SmaliNode::new_with_children_and_postfix(".code", insn_list, ".end code")
     }
 }
 
-impl Dex2Smali for DexInsn {
-    fn to_smali(&self, accessor: &DexFileAccessor) -> SmaliNode {
+struct PayloadMap<'a> {
+    payload_map: HashMap<usize, &'a DexInsn>,
+}
+
+impl DexInsn {
+    fn to_smali(
+        &self, accessor: &DexFileAccessor, current_offset: usize,
+        payload_map: &PayloadMap,
+    ) -> SmaliNode {
+        let cur = current_offset as i64;
         let insn = self;
         match insn {
             DexInsn::Nop(_) => SmaliNode::new("nop"),
@@ -69,9 +100,9 @@ impl Dex2Smali for DexInsn {
             DexInsn::ConstWideHigh16(F21h { vA, literalB, .. }) =>
                 smali!("const-wide/high16 v{}, {}", vA, literalB),
             DexInsn::ConstString(F21c { vA, constB, .. }) =>
-                smali!("const-string v{}, {}", vA, accessor.opt_str(*constB)),
+                smali!("const-string v{}, \"{}\"", vA, accessor.opt_str(*constB)),
             DexInsn::ConstStringJumbo(F31c { vA, constB, .. }) =>
-                smali!("const-string/jumbo v{}, {}", vA, accessor.opt_str(*constB)),
+                smali!("const-string/jumbo v{}, \"{}\"", vA, accessor.opt_str(*constB)),
             DexInsn::ConstClass(F21c { vA, constB, .. }) =>
                 smali!("const-class v{}, {}", vA, accessor.opt_type(*constB)),
             DexInsn::MonitorEnter(F11x { vA, .. }) =>
@@ -92,20 +123,35 @@ impl Dex2Smali for DexInsn {
                 render_f35("filled-new-array", *a, accessor.opt_str(*constB), *vC, *vD, *vE, *vF, *vG),
             DexInsn::FilledNewArrayRange(F3rc { a, vC, constB, .. }) =>
                 render_f3r("filled-new-array/range", *a, accessor.opt_str(*constB), *vC),
-            DexInsn::FillArrayData(F31t { vA, offsetB, .. }) =>
-                smali!("fill-array-data v{}, @{:+}", vA, offsetB),
+            DexInsn::FillArrayData(F31t { vA, offsetB, .. }) => {
+                let payload = payload_map.read(accessor, cur, *offsetB);
+                SmaliNode::new_with_children(
+                    format!("fill-array-data v{} {}", vA, payload.prefix),
+                    payload.children,
+                )
+            }
             DexInsn::Throw(F11x { vA, .. }) =>
                 smali!("throw v{}", vA),
             DexInsn::Goto(F10t { offsetA, .. }) =>
-                smali!("goto @{:+}", offsetA),
+                smali!("goto @{}({:+})", cur + (*offsetA as i64), offsetA),
             DexInsn::Goto16(F20t { offsetA, .. }) =>
-                smali!("goto/16 @{:+}", offsetA),
+                smali!("goto/16 @{}({:+})", cur + (*offsetA as i64), offsetA),
             DexInsn::Goto32(F30t { offsetA, .. }) =>
-                smali!("goto/32 @{:+}", offsetA),
-            DexInsn::PackedSwitch(F31t { vA, offsetB, .. }) =>
-                smali!("packed-switch v{}, @{:+}", vA, offsetB),
-            DexInsn::SparseSwitch(F31t { vA, offsetB, .. }) =>
-                smali!("sparse-switch v{}, @{:+}", vA, offsetB),
+                smali!("goto/32 @{}({:+})", cur + (*offsetA as i64), offsetA),
+            DexInsn::PackedSwitch(F31t { vA, offsetB, .. }) => {
+                let payload = payload_map.read(accessor, cur, *offsetB);
+                SmaliNode::new_with_children(
+                    format!("packed-switch v{} {}", vA, payload.prefix),
+                    payload.children,
+                )
+            }
+            DexInsn::SparseSwitch(F31t { vA, offsetB, .. }) => {
+                let payload = payload_map.read(accessor, cur, *offsetB);
+                SmaliNode::new_with_children(
+                    format!("sparse-switch v{} {}", vA, payload.prefix),
+                    payload.children,
+                )
+            }
             DexInsn::Cmpkind(F23x { opcode, vA, vB, vC }) => {
                 let op_name = match opcode {
                     0x2d => "cmpl-float",
@@ -127,7 +173,8 @@ impl Dex2Smali for DexInsn {
                     0x37 => "if-le",
                     _ => "if-test",
                 };
-                smali!("{op_name} v{}, v{}, @{:+}", vA, vB, offsetC)
+                let real_offset = cur + (*offsetC as i64);
+                smali!("{op_name} v{vA}, v{vB}, @{real_offset}({offsetC:+})")
             }
             DexInsn::IfTestz(F21t { opcode, vA, offsetB }) => {
                 let op_name = match opcode {
@@ -139,7 +186,8 @@ impl Dex2Smali for DexInsn {
                     0x3d => "if-lez",
                     _ => "if-testz"
                 };
-                smali!("{op_name} v{vA}, @{offsetB:+}")
+                let real_offset = cur + (*offsetB as i64);
+                smali!("{op_name} v{vA}, @{real_offset}({offsetB:+})")
             }
             DexInsn::ArrayOp(F23x { opcode, vA, vB, vC }) => {
                 let op_name = match opcode {
@@ -372,9 +420,25 @@ impl Dex2Smali for DexInsn {
             DexInsn::ConstMethodType(F21c { vA, constB, .. }) =>
                 smali!("const-method-type v{}, {}", vA, render_proto(accessor, *constB)),
             DexInsn::NotUsed(_) => smali!(""),
-            DexInsn::PackedSwitchPayload(p) => p.to_smali(accessor),
-            DexInsn::SparseSwitchPayload(p) => p.to_smali(accessor),
+            DexInsn::PackedSwitchPayload(p) => p.to_smali(accessor, cur),
+            DexInsn::SparseSwitchPayload(p) => p.to_smali(accessor, cur),
             DexInsn::FillArrayDataPayload(p) => p.to_smali(accessor),
+        }
+    }
+}
+
+impl PayloadMap<'_> {
+    pub fn read(&self, accessor: &DexFileAccessor, current: i64, offset: i32) -> SmaliNode {
+        let payload_offset = (current + offset as i64) as usize;
+        let payload = match self.payload_map.get(&payload_offset) {
+            Some(p) => p,
+            None => return smali!("payload@{offset}({offset:+})"),
+        };
+        match payload {
+            DexInsn::PackedSwitchPayload(p) => p.to_smali(accessor, current),
+            DexInsn::SparseSwitchPayload(p) => p.to_smali(accessor, current),
+            DexInsn::FillArrayDataPayload(p) => p.to_smali(accessor),
+            _ => smali!("payload@{offset}({offset:+})"),
         }
     }
 }
@@ -552,7 +616,7 @@ impl Dex2Smali for EncodedValue {
             EncodedValue::Double(v) => smali!("double_{}", f64::from_be_bytes(*v)),
             EncodedValue::MethodType(v) => smali!("method_type_{}", render_proto(dex_file_accessor, v.0 as u16)),
             EncodedValue::MethodHandle(v) => render_method_handle(dex_file_accessor, v.0 as u16),
-            EncodedValue::String(v) => smali!("string_{}", dex_file_accessor.opt_str(*v)),
+            EncodedValue::String(v) => smali!("string_\"{}\"", dex_file_accessor.opt_str(*v)),
             EncodedValue::Type(v) => smali!("type_{}", dex_file_accessor.opt_type(*v)),
             EncodedValue::Field(v) => smali!("field_{}", render_field(dex_file_accessor, v.0 as u16)),
             EncodedValue::Method(v) => smali!("method_{}", render_method(dex_file_accessor, v.0 as u16)),
@@ -588,22 +652,31 @@ impl Dex2Smali for EncodedAnnotationAttribute {
     }
 }
 
-impl Dex2Smali for PackedSwitchPayload {
-    fn to_smali(&self, _dex_file_accessor: &DexFileAccessor) -> SmaliNode {
+impl PackedSwitchPayload {
+    fn to_smali(&self, _dex_file_accessor: &DexFileAccessor, current_offset: i64) -> SmaliNode {
         let mut res = Vec::with_capacity(self.size as usize);
+        let current_offset = current_offset as u32;
+        let size = self.size as u32;
         let first_key = self.first_key;
-        for i in 0..self.size {
-            res.push(smali!("{i} -> {}", first_key + (i as DUInt)));
+        for i in 0..size {
+            let target_offset = self.targets[i as usize];
+            let target = target_offset + current_offset;
+            let key = first_key + i;
+            res.push(smali!("{key} -> {target}({target_offset:+})"));
         }
         SmaliNode::new_with_children_and_postfix(".packed-switch", res, ".end packed-switch")
     }
 }
 
-impl Dex2Smali for SparseSwitchPayload {
-    fn to_smali(&self, _dex_file_accessor: &DexFileAccessor) -> SmaliNode {
+impl SparseSwitchPayload {
+    fn to_smali(&self, _dex_file_accessor: &DexFileAccessor, current_offset: i64) -> SmaliNode {
         let mut res = Vec::with_capacity(self.size as usize);
+        let current_offset = current_offset as u32;
         for i in 0..self.size {
-            res.push(smali!("{} -> {}", self.keys[i as usize], self.targets[i as usize]));
+            let key = self.keys[i as usize];
+            let target_offset = self.targets[i as usize];
+            let target = target_offset + current_offset;
+            res.push(smali!("{key} -> {target}({target_offset:+})" ));
         }
         SmaliNode::new_with_children_and_postfix(".sparse-switch", res, ".end sparse-switch")
     }

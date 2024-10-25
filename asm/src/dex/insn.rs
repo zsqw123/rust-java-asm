@@ -1,5 +1,5 @@
-use crate::dex::raw::{DUInt, DUShort};
 use crate::dex::insn_syntax::*;
+use crate::dex::raw::{DUInt, DUShort};
 use crate::impls::jvms::r::U32BasedSize;
 use java_asm_macro::ReadFrom;
 
@@ -80,6 +80,38 @@ pub enum DexInsn {
     PackedSwitchPayload(PackedSwitchPayload),
     SparseSwitchPayload(SparseSwitchPayload),
     FillArrayDataPayload(FillArrayDataPayload),
+}
+
+macro_rules! insn_width_impl {
+    ($($width:expr, [$($variant:ident),*],)*) => {
+        impl DexInsn {
+            pub fn insn_width(&self) -> usize {
+                match self {
+                    $(
+                        $(DexInsn::$variant(_) => $width,)*
+                    )*
+                }
+            }
+        }
+    };
+}
+
+insn_width_impl! {
+    1, [Nop, Move, MoveWide, MoveObject, MoveResult, MoveResultWide, MoveResultObject, MoveException, 
+        ReturnVoid, Return, ReturnWide, ReturnObject, Const4, MonitorEnter, MonitorExit, ArrayLength, 
+        Throw, Goto, Unop, Binop2Addr, NotUsed],
+    2, [MoveFrom16, MoveWideFrom16, MoveObjectFrom16, 
+        Const16, ConstHigh16, ConstWide16, ConstWideHigh16, ConstString, ConstClass, 
+        CheckCast, InstanceOf, NewInstance, NewArray,
+        Goto16, Cmpkind, IfTest, IfTestz, ArrayOp, IInstanceOp, SStaticOp,
+        Binop, BinopLit16, BinopLit8, ConstMethodHandle, ConstMethodType],
+    3, [Move16, MoveWide16, MoveObject16, Goto32, Const, ConstWide32, ConstStringJumbo,
+        FilledNewArray, FilledNewArrayRange, FillArrayData, PackedSwitch, SparseSwitch, 
+        InvokeKind, InvokeKindRange, InvokeCustom, InvokeCustomRange],
+    4, [InvokePoly, InvokePolyRange],
+    5, [ConstWide],
+    // payload didn't have real width and they didn't real occur in instruction list.
+    0, [PackedSwitchPayload, SparseSwitchPayload, FillArrayDataPayload],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, ReadFrom)]
