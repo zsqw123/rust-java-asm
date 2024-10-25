@@ -10,7 +10,6 @@ use std::collections::HashMap;
 
 impl Dex2Smali for InsnContainer {
     fn to_smali(&self, accessor: &DexFileAccessor) -> SmaliNode {
-        let max_index_str_len = 1 + (self.insns.len() + 1).ilog10() as usize;
         let mut current_offset = 0usize;
         let (payloads, insns): (Vec<_>, Vec<_>) = self.insns.iter()
             .map(|insn| {
@@ -30,10 +29,11 @@ impl Dex2Smali for InsnContainer {
         let insn_list = insns.iter().map(|(offset, insn)| {
             let offset = *offset;
             let mut insn = insn.to_smali(accessor, offset, &payload_map);
-            insn.prefix = format!("{:0w$}: {}", offset, insn.prefix, w = max_index_str_len).to_ref();
+            insn.offset_hint = Some(offset as u32);
+            insn.prefix = format!("{}", insn.prefix);
             insn
         }).collect();
-        SmaliNode::new_with_children_and_postfix(".code", insn_list, ".end code")
+        SmaliNode::new_with_children_and_postfix(".code".to_string(), insn_list, ".end code".to_string())
     }
 }
 
@@ -49,7 +49,7 @@ impl DexInsn {
         let cur = current_offset as i64;
         let insn = self;
         match insn {
-            DexInsn::Nop(_) => SmaliNode::new("nop"),
+            DexInsn::Nop(_) => smali!("nop"),
             DexInsn::Move(F12x { vA, vB, .. }) =>
                 smali!("move v{}, v{}", vA, vB),
             DexInsn::MoveFrom16(F22x { vA, vB, .. }) =>
@@ -76,7 +76,7 @@ impl DexInsn {
                 smali!("move-result-object v{}", vA),
             DexInsn::MoveException(F11x { vA, .. }) =>
                 smali!("move-exception v{}", vA),
-            DexInsn::ReturnVoid(_) => SmaliNode::new("return-void"),
+            DexInsn::ReturnVoid(_) => smali!("return-void"),
             DexInsn::Return(F11x { vA, .. }) =>
                 smali!("return v{}", vA),
             DexInsn::ReturnWide(F11x { vA, .. }) =>
@@ -476,7 +476,7 @@ fn render_method_handle(accessor: &DexFileAccessor, method_handle_idx: u16) -> S
         .unwrap_or_else(|_| smali!("method_handle_{}", method_handle_idx))
 }
 
-fn render_method_handle_str(accessor: &DexFileAccessor, method_handle_idx: u16) -> StrRef {
+fn render_method_handle_str(accessor: &DexFileAccessor, method_handle_idx: u16) -> String {
     render_method_handle(accessor, method_handle_idx).prefix
 }
 
@@ -600,7 +600,7 @@ impl Dex2Smali for EncodedArray {
         for value in self.values.iter() {
             values.push(value.to_smali(dex_file_accessor));
         }
-        SmaliNode::new_with_children_and_postfix(".array", values, ".end array")
+        SmaliNode::new_with_children_and_postfix(".array".to_string(), values, ".end array".to_string())
     }
 }
 
@@ -637,7 +637,7 @@ impl Dex2Smali for EncodedAnnotation {
             smali!("annotation {annotation_type}")
         } else {
             SmaliNode::new_with_children_and_postfix(
-                format!(".annotation {annotation_type}"), res, ".end annotation",
+                format!(".annotation {annotation_type}"), res, ".end annotation".to_string(),
             )
         }
     }
@@ -664,7 +664,7 @@ impl PackedSwitchPayload {
             let key = first_key + i;
             res.push(smali!("{key} -> {target}({target_offset:+})"));
         }
-        SmaliNode::new_with_children_and_postfix(".packed-switch", res, ".end packed-switch")
+        SmaliNode::new_with_children_and_postfix(".packed-switch".to_string(), res, ".end packed-switch".to_string())
     }
 }
 
@@ -678,7 +678,7 @@ impl SparseSwitchPayload {
             let target = target_offset + current_offset;
             res.push(smali!("{key} -> {target}({target_offset:+})" ));
         }
-        SmaliNode::new_with_children_and_postfix(".sparse-switch", res, ".end sparse-switch")
+        SmaliNode::new_with_children_and_postfix(".sparse-switch".to_string(), res, ".end sparse-switch".to_string())
     }
 }
 
