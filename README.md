@@ -40,13 +40,25 @@ see some examples.
   - [ ] Other formats
   - [x] Separation for metadata with real data (e.g. instructions)
 - [ ] Isolate AsmResult as multiple different errors, and provide a better error message.
+- [ ] GUI interactions
+  - [ ] GUI backend:
+    - [ ] unzip (whatever jar or dex) & parallel read
+    - [ ] retrieve metadata and combine multiple metadata for better indexing
+    - [ ] using metadata to get the real data if needed (e.g. method instructions)
+    - [ ] search content, quick search for metadata and slow search for instructions.
+  - [ ] GUI frontend:
+    - [ ] basic window with egui.
+    - [ ] load files into the backend
+    - [ ] show metadata in a tree view
+    - [ ] show instructions in a list view
+    - [ ] quick jump to specific metadata
 
 ### Goals
 
 1. Fully read and write Java class file with JVMS format.
 2. Partially implement ASM features in rust, but provides some better operations in rust.
 3. Support much newer Java version (higher priority for LTS, Java 21 currently).
-4. Not depends on any of other rust libraries at runtime, build everything from std only. (but some proc marco's
+4. For parser core, not depends on any of other rust libraries at runtime, build everything from std only. (but some proc marco's
    dependencies are used for generate some template codes. e.g. `quote` and `syn`)
 
 ---

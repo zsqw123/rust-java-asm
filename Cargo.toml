@@ -2,7 +2,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "asm", "asm_macro",
+    "asm", "asm-gui", "asm_macro", "asm_server",
 ]
 
 [workspace.package]

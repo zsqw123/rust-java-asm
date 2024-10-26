@@ -18,6 +18,7 @@ fn read_dex_test() {
     }).collect::<Vec<_>>();
     println!("Methods instructions resolved in {:?}", resolve_start.elapsed());
 
+    let resolve_start = Instant::now();
     let instructions = demo_methods.iter().map(|(method_name, code_item)| {
         code_item.as_ref().map(|code_item| {
             let container_smali = code_item.insn_container.to_smali(&dex_accessor);
@@ -27,6 +28,7 @@ fn read_dex_test() {
             ).render(0)
         })
     }).filter_map(|x| x).collect::<Vec<_>>();
+    println!("Instructions smali generated in {:?}", resolve_start.elapsed());
     
     println!("{:#?}", demo_class_data);
     println!("{:#?}", demo_methods);
