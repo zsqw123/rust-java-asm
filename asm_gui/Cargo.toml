@@ -1,5 +1,5 @@
 [package]
-name = "asm-gui"
+name = "java_asm_gui"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true

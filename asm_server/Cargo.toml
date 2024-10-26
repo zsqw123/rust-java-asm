@@ -1,5 +1,5 @@
 [package]
-name = "asm_server"
+name = "java_asm_server"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
@@ -11,3 +11,7 @@ homepage.workspace = true
 readme.workspace = true
 
 [dependencies]
+java_asm = { workspace = true }
+zip = { workspace = true }
+log = { workspace = true }
+

@@ -2,7 +2,7 @@ use crate::err::AsmResult;
 use crate::AsmErr;
 pub use java_asm_macro::ReadFrom;
 use std::array::from_fn;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 pub(crate) mod jvms_reader;
 pub(crate) mod util;
@@ -87,6 +87,13 @@ impl ReadContext<'_> {
 // for type `usize` in future versions
 #[derive(Copy, Clone, Debug, PartialEq, Eq, ReadFrom, Default)]
 pub struct U32BasedSize(pub u32);
+
+impl Display for U32BasedSize {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl Into<usize> for U32BasedSize {
     #[inline]

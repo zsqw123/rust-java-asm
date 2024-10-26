@@ -139,7 +139,7 @@ pub struct MethodId {
 #[align(4)]
 pub struct ClassDef {
     /// index into `type_ids`
-    pub class_idx: DUInt,
+    pub class_idx: U32BasedSize,
     pub access_flags: DUInt,
     /// index into `type_ids`, or NO_INDEX if this class has no superclass
     pub superclass_idx: DUInt,

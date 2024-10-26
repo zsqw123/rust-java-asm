@@ -2,7 +2,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "asm", "asm-gui", "asm_macro", "asm_server",
+    "asm", "asm_gui", "asm_macro", "asm_server",
 ]
 
 [workspace.package]
@@ -18,3 +18,6 @@ readme = "README.md"
 
 [workspace.dependencies]
 java_asm_macro = { path = "asm_macro", version = "0.0.8" } # JAVA_ASM_VERSION
+java_asm = { path = "asm", version = "0.0.8" } # JAVA_ASM_VERSION
+zip = "2.2.0"
+log = { version = "0.4", features = ["std"] }
