@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use std::io::{Read, Seek};
 use std::rc::Rc;
 use zip::ZipArchive;
+use java_asm::smali::SmaliNode;
+use crate::Accessor;
 
 pub struct ApkAccessor {
     pub map: HashMap<StrRef, ClassPosition>,
@@ -73,4 +75,18 @@ fn dex_index(name: &str) -> usize {
     let dex_index_end = name.rfind('.').unwrap_or_default();
     let dex_index_start = 7usize;
     name[dex_index_start..dex_index_end].parse::<usize>().unwrap_or_default()
+}
+
+impl Accessor for ApkAccessor {
+    fn read_classes(&self) -> Vec<StrRef> {
+        self.map.keys().cloned().collect()
+    }
+
+    fn exist_class(&self, class_key: &str) -> bool {
+        self.map.contains_key(class_key)
+    }
+
+    fn read_content(&self, class_key: &str) -> SmaliNode {
+        todo!()
+    }
 }
