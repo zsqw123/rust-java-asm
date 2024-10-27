@@ -8,6 +8,7 @@ license.workspace = true
 documentation.workspace = true
 readme.workspace = true
 repository.workspace = true
+exclude = ["/tests"]
 
 [dependencies]
 java_asm_macro = { workspace = true }
