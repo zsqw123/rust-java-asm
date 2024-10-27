@@ -1,7 +1,7 @@
 use crate::impls::ToStringRef;
 use crate::node::values::{BootstrapMethodArgument, ConstDynamic, ConstValue, Handle};
 use crate::node::InsnNode;
-use crate::smali::{SmaliNode, ToSmali};
+use crate::smali::{stb, SmaliNode, ToSmali};
 use crate::{smali, ConstContainer, MethodHandleKind, NewArrayTypeOperand, Opcodes, StrRef};
 use std::fmt::{Debug, Display, Formatter};
 use std::rc::Rc;
@@ -35,9 +35,7 @@ impl ToSmali for InsnNode {
                 smali!("{} {label}", insn_name(opcode)),
             InsnNode::LdcInsnNode(constant) => {
                 let constant_smali = constant.to_smali();
-                SmaliNode::new_with_children(
-                    format!("ldc {}", constant_smali.prefix), constant_smali.children,
-                )
+                stb().op("ldc").append(constant_smali.content).s_with_children(constant_smali.children)
             }
             InsnNode::TableSwitchInsnNode { default, min, max, labels } => {
                 let current = format!("tableswitch {default} {min} {max}");

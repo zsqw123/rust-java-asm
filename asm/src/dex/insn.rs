@@ -2,6 +2,7 @@ use crate::dex::insn_syntax::*;
 use crate::dex::raw::{DUInt, DUShort};
 use crate::impls::jvms::r::U32BasedSize;
 use java_asm_macro::ReadFrom;
+use crate::dex::DInt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DexInsn {
@@ -118,9 +119,9 @@ insn_width_impl! {
 pub struct PackedSwitchPayload {
     pub ident: DUShort, // should always be 0x0100
     pub size: DUShort,
-    pub first_key: DUInt,
+    pub first_key: DInt,
     #[index(size)]
-    pub targets: Vec<DUInt>,
+    pub targets: Vec<DInt>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, ReadFrom)]
@@ -128,9 +129,9 @@ pub struct SparseSwitchPayload {
     pub ident: DUShort, // should always be 0x0200
     pub size: DUShort,
     #[index(size)]
-    pub keys: Vec<DUInt>,
+    pub keys: Vec<DInt>,
     #[index(size)]
-    pub targets: Vec<DUInt>,
+    pub targets: Vec<DInt>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, ReadFrom)]

@@ -7,8 +7,8 @@ pub trait ConstContainer {
     #[inline]
     fn const_name_or_default(c: Self::ConstType, prefix: &'static str) -> String {
         match Self::const_name(c) {
-            None => format!("{prefix}_{}", c.to_string()),
             Some(c) => c.to_string(),
+            None => format!("{prefix}_{}", c.to_string()),
         }
     }
 }

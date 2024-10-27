@@ -4,8 +4,8 @@ use crate::dex::insn::{DexInsn, FillArrayDataPayload, PackedSwitchPayload, Spars
 use crate::dex::insn_syntax::*;
 use crate::dex::{DexFileAccessor, EncodedAnnotation, EncodedAnnotationAttribute, EncodedArray, EncodedValue, InsnContainer, MethodHandle, MethodHandleType, U4};
 use crate::impls::ToStringRef;
-use crate::smali::{smali, Dex2Smali, SmaliNode, ToSmali};
-use crate::{ConstContainer, StrRef};
+use crate::smali::{stb, tokens_to_raw, Dex2Smali, SmaliNode, ToSmali};
+use crate::{smali, ConstContainer, DescriptorRef, StrRef};
 use std::collections::HashMap;
 
 impl Dex2Smali for InsnContainer {
@@ -30,10 +30,14 @@ impl Dex2Smali for InsnContainer {
             let offset = *offset;
             let mut insn = insn.to_smali(accessor, offset, &payload_map);
             insn.offset_hint = Some(offset as u32);
-            insn.prefix = format!("{}", insn.prefix);
             insn
         }).collect();
-        SmaliNode::new_with_children_and_postfix(".code".to_string(), insn_list, ".end code".to_string())
+        SmaliNode {
+            tag: Some(".code"),
+            end_tag: Some(".end code"),
+            children: insn_list,
+            ..Default::default()
+        }
     }
 }
 
@@ -46,111 +50,106 @@ impl DexInsn {
         &self, accessor: &DexFileAccessor, current_offset: usize,
         payload_map: &PayloadMap,
     ) -> SmaliNode {
-        let cur = current_offset as i64;
+        let cur = current_offset as u32;
+        let tb = stb();
         let insn = self;
         match insn {
-            DexInsn::Nop(_) => smali!("nop"),
+            DexInsn::Nop(_) => tb.op("nop").s(),
             DexInsn::Move(F12x { vA, vB, .. }) =>
-                smali!("move v{}, v{}", vA, vB),
+                tb.op("move").v(*vA).v(*vB).s(),
             DexInsn::MoveFrom16(F22x { vA, vB, .. }) =>
-                smali!("move/from16 v{}, v{}", vA, vB),
+                tb.op("move/from16").v(*vA).v(*vB).s(),
             DexInsn::Move16(F32x { vA, vB, .. }) =>
-                smali!("move/16 v{}, v{}", vA, vB),
+                tb.op("move/16").v(*vA).v(*vB).s(),
             DexInsn::MoveWide(F12x { vA, vB, .. }) =>
-                smali!("move-wide v{}, v{}", vA, vB),
+                tb.op("move-wide").v(*vA).v(*vB).s(),
             DexInsn::MoveWideFrom16(F22x { vA, vB, .. }) =>
-                smali!("move-wide/from16 v{}, v{}", vA, vB),
+                tb.op("move-wide/from16").v(*vA).v(*vB).s(),
             DexInsn::MoveWide16(F32x { vA, vB, .. }) =>
-                smali!("move-wide/16 v{}, v{}", vA, vB),
+                tb.op("move-wide/16").v(*vA).v(*vB).s(),
             DexInsn::MoveObject(F12x { vA, vB, .. }) =>
-                smali!("move-object v{}, v{}", vA, vB),
+                tb.op("move-object").v(*vA).v(*vB).s(),
             DexInsn::MoveObjectFrom16(F22x { vA, vB, .. }) =>
-                smali!("move-object/from16 v{}, v{}", vA, vB),
+                tb.op("move-object/from16").v(*vA).v(*vB).s(),
             DexInsn::MoveObject16(F32x { vA, vB, .. }) =>
-                smali!("move-object/16 v{}, v{}", vA, vB),
+                tb.op("move-object/16").v(*vA).v(*vB).s(),
             DexInsn::MoveResult(F11x { vA, .. }) =>
-                smali!("move-result v{}", vA),
+                tb.op("move-result").v(*vA).s(),
             DexInsn::MoveResultWide(F11x { vA, .. }) =>
-                smali!("move-result-wide v{}", vA),
+                tb.op("move-result-wide").v(*vA).s(),
             DexInsn::MoveResultObject(F11x { vA, .. }) =>
-                smali!("move-result-object v{}", vA),
+                tb.op("move-result-object").v(*vA).s(),
             DexInsn::MoveException(F11x { vA, .. }) =>
-                smali!("move-exception v{}", vA),
-            DexInsn::ReturnVoid(_) => smali!("return-void"),
+                tb.op("move-exception").v(*vA).s(),
+            DexInsn::ReturnVoid(_) => tb.op("return-void").s(),
             DexInsn::Return(F11x { vA, .. }) =>
-                smali!("return v{}", vA),
+                tb.op("return").v(*vA).s(),
             DexInsn::ReturnWide(F11x { vA, .. }) =>
-                smali!("return-wide v{}", vA),
+                tb.op("return-wide").v(*vA).s(),
             DexInsn::ReturnObject(F11x { vA, .. }) =>
-                smali!("return-object v{}", vA),
+                tb.op("return-object").v(*vA).s(),
             DexInsn::Const4(F11n { vA, literalB, .. }) =>
-                smali!("const/4 v{}, {}", vA, literalB),
+                tb.op("const/4").v(*vA).l(literalB.0.to_ref()).s(),
             DexInsn::Const16(F21s { vA, literalB, .. }) =>
-                smali!("const/16 v{}, {}", vA, literalB),
+                tb.op("const/16").v(*vA).l(literalB.to_ref()).s(),
             DexInsn::Const(F31i { vA, literalB, .. }) =>
-                smali!("const v{}, {}", vA, literalB),
+                tb.op("const").v(*vA).l(literalB.to_ref()).s(),
             DexInsn::ConstHigh16(F21h { vA, literalB, .. }) =>
-                smali!("const/high16 v{}, {}", vA, literalB),
+                tb.op("const/high16").v(*vA).l(literalB.to_ref()).s(),
             DexInsn::ConstWide16(F21s { vA, literalB, .. }) =>
-                smali!("const-wide/16 v{}, {}", vA, literalB),
+                tb.op("const-wide/16").v(*vA).l(literalB.to_ref()).s(),
             DexInsn::ConstWide32(F31i { vA, literalB, .. }) =>
-                smali!("const-wide/32 v{}, {}", vA, literalB),
+                tb.op("const-wide/32").v(*vA).l(literalB.to_ref()).s(),
             DexInsn::ConstWide(F51l { vA, literalB, .. }) =>
-                smali!("const-wide v{}, {}", vA, literalB),
+                tb.op("const-wide").v(*vA).l(literalB.to_ref()).s(),
             DexInsn::ConstWideHigh16(F21h { vA, literalB, .. }) =>
-                smali!("const-wide/high16 v{}, {}", vA, literalB),
+                tb.op("const-wide/high16").v(*vA).l(literalB.to_ref()).s(),
             DexInsn::ConstString(F21c { vA, constB, .. }) =>
-                smali!("const-string v{}, \"{}\"", vA, accessor.opt_str(*constB)),
+                tb.op("const-string").v(*vA).l(accessor.opt_str(*constB)).s(),
             DexInsn::ConstStringJumbo(F31c { vA, constB, .. }) =>
-                smali!("const-string/jumbo v{}, \"{}\"", vA, accessor.opt_str(*constB)),
+                tb.op("const-string/jumbo").v(*vA).l(accessor.opt_str(*constB)).s(),
             DexInsn::ConstClass(F21c { vA, constB, .. }) =>
-                smali!("const-class v{}, {}", vA, accessor.opt_type(*constB)),
+                tb.op("const-class").v(*vA).l(accessor.opt_type(*constB)).s(),
             DexInsn::MonitorEnter(F11x { vA, .. }) =>
-                smali!("monitor-enter v{}", vA),
+                tb.op("monitor-enter").v(*vA).s(),
             DexInsn::MonitorExit(F11x { vA, .. }) =>
-                smali!("monitor-exit v{}", vA),
+                tb.op("monitor-exit").v(*vA).s(),
             DexInsn::CheckCast(F21c { vA, constB, .. }) =>
-                smali!("check-cast v{}, {}", vA, accessor.opt_type(*constB)),
+                tb.op("check-cast").v(*vA).l(accessor.opt_type(*constB)).s(),
             DexInsn::InstanceOf(F22c { vA, vB, constC, .. }) =>
-                smali!("instance-of v{}, v{}, {}", vA, vB, accessor.opt_type(*constC)),
+                tb.op("instance-of").v(*vA).v(*vB).l(accessor.opt_type(*constC)).s(),
             DexInsn::ArrayLength(F12x { vA, vB, .. }) =>
-                smali!("array-length v{}, v{}", vA, vB),
+                tb.op("array-length").v(*vA).v(*vB).s(),
             DexInsn::NewInstance(F21c { vA, constB, .. }) =>
-                smali!("new-instance v{}, {}", vA, accessor.opt_type(*constB)),
+                tb.op("new-instance").v(*vA).l(accessor.opt_type(*constB)).s(),
             DexInsn::NewArray(F22c { vA, vB, constC, .. }) =>
-                smali!("new-array v{}, v{}, {}", vA, vB, accessor.opt_type(*constC)),
+                tb.op("new-array").v(*vA).v(*vB).l(accessor.opt_type(*constC)).s(),
             DexInsn::FilledNewArray(F35c { a, vC, vD, vE, vF, vG, constB, .. }) =>
-                render_f35("filled-new-array", *a, accessor.opt_str(*constB), *vC, *vD, *vE, *vF, *vG),
+                render_f35("filled-new-array", *a, tb.l(accessor.opt_str(*constB)).s(),
+                           *vC, *vD, *vE, *vF, *vG),
             DexInsn::FilledNewArrayRange(F3rc { a, vC, constB, .. }) =>
-                render_f3r("filled-new-array/range", *a, accessor.opt_str(*constB), *vC),
+                render_f3r("filled-new-array/range", *a, tb.l(accessor.opt_str(*constB)).s(), *vC),
             DexInsn::FillArrayData(F31t { vA, offsetB, .. }) => {
                 let payload = payload_map.read(accessor, cur, *offsetB);
-                SmaliNode::new_with_children(
-                    format!("fill-array-data v{} {}", vA, payload.prefix),
-                    payload.children,
-                )
+                tb.op("fill-array-data").v(*vA).append(payload.content).s_with_children(payload.children)
             }
             DexInsn::Throw(F11x { vA, .. }) =>
-                smali!("throw v{}", vA),
+                tb.op("throw").v(*vA).s(),
             DexInsn::Goto(F10t { offsetA, .. }) =>
-                smali!("goto @{}({:+})", cur + (*offsetA as i64), offsetA),
+                tb.op("goto").off(*offsetA, cur).s(),
             DexInsn::Goto16(F20t { offsetA, .. }) =>
-                smali!("goto/16 @{}({:+})", cur + (*offsetA as i64), offsetA),
+                tb.op("goto/16").off(*offsetA, cur).s(),
             DexInsn::Goto32(F30t { offsetA, .. }) =>
-                smali!("goto/32 @{}({:+})", cur + (*offsetA as i64), offsetA),
+                tb.op("goto/32").off(*offsetA, cur).s(),
             DexInsn::PackedSwitch(F31t { vA, offsetB, .. }) => {
                 let payload = payload_map.read(accessor, cur, *offsetB);
-                SmaliNode::new_with_children(
-                    format!("packed-switch v{} {}", vA, payload.prefix),
-                    payload.children,
-                )
+                tb.op("packed-switch").v(*vA)
+                    .append(payload.content).s_with_children(payload.children)
             }
             DexInsn::SparseSwitch(F31t { vA, offsetB, .. }) => {
                 let payload = payload_map.read(accessor, cur, *offsetB);
-                SmaliNode::new_with_children(
-                    format!("sparse-switch v{} {}", vA, payload.prefix),
-                    payload.children,
-                )
+                tb.op("sparse-switch").v(*vA)
+                    .append(payload.content).s_with_children(payload.children)
             }
             DexInsn::Cmpkind(F23x { opcode, vA, vB, vC }) => {
                 let op_name = match opcode {
@@ -161,7 +160,7 @@ impl DexInsn {
                     0x31 => "cmp-long",
                     _ => "cmpkind",
                 };
-                smali!("{op_name} v{}, v{}, v{}", vA, vB, vC)
+                tb.op(op_name).v(*vA).v(*vB).v(*vC).s()
             }
             DexInsn::IfTest(F22t { opcode, vA, vB, offsetC }) => {
                 let op_name = match opcode {
@@ -173,8 +172,7 @@ impl DexInsn {
                     0x37 => "if-le",
                     _ => "if-test",
                 };
-                let real_offset = cur + (*offsetC as i64);
-                smali!("{op_name} v{vA}, v{vB}, @{real_offset}({offsetC:+})")
+                tb.op(op_name).v(*vA).v(*vB).off(*offsetC, cur).s()
             }
             DexInsn::IfTestz(F21t { opcode, vA, offsetB }) => {
                 let op_name = match opcode {
@@ -186,8 +184,7 @@ impl DexInsn {
                     0x3d => "if-lez",
                     _ => "if-testz"
                 };
-                let real_offset = cur + (*offsetB as i64);
-                smali!("{op_name} v{vA}, @{real_offset}({offsetB:+})")
+                tb.op(op_name).v(*vA).off(*offsetB, cur).s()
             }
             DexInsn::ArrayOp(F23x { opcode, vA, vB, vC }) => {
                 let op_name = match opcode {
@@ -207,7 +204,7 @@ impl DexInsn {
                     0x51 => "aput-short",
                     _ => "arrayop",
                 };
-                smali!("{op_name} v{}, v{}, v{}", vA, vB, vC)
+                tb.op(op_name).v(*vA).v(*vB).v(*vC).s()
             }
             DexInsn::IInstanceOp(F22c { opcode, vA, vB, constC }) => {
                 let op_name = match opcode {
@@ -227,7 +224,7 @@ impl DexInsn {
                     0x5f => "iput-short",
                     _ => "instanceop",
                 };
-                smali!("{op_name} v{}, v{}, {}", vA, vB, render_field(accessor,*constC))
+                tb.op(op_name).v(*vA).v(*vB).append(render_field(accessor, *constC).content).s()
             }
             DexInsn::SStaticOp(F21c { opcode, vA, constB }) => {
                 let op_name = match opcode {
@@ -247,7 +244,7 @@ impl DexInsn {
                     0x6d => "sput-short",
                     _ => "staticop",
                 };
-                smali!("{op_name} v{}, {}", vA, render_field(accessor, *constB))
+                tb.op(op_name).v(*vA).append(render_field(accessor, *constB).content).s()
             }
             DexInsn::InvokeKind(F35c { opcode, a, vC, vD, vE, vF, vG, constB }) => {
                 let op_name = match opcode {
@@ -298,7 +295,7 @@ impl DexInsn {
                     0x8f => "int-to-short",
                     _ => "unop",
                 };
-                smali!("{op_name} v{}, v{}", vA, vB)
+                tb.op(op_name).v(*vA).v(*vB).s()
             }
             DexInsn::Binop(F23x { opcode, vA, vB, vC }) => {
                 let op_name = match opcode {
@@ -336,7 +333,7 @@ impl DexInsn {
                     0xaf => "rem-double",
                     _ => "binop",
                 };
-                smali!("{op_name} v{}, v{}, v{}", vA, vB, vC)
+                tb.op(op_name).v(*vA).v(*vB).v(*vC).s()
             }
             DexInsn::Binop2Addr(F12x { opcode, vA, vB }) => {
                 let op_name = match opcode {
@@ -374,7 +371,7 @@ impl DexInsn {
                     0xcf => "rem-double/2addr",
                     _ => "binop2addr",
                 };
-                smali!("{op_name} v{}, v{}", vA, vB)
+                tb.op(op_name).v(*vA).v(*vB).s()
             }
             DexInsn::BinopLit16(F22s { opcode, vA, vB, literalC }) => {
                 let op_name = match opcode {
@@ -388,7 +385,7 @@ impl DexInsn {
                     0xd7 => "xor-int/lit16",
                     _ => "binoplit16",
                 };
-                smali!("{op_name} v{}, v{}, {}", vA, vB, literalC)
+                tb.op(op_name).v(*vA).v(*vB).l(literalC.to_ref()).s()
             },
             DexInsn::BinopLit8(F22b { opcode, vA, vB, literalC }) => {
                 let op_name = match opcode {
@@ -405,7 +402,7 @@ impl DexInsn {
                     0xe2 => "ushr-int/lit8",
                     _ => "binoplit8",
                 };
-                smali!("{op_name} v{}, v{}, {}", vA, vB, literalC)
+                tb.op(op_name).v(*vA).v(*vB).l(literalC.to_ref()).s()
             }
             DexInsn::InvokePoly(f45cc) =>
                 render_invoke_poly(accessor, *f45cc),
@@ -416,10 +413,10 @@ impl DexInsn {
             DexInsn::InvokeCustomRange(F3rc { a, constB, vC, .. }) =>
                 render_f3r_smali("invoke-custom-range", *a, render_call_site(accessor, *constB), *vC),
             DexInsn::ConstMethodHandle(F21c { vA, constB, .. }) =>
-                smali!("const-method-handle v{}, {}", vA, render_method_handle_str(accessor, *constB)),
+                tb.op("const-method-handle").v(*vA).other(render_method_handle_str(accessor, *constB)).s(),
             DexInsn::ConstMethodType(F21c { vA, constB, .. }) =>
-                smali!("const-method-type v{}, {}", vA, render_proto(accessor, *constB)),
-            DexInsn::NotUsed(_) => smali!(""),
+                tb.op("const-method-type").v(*vA).d(render_proto(accessor, *constB)).s(),
+            DexInsn::NotUsed(_) => SmaliNode::empty(),
             DexInsn::PackedSwitchPayload(p) => p.to_smali(accessor, cur),
             DexInsn::SparseSwitchPayload(p) => p.to_smali(accessor, cur),
             DexInsn::FillArrayDataPayload(p) => p.to_smali(accessor),
@@ -428,36 +425,39 @@ impl DexInsn {
 }
 
 impl PayloadMap<'_> {
-    pub fn read(&self, accessor: &DexFileAccessor, current: i64, offset: i32) -> SmaliNode {
-        let payload_offset = (current + offset as i64) as usize;
+    pub fn read(&self, accessor: &DexFileAccessor, current: u32, offset: i32) -> SmaliNode {
+        let payload_offset = (current as i32 + offset) as usize;
+        let tb = stb();
         let payload = match self.payload_map.get(&payload_offset) {
             Some(p) => p,
-            None => return smali!("payload@{offset}({offset:+})"),
+            None => return tb.raw("payload").off(offset, current).s(),
         };
         match payload {
             DexInsn::PackedSwitchPayload(p) => p.to_smali(accessor, current),
             DexInsn::SparseSwitchPayload(p) => p.to_smali(accessor, current),
             DexInsn::FillArrayDataPayload(p) => p.to_smali(accessor),
-            _ => smali!("payload@{offset}({offset:+})"),
+            _ => tb.raw("payload").off(offset, current).s(),
         }
     }
 }
 
-fn render_field(accessor: &DexFileAccessor, field_idx: u16) -> StrRef {
+// guaranteed have no children
+fn render_field(accessor: &DexFileAccessor, field_idx: u16) -> SmaliNode {
     accessor.get_field(field_idx)
-        .map(|f| f.to_string())
-        .unwrap_or_else(|_| format!("field_{}", field_idx))
-        .to_ref()
+        .map(|f| stb()
+            .d(f.class_type).other(f.field_name).d(f.field_type).s()
+        ).unwrap_or_else(|_| smali!("field_{}", field_idx))
 }
 
-fn render_method(accessor: &DexFileAccessor, method_idx: u16) -> StrRef {
+// guaranteed have no children
+fn render_method(accessor: &DexFileAccessor, method_idx: u16) -> SmaliNode {
     accessor.get_method(method_idx)
-        .map(|m| m.to_string())
-        .unwrap_or_else(|_| format!("method_{}", method_idx))
-        .to_ref()
+        .map(|m| stb()
+            .d(m.class_type).other(m.method_name).d(m.desc).s()
+        ).unwrap_or_else(|_| smali!("method_{}", method_idx))
 }
 
-fn render_proto(accessor: &DexFileAccessor, proto_idx: u16) -> StrRef {
+fn render_proto(accessor: &DexFileAccessor, proto_idx: u16) -> DescriptorRef {
     accessor.get_proto(proto_idx)
         .map(|p| p.to_string())
         .unwrap_or_else(|_| format!("proto_{}", proto_idx))
@@ -476,8 +476,9 @@ fn render_method_handle(accessor: &DexFileAccessor, method_handle_idx: u16) -> S
         .unwrap_or_else(|_| smali!("method_handle_{}", method_handle_idx))
 }
 
-fn render_method_handle_str(accessor: &DexFileAccessor, method_handle_idx: u16) -> String {
-    render_method_handle(accessor, method_handle_idx).prefix
+fn render_method_handle_str(accessor: &DexFileAccessor, method_handle_idx: u16) -> StrRef {
+    let tokens = render_method_handle(accessor, method_handle_idx).content;
+    tokens_to_raw(&tokens).to_ref()
 }
 
 fn render_invoke_poly(accessor: &DexFileAccessor, f45cc: F45cc) -> SmaliNode {
@@ -486,26 +487,16 @@ fn render_invoke_poly(accessor: &DexFileAccessor, f45cc: F45cc) -> SmaliNode {
         vC, vD, vE, vF, vG, ..
     } = f45cc;
     let a = a.0;
+    let mut tb = stb();
+    tb = tb.op("invoke-polymorphic");
     let method = render_method(accessor, constB);
     let proto = render_proto(accessor, constH);
-    let mut registers = Vec::with_capacity(8);
-    if a > 0 {
-        registers.push(format!("v{}", vC));
-    };
-    if a > 1 {
-        registers.push(format!("v{}", vD));
-    };
-    if a > 2 {
-        registers.push(format!("v{}", vE));
-    };
-    if a > 3 {
-        registers.push(format!("v{}", vF));
-    };
-    if a > 4 {
-        registers.push(format!("v{}", vG));
-    };
-    let registers = registers.join(", ");
-    smali!("invoke-polymorphic {{{registers}}} {method} {proto}")
+    if a > 0 { tb = tb.v(vC) };
+    if a > 1 { tb = tb.v(vD) };
+    if a > 2 { tb = tb.v(vE) };
+    if a > 3 { tb = tb.v(vF) };
+    if a > 4 { tb = tb.v(vG) };
+    tb.append(method.content).d(proto).s()
 }
 
 fn render_invoke_poly_range(accessor: &DexFileAccessor, f4rcc: F4rcc) -> SmaliNode {
@@ -515,7 +506,8 @@ fn render_invoke_poly_range(accessor: &DexFileAccessor, f4rcc: F4rcc) -> SmaliNo
     let method = render_method(accessor, constB);
     let proto = render_proto(accessor, constH);
     let n = vC + (a as u16) - 1;
-    smali!("invoke-polymorphic/range v{vC}..v{n} {method} {proto}")
+    stb().op("invoke-polymorphic/range")
+        .vr(vC, n).append(method.content).d(proto).s()
 }
 
 fn render_f35_smali(
@@ -523,74 +515,48 @@ fn render_f35_smali(
     vC: U4, vD: U4, vE: U4, vF: U4, vG: U4,
 ) -> SmaliNode {
     let a = a.0;
-    let mut registers = Vec::with_capacity(a as usize);
-    if a > 0 {
-        registers.push(format!("v{}", vC));
-    };
-    if a > 1 {
-        registers.push(format!("v{}", vD));
-    };
-    if a > 2 {
-        registers.push(format!("v{}", vE));
-    };
-    if a > 3 {
-        registers.push(format!("v{}", vF));
-    };
-    if a > 4 {
-        registers.push(format!("v{}", vG));
-    };
-    let registers = registers.join(", ");
-    if constB.children.is_empty() {
-        let constB = constB.prefix;
-        smali!("{op_name} {{{registers}}} {constB}")
-    } else {
-        let const_prefix = constB.prefix;
-        let const_children = constB.children;
-        SmaliNode::new_with_children(
-            format!("{op_name} {{{registers}}} {const_prefix}"), const_children,
-        )
-    }
+    let mut tb = stb();
+    tb = tb.op(op_name);
+    if a > 0 { tb = tb.v(vC) };
+    if a > 1 { tb = tb.v(vD) };
+    if a > 2 { tb = tb.v(vE) };
+    if a > 3 { tb = tb.v(vF) };
+    if a > 4 { tb = tb.v(vG) };
+    tb.append(constB.content).s_with_children(constB.children)
 }
 
 fn render_f35(
-    op_name: &'static str, a: U4, constB: impl ToSmali,
+    op_name: &'static str, a: U4, constB: SmaliNode,
     vC: U4, vD: U4, vE: U4, vF: U4, vG: U4,
 ) -> SmaliNode {
-    render_f35_smali(op_name, a, constB.to_smali(), vC, vD, vE, vF, vG)
+    render_f35_smali(op_name, a, constB, vC, vD, vE, vF, vG)
 }
 
 fn render_f3r_smali(
     op_name: &'static str, a: u8, constB: SmaliNode, vC: u16,
 ) -> SmaliNode {
     let vN = vC + (a as u16) - 1;
-    if constB.children.is_empty() {
-        let constB = constB.prefix;
-        smali!("{op_name} v{vC}..v{vN} {constB}")
-    } else {
-        let const_prefix = constB.prefix;
-        let const_children = constB.children;
-        SmaliNode::new_with_children(
-            format!("{op_name} v{vC}..v{vN} {const_prefix}"), const_children,
-        )
-    }
+    stb()
+        .op(op_name).vr(vC, vN).append(constB.content)
+        .s_with_children(constB.children)
 }
 
 fn render_f3r(
-    op_name: &'static str, a: u8, constB: impl ToSmali, vC: u16,
+    op_name: &'static str, a: u8, constB: SmaliNode, vC: u16,
 ) -> SmaliNode {
-    render_f3r_smali(op_name, a, constB.to_smali(), vC)
+    render_f3r_smali(op_name, a, constB, vC)
 }
 
 impl Dex2Smali for MethodHandle {
     fn to_smali(&self, dex_file_accessor: &DexFileAccessor) -> SmaliNode {
-        let handle_type = MethodHandleType::const_name_or_default(self.method_handle_type, "method");
+        let handle_type = MethodHandleType::const_name_or_default(self.method_handle_type, "method_h");
         let member_id = self.field_or_method_id;
         let member = match self.method_handle_type {
             0x00..=0x03 => render_field(dex_file_accessor, member_id),
             0x04..=0x08 => render_method(dex_file_accessor, member_id),
             _ => return smali!("{handle_type}@{member_id}"),
         };
-        smali!("{handle_type} {member}")
+        stb().other(handle_type.to_ref()).append(member.content).s()
     }
 }
 
@@ -600,31 +566,37 @@ impl Dex2Smali for EncodedArray {
         for value in self.values.iter() {
             values.push(value.to_smali(dex_file_accessor));
         }
-        SmaliNode::new_with_children_and_postfix(".array".to_string(), values, ".end array".to_string())
+        SmaliNode {
+            children: values,
+            tag: Some(".array"),
+            end_tag: Some(".end array"),
+            ..Default::default()
+        }
     }
 }
 
 impl Dex2Smali for EncodedValue {
     fn to_smali(&self, dex_file_accessor: &DexFileAccessor) -> SmaliNode {
+        let tb = stb();
         match self {
-            EncodedValue::Byte(v) => smali!("byte_{v}"),
-            EncodedValue::Short(v) => smali!("short_{v}"),
-            EncodedValue::Char(v) => smali!("char_{v}"),
-            EncodedValue::Int(v) => smali!("int_{v}"),
-            EncodedValue::Long(v) => smali!("long_{v}"),
-            EncodedValue::Float(v) => smali!("float_{}", f32::from_be_bytes(*v)),
-            EncodedValue::Double(v) => smali!("double_{}", f64::from_be_bytes(*v)),
-            EncodedValue::MethodType(v) => smali!("method_type_{}", render_proto(dex_file_accessor, v.0 as u16)),
+            EncodedValue::Byte(v) => tb.l(v.to_ref()).s(),
+            EncodedValue::Short(v) => tb.l(v.to_ref()).s(),
+            EncodedValue::Char(v) => tb.l(v.to_ref()).s(),
+            EncodedValue::Int(v) => tb.l(v.to_ref()).s(),
+            EncodedValue::Long(v) => tb.l(v.to_ref()).s(),
+            EncodedValue::Float(v) => tb.l(f32::from_be_bytes(*v).to_ref()).s(),
+            EncodedValue::Double(v) => tb.l(f64::from_be_bytes(*v).to_ref()).s(),
+            EncodedValue::MethodType(v) => tb.l(render_proto(dex_file_accessor, v.0 as u16)).s(),
             EncodedValue::MethodHandle(v) => render_method_handle(dex_file_accessor, v.0 as u16),
-            EncodedValue::String(v) => smali!("string_\"{}\"", dex_file_accessor.opt_str(*v)),
-            EncodedValue::Type(v) => smali!("type_{}", dex_file_accessor.opt_type(*v)),
-            EncodedValue::Field(v) => smali!("field_{}", render_field(dex_file_accessor, v.0 as u16)),
-            EncodedValue::Method(v) => smali!("method_{}", render_method(dex_file_accessor, v.0 as u16)),
-            EncodedValue::Enum(v) => smali!("enum_{}", render_field(dex_file_accessor, v.0 as u16)),
+            EncodedValue::String(v) => tb.l(dex_file_accessor.opt_str(*v)).s(),
+            EncodedValue::Type(v) => tb.l(dex_file_accessor.opt_type(*v)).s(),
+            EncodedValue::Field(v) => render_field(dex_file_accessor, v.0 as u16),
+            EncodedValue::Method(v) => render_method(dex_file_accessor, v.0 as u16),
+            EncodedValue::Enum(v) => render_field(dex_file_accessor, v.0 as u16),
             EncodedValue::Array(v) => v.to_smali(dex_file_accessor),
             EncodedValue::Annotation(v) => v.to_smali(dex_file_accessor),
-            EncodedValue::Null => smali!("null"),
-            EncodedValue::Boolean(v) => smali!("{v}"),
+            EncodedValue::Null => SmaliNode::NULL,
+            EncodedValue::Boolean(v) => if *v { SmaliNode::TRUE } else { SmaliNode::FALSE }
         }
     }
 }
@@ -634,11 +606,10 @@ impl Dex2Smali for EncodedAnnotation {
         let annotation_type = dex_file_accessor.opt_type(self.type_idx);
         let res: Vec<_> = self.elements.iter().map(|e| e.to_smali(dex_file_accessor)).collect();
         if res.is_empty() {
-            smali!("annotation {annotation_type}")
+            stb().raw("annotation").d(annotation_type).s()
         } else {
-            SmaliNode::new_with_children_and_postfix(
-                format!(".annotation {annotation_type}"), res, ".end annotation".to_string(),
-            )
+            stb().raw(".annotation").d(annotation_type)
+                .into_smali(res, ".end annotation")
         }
     }
 }
@@ -647,38 +618,46 @@ impl Dex2Smali for EncodedAnnotationAttribute {
     fn to_smali(&self, dex_file_accessor: &DexFileAccessor) -> SmaliNode {
         let name = dex_file_accessor.opt_str(self.name_idx);
         let value = self.value.to_smali(dex_file_accessor);
-        let prefix = format!("{} = {}", name, value.prefix);
-        SmaliNode::new_with_children(prefix, value.children)
+        stb().other(name).append(value.content)
+            .s_with_children(value.children)
     }
 }
 
 impl PackedSwitchPayload {
-    fn to_smali(&self, _dex_file_accessor: &DexFileAccessor, current_offset: i64) -> SmaliNode {
-        let mut res = Vec::with_capacity(self.size as usize);
-        let current_offset = current_offset as u32;
+    fn to_smali(&self, _dex_file_accessor: &DexFileAccessor, current_offset: u32) -> SmaliNode {
+        let mut children = Vec::with_capacity(self.size as usize);
         let size = self.size as u32;
         let first_key = self.first_key;
         for i in 0..size {
             let target_offset = self.targets[i as usize];
-            let target = target_offset + current_offset;
-            let key = first_key + i;
-            res.push(smali!("{key} -> {target}({target_offset:+})"));
+            let key = first_key + i as i32;
+            let child = stb().l(key.to_ref()).raw("->").off(target_offset, current_offset);
+            children.push(child.s())
         }
-        SmaliNode::new_with_children_and_postfix(".packed-switch".to_string(), res, ".end packed-switch".to_string())
+        SmaliNode {
+            children,
+            tag: Some(".packed-switch"),
+            end_tag: Some(".end packed-switch"),
+            ..Default::default()
+        }
     }
 }
 
 impl SparseSwitchPayload {
-    fn to_smali(&self, _dex_file_accessor: &DexFileAccessor, current_offset: i64) -> SmaliNode {
-        let mut res = Vec::with_capacity(self.size as usize);
-        let current_offset = current_offset as u32;
+    fn to_smali(&self, _dex_file_accessor: &DexFileAccessor, current_offset: u32) -> SmaliNode {
+        let mut children = Vec::with_capacity(self.size as usize);
         for i in 0..self.size {
             let key = self.keys[i as usize];
             let target_offset = self.targets[i as usize];
-            let target = target_offset + current_offset;
-            res.push(smali!("{key} -> {target}({target_offset:+})" ));
+            let child = stb().l(key.to_ref()).raw("->").off(target_offset, current_offset);
+            children.push(child.s())
         }
-        SmaliNode::new_with_children_and_postfix(".sparse-switch".to_string(), res, ".end sparse-switch".to_string())
+        SmaliNode {
+            children,
+            tag: Some(".sparse-switch"),
+            end_tag: Some(".end sparse-switch"),
+            ..Default::default()
+        }
     }
 }
 
@@ -687,7 +666,7 @@ impl Dex2Smali for FillArrayDataPayload {
         let size = self.size.0;
         let data = self.data.iter().map(|b| format!("{b:02x}"))
             .collect::<Vec<_>>().join(" ");
-        smali!("array-data size={size} {data}")
+        stb().raw("array-data").other(format!("size={size}").to_ref()).other(data.to_ref()).s()
     }
 }
 

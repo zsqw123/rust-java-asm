@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+pub type ConstStr = &'static str;
+
 pub type StrRef = Rc<str>;
 
 /// eg: java/lang/Class

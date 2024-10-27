@@ -2,7 +2,7 @@ use crate::dex::{CallSiteId, CallSiteItem, DUInt, DUShort, FieldId, Header, MapL
 use crate::dex::{DexFileAccessor, MethodHandle};
 use crate::err::{AsmResultExt, AsmResultOkExt};
 use crate::impls::jvms::r::{ReadContext, ReadFrom, U32BasedSize};
-use crate::impls::VecEx;
+use crate::impls::{ToStringRef, VecEx};
 use crate::{AsmErr, AsmResult, DescriptorRef, StrRef};
 use std::fmt;
 use std::fmt::{Display, Formatter};
@@ -137,7 +137,8 @@ impl DexFileAccessor {
         let class_type = self.get_type(class_idx)?;
         let proto_const = self.get_proto(proto_idx)?;
         let method_name = self.get_str(name_idx)?;
-        MethodConst { class_type, proto_const, method_name }.ok()
+        let desc = proto_const.to_string().to_ref();
+        MethodConst { class_type, desc, method_name }.ok()
     }
     #[inline]
     pub fn get_call_site(&self, call_site_index: impl Into<usize>) -> AsmResult<CallSiteItem> {
@@ -176,7 +177,7 @@ pub struct FieldConst {
 
 pub struct MethodConst {
     pub class_type: DescriptorRef,
-    pub proto_const: ProtoConst,
+    pub desc: DescriptorRef,
     pub method_name: StrRef,
 }
 
@@ -202,7 +203,7 @@ impl Display for MethodConst {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f, "{} {} {}",
-            self.class_type, self.method_name, self.proto_const
+            self.class_type, self.method_name, self.desc
         )
     }
 }

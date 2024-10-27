@@ -1,5 +1,5 @@
 use java_asm::dex::{DexFile, DexFileAccessor};
-use java_asm::smali::{Dex2Smali, SmaliNode};
+use java_asm::smali::{stb, Dex2Smali};
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -22,10 +22,9 @@ fn read_dex_test() {
     let instructions = demo_methods.iter().map(|(method_name, code_item)| {
         code_item.as_ref().map(|code_item| {
             let container_smali = code_item.insn_container.to_smali(&dex_accessor);
-            let prefix = format!("method {} {}", method_name, container_smali.prefix);
-            SmaliNode::new_with_children_and_postfix(
-                prefix, container_smali.children, container_smali.postfix.unwrap(),
-            ).render(0)
+            let method_smali = stb().raw("method").other(method_name.clone())
+                .append(container_smali.content).s_with_children(container_smali.children);
+            method_smali.render(0)
         })
     }).filter_map(|x| x).collect::<Vec<_>>();
     println!("Instructions smali generated in {:?}", resolve_start.elapsed());

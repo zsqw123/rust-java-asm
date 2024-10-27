@@ -118,13 +118,13 @@ pub struct MethodHandleType;
 
 #[const_container(DUShort)]
 impl MethodHandleType {
-    pub const METHOD_HANDLE_TYPE_STATIC_PUT: DUShort = 0x00;
-    pub const METHOD_HANDLE_TYPE_STATIC_GET: DUShort = 0x01;
-    pub const METHOD_HANDLE_TYPE_INSTANCE_PUT: DUShort = 0x02;
-    pub const METHOD_HANDLE_TYPE_INSTANCE_GET: DUShort = 0x03;
-    pub const METHOD_HANDLE_TYPE_INVOKE_STATIC: DUShort = 0x04;
-    pub const METHOD_HANDLE_TYPE_INVOKE_INSTANCE: DUShort = 0x05;
-    pub const METHOD_HANDLE_TYPE_INVOKE_CONSTRUCTOR: DUShort = 0x06;
-    pub const METHOD_HANDLE_TYPE_INVOKE_DIRECT: DUShort = 0x07;
-    pub const METHOD_HANDLE_TYPE_INVOKE_INTERFACE: DUShort = 0x08;
+    pub const H_STATIC_PUT: DUShort = 0x00;
+    pub const H_STATIC_GET: DUShort = 0x01;
+    pub const H_INSTANCE_PUT: DUShort = 0x02;
+    pub const H_INSTANCE_GET: DUShort = 0x03;
+    pub const H_INVOKE_STATIC: DUShort = 0x04;
+    pub const H_INVOKE_INSTANCE: DUShort = 0x05;
+    pub const H_INVOKE_CONSTRUCTOR: DUShort = 0x06;
+    pub const H_INVOKE_DIRECT: DUShort = 0x07;
+    pub const H_INVOKE_INTERFACE: DUShort = 0x08;
 }
