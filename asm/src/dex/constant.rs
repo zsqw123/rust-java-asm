@@ -1,4 +1,5 @@
 use crate::dex::raw::{DUByte, DUInt, DUShort};
+use crate::smali::SmaliTokensBuilder;
 use java_asm_macro::const_container;
 
 pub struct MapListTypeConst;
@@ -44,6 +45,18 @@ impl AccessFlags {
     pub const UNUSED: DUInt = 0x8000;
     pub const ACC_SYNTHETIC: DUInt = 0x1000;
     pub const ACC_ENUM: DUInt = 0x4000;
+
+    pub fn render(access_flag: DUInt, mut tb: SmaliTokensBuilder) -> SmaliTokensBuilder {
+        if access_flag & Self::ACC_PUBLIC != 0 { tb = tb.raw("public"); }
+        if access_flag & Self::ACC_PRIVATE != 0 { tb = tb.raw("private"); }
+        if access_flag & Self::ACC_PROTECTED != 0 { tb = tb.raw("protected"); }
+        if access_flag & Self::ACC_STATIC != 0 { tb = tb.raw("static"); }
+        if access_flag & Self::ACC_FINAL != 0 { tb = tb.raw("final"); }
+        if access_flag & Self::ACC_ABSTRACT != 0 { tb = tb.raw("abstract"); }
+        if access_flag & Self::ACC_SYNTHETIC != 0 { tb = tb.raw("synthetic"); }
+        if access_flag & Self::ACC_ENUM != 0 { tb = tb.raw("enum"); }
+        tb
+    }
 }
 
 #[const_container(DUInt)]
@@ -58,6 +71,13 @@ impl ClassAccessFlags {
     pub const ACC_SYNTHETIC: DUInt = AccessFlags::ACC_SYNTHETIC;
     pub const ACC_ANNOTATION: DUInt = 0x2000;
     pub const ACC_ENUM: DUInt = AccessFlags::ACC_ENUM;
+
+    pub fn render(access_flag: DUInt, mut tb: SmaliTokensBuilder) -> SmaliTokensBuilder {
+        tb = AccessFlags::render(access_flag, tb);
+        if access_flag & Self::ACC_INTERFACE != 0 { tb = tb.raw("interface"); }
+        if access_flag & Self::ACC_ANNOTATION != 0 { tb = tb.raw("annotation"); }
+        tb
+    }
 }
 
 #[const_container(DUInt)]
@@ -76,6 +96,18 @@ impl MethodAccessFlags {
     pub const ACC_SYNTHETIC: DUInt = AccessFlags::ACC_SYNTHETIC;
     pub const ACC_CONSTRUCTOR: DUInt = 0x10000;
     pub const ACC_DECLARED_SYNCHRONIZED: DUInt = 0x20000;
+
+    pub fn render(access_flag: DUInt, mut tb: SmaliTokensBuilder) -> SmaliTokensBuilder {
+        tb = AccessFlags::render(access_flag, tb);
+        if access_flag & Self::ACC_SYNCHRONIZED != 0 { tb = tb.raw("synchronized"); }
+        if access_flag & Self::ACC_BRIDGE != 0 { tb = tb.raw("bridge"); }
+        if access_flag & Self::ACC_VARARGS != 0 { tb = tb.raw("varargs"); }
+        if access_flag & Self::ACC_NATIVE != 0 { tb = tb.raw("native"); }
+        if access_flag & Self::ACC_STRICT != 0 { tb = tb.raw("strict"); }
+        if access_flag & Self::ACC_CONSTRUCTOR != 0 { tb = tb.raw("constructor"); }
+        if access_flag & Self::ACC_DECLARED_SYNCHRONIZED != 0 { tb = tb.raw("declared-synchronized"); }
+        tb
+    }
 }
 
 #[const_container(DUInt)]
@@ -89,6 +121,14 @@ impl FieldAccessFlags {
     pub const ACC_TRANSIENT: DUInt = 0x0080;
     pub const ACC_SYNTHETIC: DUInt = AccessFlags::ACC_SYNTHETIC;
     pub const ACC_ENUM: DUInt = 0x4000;
+
+    pub fn render(access_flag: DUInt, mut tb: SmaliTokensBuilder) -> SmaliTokensBuilder {
+        tb = AccessFlags::render(access_flag, tb);
+        if access_flag & Self::ACC_VOLATILE != 0 { tb = tb.raw("volatile"); }
+        if access_flag & Self::ACC_TRANSIENT != 0 { tb = tb.raw("transient"); }
+        if access_flag & Self::ACC_ENUM != 0 { tb = tb.raw("enum"); }
+        tb
+    }
 }
 
 pub struct EncodedValueType;

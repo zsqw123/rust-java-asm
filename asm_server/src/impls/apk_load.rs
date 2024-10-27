@@ -1,13 +1,13 @@
 use crate::server::OpenFileError;
+use crate::Accessor;
 use java_asm::dex::{ClassDef, DexFile, DexFileAccessor};
+use java_asm::smali::SmaliNode;
 use java_asm::StrRef;
-use log::error;
+use log::{error, warn};
 use std::collections::HashMap;
 use std::io::{Read, Seek};
 use std::rc::Rc;
 use zip::ZipArchive;
-use java_asm::smali::SmaliNode;
-use crate::Accessor;
 
 pub struct ApkAccessor {
     pub map: HashMap<StrRef, ClassPosition>,
@@ -86,7 +86,13 @@ impl Accessor for ApkAccessor {
         self.map.contains_key(class_key)
     }
 
-    fn read_content(&self, class_key: &str) -> SmaliNode {
-        todo!()
+    fn read_content(&self, class_key: &str) -> Option<SmaliNode> {
+        let class_position = self.map.get(class_key);
+        if let Some((accessor, class_def)) = class_position {
+            accessor.get_class_smali(*class_def).ok()
+        } else {
+            warn!("No class content found for: {}", class_key);
+            None
+        }
     }
 }

@@ -140,13 +140,15 @@ pub struct MethodId {
 pub struct ClassDef {
     /// index into `type_ids`
     pub class_idx: U32BasedSize,
+    /// [crate::dex::ClassAccessFlags]
     pub access_flags: DUInt,
     /// index into `type_ids`, or NO_INDEX if this class has no superclass
-    pub superclass_idx: DUInt,
+    pub superclass_idx: U32BasedSize,
     /// offset from the start of the file to the list of interfaces, or 0 if there are no interfaces
     /// for this class. Must be an offset of a [TypeList] structure.
     pub interfaces_off: DUInt,
-    pub source_file_idx: DUInt, // index into `string_ids` for the source file name, or NO_INDEX
+    // index into `string_ids` for the source file name, or NO_INDEX
+    pub source_file_idx: U32BasedSize,
     /// offset from the start of the file to the `annotations_directory_item` or 0 if not present.
     pub annotations_off: DUInt,
     /// offset from the start of the file to the [ClassDataItem] or 0 if not present.

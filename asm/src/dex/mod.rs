@@ -8,6 +8,7 @@ use crate::{AsmErr, AsmResult};
 pub use constant::*;
 use std::io::Read;
 pub use util::*;
+use crate::smali::SmaliNode;
 
 pub mod insn;
 pub mod insn_syntax;
@@ -67,8 +68,12 @@ impl DexFileAccessor {
         Self { file, bytes, endian, call_site_ids, method_handles }
     }
 
-    pub fn get_class_data(&self, class_data_off: DUInt) -> AsmResult<ClassContentElement> {
+    pub fn get_class_element(&self, class_data_off: DUInt) -> AsmResult<ClassContentElement> {
         self.get_data_impl::<ClassDataItem>(class_data_off)?.to_element(&self, None)
+    }
+
+    pub fn get_class_smali(&self, class_def: ClassDef) -> AsmResult<SmaliNode> {
+        class_def.to_smali(&self)
     }
 
     pub fn get_code_item(&self, code_off: DUInt) -> AsmResult<Option<CodeItem>> {

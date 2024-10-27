@@ -1,14 +1,14 @@
 use java_asm::dex::{DexFile, DexFileAccessor};
-use java_asm::smali::{stb, Dex2Smali};
 use std::rc::Rc;
 use std::time::Instant;
 
 #[test]
 fn read_dex_test() {
     let dex_accessor = read_test_dex_file();
-    let demo_class_offset = dex_accessor.file.class_defs[100].class_data_off;
+    let sample_class_def = dex_accessor.file.class_defs[100];
+    let demo_class_offset = sample_class_def.class_data_off;
     let resolve_start = Instant::now();
-    let demo_class_data = dex_accessor.get_class_data(demo_class_offset).unwrap();
+    let demo_class_data = dex_accessor.get_class_element(demo_class_offset).unwrap();
     println!("Class data resolved in {:?}", resolve_start.elapsed());
     
     let resolve_start = Instant::now();
@@ -19,19 +19,10 @@ fn read_dex_test() {
     println!("Methods instructions resolved in {:?}", resolve_start.elapsed());
 
     let resolve_start = Instant::now();
-    let instructions = demo_methods.iter().map(|(method_name, code_item)| {
-        code_item.as_ref().map(|code_item| {
-            let container_smali = code_item.insn_container.to_smali(&dex_accessor);
-            let method_smali = stb().raw("method").other(method_name.clone())
-                .append(container_smali.content).s_with_children(container_smali.children);
-            method_smali.render(0)
-        })
-    }).filter_map(|x| x).collect::<Vec<_>>();
-    println!("Instructions smali generated in {:?}", resolve_start.elapsed());
-    
-    println!("{:#?}", demo_class_data);
-    println!("{:#?}", demo_methods);
-    println!("instructions:\n{}", instructions.join("\n"));
+    let class_smali = dex_accessor.get_class_smali(sample_class_def).unwrap();
+    println!("Class smali generated in {:?}", resolve_start.elapsed());
+
+    println!("{}", class_smali.render(0));
 }
 
 fn read_test_dex_file() -> DexFileAccessor {

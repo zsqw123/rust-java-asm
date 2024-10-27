@@ -142,7 +142,7 @@ impl SmaliToken {
 
 
 #[macro_export]
-macro_rules! smali {
+macro_rules! raw_smali {
     ($($arg:tt)*) => {
         crate::smali::SmaliNode { content: vec![
             crate::smali::SmaliToken::Other(format!($($arg)*).to_ref())
@@ -150,7 +150,7 @@ macro_rules! smali {
     }
 }
 
-pub use smali;
+pub use raw_smali;
 use crate::impls::ToStringRef;
 
 impl SmaliNode {

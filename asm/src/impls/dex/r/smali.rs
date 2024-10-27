@@ -1,12 +1,14 @@
 #![allow(non_snake_case)]
 
+use crate::dex::element::{ClassContentElement, FieldElement, MethodElement};
 use crate::dex::insn::{DexInsn, FillArrayDataPayload, PackedSwitchPayload, SparseSwitchPayload};
 use crate::dex::insn_syntax::*;
-use crate::dex::{DexFileAccessor, EncodedAnnotation, EncodedAnnotationAttribute, EncodedArray, EncodedValue, InsnContainer, MethodHandle, MethodHandleType, U4};
+use crate::dex::{ClassAccessFlags, ClassDef, CodeItem, DexFileAccessor, EncodedAnnotation, EncodedAnnotationAttribute, EncodedArray, EncodedValue, FieldAccessFlags, InsnContainer, MethodAccessFlags, MethodHandle, MethodHandleType, NO_INDEX, U4};
 use crate::impls::ToStringRef;
-use crate::smali::{stb, tokens_to_raw, Dex2Smali, SmaliNode, ToSmali};
-use crate::{smali, ConstContainer, DescriptorRef, StrRef};
+use crate::smali::{stb, tokens_to_raw, Dex2Smali, SmaliNode};
+use crate::{raw_smali, AsmResult, ConstContainer, DescriptorRef, StrRef};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 impl Dex2Smali for InsnContainer {
     fn to_smali(&self, accessor: &DexFileAccessor) -> SmaliNode {
@@ -130,7 +132,7 @@ impl DexInsn {
             DexInsn::FilledNewArrayRange(F3rc { a, vC, constB, .. }) =>
                 render_f3r("filled-new-array/range", *a, tb.l(accessor.opt_str(*constB)).s(), *vC),
             DexInsn::FillArrayData(F31t { vA, offsetB, .. }) => {
-                let payload = payload_map.read(accessor, cur, *offsetB);
+                let payload = payload_map.read(cur, *offsetB);
                 tb.op("fill-array-data").v(*vA).append(payload.content).s_with_children(payload.children)
             }
             DexInsn::Throw(F11x { vA, .. }) =>
@@ -142,12 +144,12 @@ impl DexInsn {
             DexInsn::Goto32(F30t { offsetA, .. }) =>
                 tb.op("goto/32").off(*offsetA, cur).s(),
             DexInsn::PackedSwitch(F31t { vA, offsetB, .. }) => {
-                let payload = payload_map.read(accessor, cur, *offsetB);
+                let payload = payload_map.read(cur, *offsetB);
                 tb.op("packed-switch").v(*vA)
                     .append(payload.content).s_with_children(payload.children)
             }
             DexInsn::SparseSwitch(F31t { vA, offsetB, .. }) => {
-                let payload = payload_map.read(accessor, cur, *offsetB);
+                let payload = payload_map.read(cur, *offsetB);
                 tb.op("sparse-switch").v(*vA)
                     .append(payload.content).s_with_children(payload.children)
             }
@@ -417,15 +419,15 @@ impl DexInsn {
             DexInsn::ConstMethodType(F21c { vA, constB, .. }) =>
                 tb.op("const-method-type").v(*vA).d(render_proto(accessor, *constB)).s(),
             DexInsn::NotUsed(_) => SmaliNode::empty(),
-            DexInsn::PackedSwitchPayload(p) => p.to_smali(accessor, cur),
-            DexInsn::SparseSwitchPayload(p) => p.to_smali(accessor, cur),
-            DexInsn::FillArrayDataPayload(p) => p.to_smali(accessor),
+            DexInsn::PackedSwitchPayload(p) => p.to_smali(cur),
+            DexInsn::SparseSwitchPayload(p) => p.to_smali(cur),
+            DexInsn::FillArrayDataPayload(p) => p.to_smali(),
         }
     }
 }
 
 impl PayloadMap<'_> {
-    pub fn read(&self, accessor: &DexFileAccessor, current: u32, offset: i32) -> SmaliNode {
+    pub fn read(&self, current: u32, offset: i32) -> SmaliNode {
         let payload_offset = (current as i32 + offset) as usize;
         let tb = stb();
         let payload = match self.payload_map.get(&payload_offset) {
@@ -433,9 +435,9 @@ impl PayloadMap<'_> {
             None => return tb.raw("payload").off(offset, current).s(),
         };
         match payload {
-            DexInsn::PackedSwitchPayload(p) => p.to_smali(accessor, current),
-            DexInsn::SparseSwitchPayload(p) => p.to_smali(accessor, current),
-            DexInsn::FillArrayDataPayload(p) => p.to_smali(accessor),
+            DexInsn::PackedSwitchPayload(p) => p.to_smali(current),
+            DexInsn::SparseSwitchPayload(p) => p.to_smali(current),
+            DexInsn::FillArrayDataPayload(p) => p.to_smali(),
             _ => tb.raw("payload").off(offset, current).s(),
         }
     }
@@ -446,7 +448,7 @@ fn render_field(accessor: &DexFileAccessor, field_idx: u16) -> SmaliNode {
     accessor.get_field(field_idx)
         .map(|f| stb()
             .d(f.class_type).other(f.field_name).d(f.field_type).s()
-        ).unwrap_or_else(|_| smali!("field_{}", field_idx))
+        ).unwrap_or_else(|_| raw_smali!("field_{}", field_idx))
 }
 
 // guaranteed have no children
@@ -454,7 +456,7 @@ fn render_method(accessor: &DexFileAccessor, method_idx: u16) -> SmaliNode {
     accessor.get_method(method_idx)
         .map(|m| stb()
             .d(m.class_type).other(m.method_name).d(m.desc).s()
-        ).unwrap_or_else(|_| smali!("method_{}", method_idx))
+        ).unwrap_or_else(|_| raw_smali!("method_{}", method_idx))
 }
 
 fn render_proto(accessor: &DexFileAccessor, proto_idx: u16) -> DescriptorRef {
@@ -467,13 +469,13 @@ fn render_proto(accessor: &DexFileAccessor, proto_idx: u16) -> DescriptorRef {
 fn render_call_site(accessor: &DexFileAccessor, call_site_idx: u16) -> SmaliNode {
     accessor.get_call_site(call_site_idx)
         .map(|cs| cs.to_smali(accessor))
-        .unwrap_or_else(|_| smali!("call_site_{}", call_site_idx))
+        .unwrap_or_else(|_| raw_smali!("call_site_{}", call_site_idx))
 }
 
 fn render_method_handle(accessor: &DexFileAccessor, method_handle_idx: u16) -> SmaliNode {
     accessor.get_method_handle(method_handle_idx)
         .map(|mh| mh.to_smali(accessor))
-        .unwrap_or_else(|_| smali!("method_handle_{}", method_handle_idx))
+        .unwrap_or_else(|_| raw_smali!("method_handle_{}", method_handle_idx))
 }
 
 fn render_method_handle_str(accessor: &DexFileAccessor, method_handle_idx: u16) -> StrRef {
@@ -554,7 +556,7 @@ impl Dex2Smali for MethodHandle {
         let member = match self.method_handle_type {
             0x00..=0x03 => render_field(dex_file_accessor, member_id),
             0x04..=0x08 => render_method(dex_file_accessor, member_id),
-            _ => return smali!("{handle_type}@{member_id}"),
+            _ => return raw_smali!("{handle_type}@{member_id}"),
         };
         stb().other(handle_type.to_ref()).append(member.content).s()
     }
@@ -624,7 +626,7 @@ impl Dex2Smali for EncodedAnnotationAttribute {
 }
 
 impl PackedSwitchPayload {
-    fn to_smali(&self, _dex_file_accessor: &DexFileAccessor, current_offset: u32) -> SmaliNode {
+    fn to_smali(&self, current_offset: u32) -> SmaliNode {
         let mut children = Vec::with_capacity(self.size as usize);
         let size = self.size as u32;
         let first_key = self.first_key;
@@ -644,7 +646,7 @@ impl PackedSwitchPayload {
 }
 
 impl SparseSwitchPayload {
-    fn to_smali(&self, _dex_file_accessor: &DexFileAccessor, current_offset: u32) -> SmaliNode {
+    fn to_smali(&self, current_offset: u32) -> SmaliNode {
         let mut children = Vec::with_capacity(self.size as usize);
         for i in 0..self.size {
             let key = self.keys[i as usize];
@@ -661,12 +663,101 @@ impl SparseSwitchPayload {
     }
 }
 
-impl Dex2Smali for FillArrayDataPayload {
-    fn to_smali(&self, _dex_file_accessor: &DexFileAccessor) -> SmaliNode {
+impl FillArrayDataPayload {
+    fn to_smali(&self) -> SmaliNode {
         let size = self.size.0;
         let data = self.data.iter().map(|b| format!("{b:02x}"))
             .collect::<Vec<_>>().join(" ");
         stb().raw("array-data").other(format!("size={size}").to_ref()).other(data.to_ref()).s()
     }
 }
+
+impl ClassDef {
+    pub fn to_smali(&self, accessor: &DexFileAccessor) -> AsmResult<SmaliNode> {
+        let mut tb = stb();
+        let access_flags = self.access_flags;
+        tb = ClassAccessFlags::render(access_flags, tb);
+        let class_type = accessor.opt_type(self.class_idx);
+        let mut smali = tb.d(class_type).s();
+
+        if self.superclass_idx.0 != NO_INDEX {
+            let super_type = accessor.opt_type(self.superclass_idx);
+            smali.add_child(stb().raw(".super").d(super_type).s());
+        };
+
+        if self.source_file_idx.0 != NO_INDEX {
+            let source_file = accessor.opt_str(self.source_file_idx);
+            smali.add_child(stb().raw(".source").other(source_file).s());
+        };
+
+        if self.class_data_off != 0 {
+            let class_element = accessor.get_class_element(self.class_data_off)?;
+            // transparent for children, no more level
+            smali.children.extend(class_element.to_smali(accessor)?.children);
+        };
+        Ok(smali)
+    }
+}
+
+impl ClassContentElement {
+    pub fn to_smali(&self, accessor: &DexFileAccessor) -> AsmResult<SmaliNode> {
+        let mut smali = SmaliNode::empty();
+        for field in self.static_fields.iter() {
+            smali.add_child(field.to_smali());
+        }
+        for field in self.instance_fields.iter() {
+            smali.add_child(field.to_smali());
+        }
+        for method in self.direct_methods.iter() {
+            smali.add_child(method.to_smali(accessor)?);
+        }
+        for method in self.virtual_methods.iter() {
+            smali.add_child(method.to_smali(accessor)?);
+        }
+        Ok(smali)
+    }
+}
+
+impl FieldElement {
+    pub fn to_smali(&self) -> SmaliNode {
+        let mut tb = stb();
+        let access_flags = self.access_flags;
+        tb = FieldAccessFlags::render(access_flags, tb);
+        let name = Rc::clone(&self.name);
+        let descriptor = Rc::clone(&self.descriptor);
+        let smali = tb.other(name).d(descriptor).s();
+        smali
+    }
+}
+
+impl MethodElement {
+    pub fn to_smali(&self, accessor: &DexFileAccessor) -> AsmResult<SmaliNode> {
+        let mut tb = stb();
+        let access_flags = self.access_flags;
+        tb = MethodAccessFlags::render(access_flags, tb);
+        let name = Rc::clone(&self.name);
+        let descriptor = format!("({}){}", self.parameters.join(""), self.return_type);
+        let mut smali = tb.other(name).d(descriptor.to_ref()).s();
+        let code = accessor.get_code_item(self.code_off)?;
+        if let Some(code) = code {
+            smali.children.extend(code.to_smali(accessor).children);
+        }
+        Ok(smali)
+    }
+}
+
+impl CodeItem {
+    pub fn to_smali(&self, accessor: &DexFileAccessor) -> SmaliNode {
+        let mut smali = SmaliNode::empty();
+
+        let registers_size = self.registers_size;
+        smali.add_child(stb().raw(".registers").l(registers_size.to_ref()).s());
+
+        let insn_container_smali = self.insn_container.to_smali(accessor);
+        smali.children.extend(insn_container_smali.children);
+
+        smali
+    }
+}
+
 

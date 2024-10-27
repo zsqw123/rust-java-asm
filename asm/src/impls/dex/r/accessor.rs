@@ -86,8 +86,8 @@ impl DexFileAccessor {
     
     #[inline]
     pub fn get_str(&self, str_idx: impl Into<usize>) -> AsmResult<StrRef> {
-        let dex_file = &self.file;
         let str_idx = str_idx.into();
+        let dex_file = &self.file;
         let string_data_off = dex_file.string_ids.get(str_idx)
             .ok_or_error(|| AsmErr::OutOfRange(str_idx).e())?.string_data_off;
         Ok(self.get_data_impl::<StringData>(string_data_off)?.str_ref)

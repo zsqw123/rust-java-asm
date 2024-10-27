@@ -37,13 +37,10 @@ pub fn read_field(
     let field_id = dex_file.field_ids.get(field_idx as usize)
         .ok_or_error(|| AsmErr::OutOfRange(field_idx as usize).e())?;
     let FieldId { type_idx, name_idx, .. } = *field_id;
+    let access_flags = encoded_field.access_flags.value();
     let descriptor = accessor.get_type(type_idx)?;
     let name = accessor.get_str(name_idx)?;
-    FieldElement {
-        access_flags: encoded_field.access_flags.value(),
-        name,
-        descriptor,
-    }.ok()
+    FieldElement { access_flags, name, descriptor }.ok()
 }
 
 fn read_method(

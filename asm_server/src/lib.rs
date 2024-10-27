@@ -20,7 +20,7 @@ pub enum AccessorEnum {
 pub trait Accessor {
     fn read_classes(&self) -> Vec<StrRef>;
     fn exist_class(&self, class_key: &str) -> bool;
-    fn read_content(&self, class_key: &str) -> SmaliNode;
+    fn read_content(&self, class_key: &str) -> Option<SmaliNode>;
 }
 
 pub struct MethodMeta {

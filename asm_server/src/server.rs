@@ -26,7 +26,7 @@ impl AsmServer {
         (&self.accessor).exist_class(class_key)
     }
 
-    pub fn read_content(&self, class_key: &str) -> SmaliNode {
+    pub fn read_content(&self, class_key: &str) -> Option<SmaliNode> {
         (&self.accessor).read_content(class_key)
     }
 }
