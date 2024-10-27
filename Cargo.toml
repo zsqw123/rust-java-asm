@@ -23,7 +23,9 @@ java_asm_server = { path = "asm_server", version = "0.0.8" } # JAVA_ASM_VERSION
 
 enum_dispatch = "0.3.13"
 zip = "2.2.0"
+
 egui = "0.29.1"
 eframe = "0.29.1"
+font-kit = "0.14.2"
 
 log = { version = "0.4", features = ["std"] }

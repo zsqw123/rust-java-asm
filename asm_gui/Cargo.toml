@@ -14,3 +14,5 @@ readme.workspace = true
 java_asm_server = { workspace = true }
 egui = { workspace = true }
 eframe = { workspace = true }
+font-kit = { workspace = true }
+log = { workspace = true }

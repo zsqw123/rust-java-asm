@@ -1,6 +1,7 @@
 use crate::app::AsmApp;
 
 pub mod app;
+mod font;
 
 fn main() -> eframe::Result {
     let eframe_options = eframe::NativeOptions {
@@ -9,8 +10,8 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "asm-gui",
         eframe_options,
-        Box::new(|_| Ok(
-            Box::new(AsmApp::default())
+        Box::new(|context| Ok(
+            Box::new(AsmApp::new(context))
         )),
     )
 }
