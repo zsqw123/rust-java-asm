@@ -448,7 +448,7 @@ fn render_field(accessor: &DexFileAccessor, field_idx: u16) -> SmaliNode {
     accessor.get_field(field_idx)
         .map(|f| stb()
             .d(f.class_type).other(f.field_name).d(f.field_type).s()
-        ).unwrap_or_else(|_| raw_smali!("field_{}", field_idx))
+        ).unwrap_or_else(|_| raw_smali!("field@{}", field_idx))
 }
 
 // guaranteed have no children
@@ -456,26 +456,26 @@ fn render_method(accessor: &DexFileAccessor, method_idx: u16) -> SmaliNode {
     accessor.get_method(method_idx)
         .map(|m| stb()
             .d(m.class_type).other(m.method_name).d(m.desc).s()
-        ).unwrap_or_else(|_| raw_smali!("method_{}", method_idx))
+        ).unwrap_or_else(|_| raw_smali!("method@{}", method_idx))
 }
 
 fn render_proto(accessor: &DexFileAccessor, proto_idx: u16) -> DescriptorRef {
     accessor.get_proto(proto_idx)
         .map(|p| p.to_string())
-        .unwrap_or_else(|_| format!("proto_{}", proto_idx))
+        .unwrap_or_else(|_| format!("proto@{}", proto_idx))
         .to_ref()
 }
 
 fn render_call_site(accessor: &DexFileAccessor, call_site_idx: u16) -> SmaliNode {
     accessor.get_call_site(call_site_idx)
         .map(|cs| cs.to_smali(accessor))
-        .unwrap_or_else(|_| raw_smali!("call_site_{}", call_site_idx))
+        .unwrap_or_else(|_| raw_smali!("call_site@{}", call_site_idx))
 }
 
 fn render_method_handle(accessor: &DexFileAccessor, method_handle_idx: u16) -> SmaliNode {
     accessor.get_method_handle(method_handle_idx)
         .map(|mh| mh.to_smali(accessor))
-        .unwrap_or_else(|_| raw_smali!("method_handle_{}", method_handle_idx))
+        .unwrap_or_else(|_| raw_smali!("method_handle@{}", method_handle_idx))
 }
 
 fn render_method_handle_str(accessor: &DexFileAccessor, method_handle_idx: u16) -> StrRef {

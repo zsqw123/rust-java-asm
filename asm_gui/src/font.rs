@@ -1,51 +1,53 @@
-use std::fs::read;
-use eframe::CreationContext;
-use eframe::epaint::FontFamily;
 use eframe::epaint::text::{FontData, FontDefinitions};
-use font_kit::family_name::FamilyName;
-use font_kit::handle::Handle;
-use font_kit::properties::Properties;
-use font_kit::source::SystemSource;
-use log::error;
+use eframe::CreationContext;
+use egui::FontFamily;
+use fontdb::Query;
+use log::{error, info};
 
 pub fn inject_sys_font(context: &CreationContext) -> Option<()> {
     let mut fonts = FontDefinitions::empty();
-    let sans_font = load_sys_font(FamilyName::SansSerif);
-    let mono_font = load_sys_font(FamilyName::Monospace)
-        .or_else(|| sans_font.clone());
 
-    let sans_name = "sans-serif";
-    let mono_name = "monospace";
-    fonts.font_data.insert(sans_name.to_owned(), FontData::from_owned(sans_font?));
-    fonts.font_data.insert(mono_name.to_owned(), FontData::from_owned(mono_font?));
+    let mut db = fontdb::Database::new();
+    db.load_system_fonts();
+    let faces = db.faces().collect::<Vec<_>>();
+    info!("system fonts loaded: {:?}", &faces);
+    
+    let loaded = load_sys_font(&mut fonts, &mut db,
+                               &[fontdb::Family::SansSerif], "sans-serif");
+    if let Some(loaded) = loaded {
+        fonts.families.entry(FontFamily::Proportional).or_default()
+            .insert(0, loaded);
+    }
 
-    fonts.families.entry(FontFamily::Proportional).or_default()
-        .insert(0, sans_name.to_owned());
-    fonts.families.entry(FontFamily::Monospace).or_default()
-        .insert(0, mono_name.to_owned());
+    let loaded = load_sys_font(&mut fonts, &mut db,
+                               &[fontdb::Family::Monospace, fontdb::Family::SansSerif], "monospace");
+    if let Some(loaded) = loaded {
+        fonts.families.entry(FontFamily::Monospace).or_default()
+            .insert(0, loaded);
+    }
+
     Some(context.egui_ctx.set_fonts(fonts))
 }
 
-fn load_sys_font(family_name: FamilyName) -> Option<Vec<u8>> {
-    let cloned_name = family_name.clone();
-    let handle = SystemSource::new()
-        .select_best_match(&[family_name], &Properties::new())
-        .map(|h| match h {
-            Handle::Path { path, .. } => { read(path) }
-            Handle::Memory { bytes, .. } => Ok(bytes.to_vec())
-        });
-
-    match handle {
-        Ok(res) => match res {
-            Ok(res) => Some(res),
-            Err(e) => {
-                error!("Failed to load system font family {cloned_name:?} due to io error: {e}");
-                None
-            }
-        },
-        Err(e) => {
-            error!("Failed to find system font family {cloned_name:?} with font-kit: {e}");
+fn load_sys_font(
+    font_definitions: &mut FontDefinitions,
+    db: &mut fontdb::Database,
+    families: &[fontdb::Family],
+    font_name: &str,
+) -> Option<String> {
+    let mut query = Query::default();
+    query.families = families;
+    let font_data = db.query(&query)
+        .and_then(|id| db.with_face_data(id, |font_data, _| font_data.to_vec()));
+    match font_data {
+        None => {
+            error!("Failed to find system font family {font_name}");
             None
+        }
+        Some(font_data) => {
+            font_definitions.font_data.insert(font_name.into(), FontData::from_owned(font_data));
+            info!("font {font_name} loaded");
+            Some(font_name.into())
         }
     }
 }

@@ -6,6 +6,7 @@ use java_asm::{DescriptorRef, StrRef};
 pub mod server;
 
 pub(crate) mod impls;
+pub mod ui;
 
 pub struct AsmServer {
     accessor: AccessorEnum,

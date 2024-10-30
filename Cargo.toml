@@ -27,6 +27,8 @@ zip = "2.2.0"
 egui = "0.29.1"
 eframe = "0.29.1"
 egui_extras = "0.29.1"
-font-kit = "0.14.2"
+
+fontdb = "0.23.0"
+rfd = "0.15.0"
 
 log = { version = "0.4", features = ["std"] }

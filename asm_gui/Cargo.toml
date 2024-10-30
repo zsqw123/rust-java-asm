@@ -18,4 +18,5 @@ egui = { workspace = true }
 eframe = { workspace = true }
 egui_extras = { workspace = true }
 
-font-kit = { workspace = true }
+fontdb = { workspace = true }
+rfd = { workspace = true }

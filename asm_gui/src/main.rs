@@ -3,6 +3,7 @@ use crate::app::AsmApp;
 pub mod app;
 mod font;
 
+
 fn main() -> eframe::Result {
     let eframe_options = eframe::NativeOptions {
         ..Default::default()

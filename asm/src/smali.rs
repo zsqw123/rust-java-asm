@@ -28,6 +28,7 @@ pub enum SmaliToken {
     Other(StrRef),
 }
 
+#[inline]
 pub fn stb() -> SmaliTokensBuilder {
     SmaliTokensBuilder::new()
 }
