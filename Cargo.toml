@@ -2,7 +2,8 @@
 [workspace]
 resolver = "2"
 members = [
-    "asm", "asm_gui", "asm_macro", "asm_server",
+    "asm", "asm_macro", "asm_server",
+    "asm_egui", "asm_iced",
 ]
 
 [workspace.package]
@@ -27,6 +28,9 @@ zip = "2.2.0"
 egui = "0.29.1"
 eframe = "0.29.1"
 egui_extras = "0.29.1"
+
+iced = "0.13.1"
+cosmic-text = "0.12.1"
 
 fontdb = "0.23.0"
 rfd = "0.15.0"

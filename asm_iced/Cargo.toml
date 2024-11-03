@@ -1,5 +1,5 @@
 [package]
-name = "java_asm_gui"
+name = "java_asm_iced"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
@@ -14,9 +14,5 @@ readme.workspace = true
 java_asm_server = { workspace = true }
 log = { workspace = true }
 
-egui = { workspace = true }
-eframe = { workspace = true }
-egui_extras = { workspace = true }
+iced = { workspace = true }
 
-fontdb = { workspace = true }
-rfd = { workspace = true }

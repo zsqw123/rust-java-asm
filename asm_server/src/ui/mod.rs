@@ -1,4 +1,6 @@
 pub mod log;
+pub mod msg;
+pub mod font;
 
 use crate::ui::log::LogHolder;
 use crate::ui::FileTree::{Dir, File};
@@ -8,12 +10,13 @@ use ::log::Level;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+#[derive(Default, Clone, Debug)]
 pub struct App {
     pub left: Left,
     pub content: Content,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Default, Clone, Debug)]
 pub struct Left {
     pub root_node: DirInfo,
 }
@@ -94,7 +97,7 @@ impl DirInfo {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Content {
     pub opened_tabs: Vec<Tab>,
 }
