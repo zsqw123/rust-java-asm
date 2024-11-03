@@ -1,8 +1,9 @@
 use crate::app::AsmApp;
 
 pub mod app;
-mod font;
-
+pub(crate) mod font;
+pub(crate) mod file_tree;
+pub(crate) mod util;
 
 fn main() -> eframe::Result {
     let eframe_options = eframe::NativeOptions {

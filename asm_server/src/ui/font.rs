@@ -4,17 +4,17 @@ use std::collections::HashMap;
 
 pub struct FontFallbacks {
     families: HashMap<String, fontdb::ID>,
-    style: Style,
 }
 
+/// font family name and owned font data.
 pub type FontData = (&'static str, Vec<u8>);
 
 impl FontFallbacks {
     pub const MONO: &'static str = "Consolas";
-    pub const FAST: &'static str = "Segoe UI";
+    pub const NORMAL_FAST: &'static str = "Segoe UI";
 
-    pub const ALL: &'static [&'static str] = &[
-        FontFallbacks::FAST,
+    pub const NORMAL_ALL: &'static [&'static str] = &[
+        FontFallbacks::NORMAL_FAST,
         // CJK
         "Microsoft YaHei UI", "Microsoft JhengHei UI", "Yu Gothic UI", "Malgun Gothic",
         // some special characters.
@@ -24,9 +24,10 @@ impl FontFallbacks {
     #[inline]
     fn needed_font(family: &str) -> bool {
         Self::MONO == family ||
-            Self::ALL.iter().any(|&name| name == family)
+            Self::NORMAL_ALL.iter().any(|&name| name == family)
     }
 
+    #[inline]
     pub fn new(db: &fontdb::Database) -> Self {
         Self::from_style(db, Style::Normal)
     }
@@ -43,7 +44,7 @@ impl FontFallbacks {
                 families.insert(family.to_string(), id);
             }
         }
-        FontFallbacks { families, style }
+        FontFallbacks { families }
     }
 
     pub fn load_mono(&self, db: &fontdb::Database) -> Option<FontData> {
@@ -51,11 +52,11 @@ impl FontFallbacks {
     }
 
     pub fn load_fast(&self, db: &fontdb::Database) -> Option<FontData> {
-        self.load_font(db, FontFallbacks::FAST)
+        self.load_font(db, FontFallbacks::NORMAL_FAST)
     }
 
     pub fn load_all(&self, db: &fontdb::Database) -> Vec<FontData> {
-        FontFallbacks::ALL.iter().filter_map(|name| {
+        FontFallbacks::NORMAL_ALL.iter().filter_map(|name| {
             match self.load_font(db, name) {
                 None => {
                     warn!("Failed to find system font family: {}", name);

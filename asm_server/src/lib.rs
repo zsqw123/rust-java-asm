@@ -9,7 +9,7 @@ pub(crate) mod impls;
 pub mod ui;
 
 pub struct AsmServer {
-    accessor: AccessorEnum,
+    pub accessor: AccessorEnum,
 }
 
 #[enum_dispatch]

@@ -1687,6 +1687,7 @@ dependencies = [
  "egui",
  "egui_extras",
  "fontdb",
+ "java_asm",
  "java_asm_server",
  "log",
  "rfd",

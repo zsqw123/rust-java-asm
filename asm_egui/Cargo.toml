@@ -11,6 +11,7 @@ homepage.workspace = true
 readme.workspace = true
 
 [dependencies]
+java_asm = { workspace = true }
 java_asm_server = { workspace = true }
 log = { workspace = true }
 
