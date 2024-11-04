@@ -37,7 +37,7 @@ fn render_files(ui: &mut egui::Ui, dir: &DirInfo, server: &AsmServer, content: &
 
     TableBuilder::new(ui).striped(true).resizable(true)
         .vscroll(false)
-        .column(Column::auto().resizable(true))
+        .column(Column::remainder())
         .body(|ui| {
             let mut file_keys = dir.files.iter().collect::<Vec<_>>();
             file_keys.sort_by_key(|(k, _)| Rc::clone(k));

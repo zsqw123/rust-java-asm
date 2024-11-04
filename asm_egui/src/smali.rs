@@ -53,9 +53,9 @@ fn append_token(
             let text = format!("{absolute} ({relative:+})");
             append(job, &text, font, smali_style.offset);
         }
-        SmaliToken::Register(s) => append(job, &s.to_string(), font, smali_style.register),
+        SmaliToken::Register(s) => append(job, &format!("v{s}"), font, smali_style.register),
         SmaliToken::RegisterRange(start, end) => {
-            let text = format!("{start}..{end}");
+            let text = format!("v{start}..v{end}");
             append(job, &text, font, smali_style.register);
         }
         SmaliToken::Descriptor(s) => append(job, s, font, smali_style.desc),
