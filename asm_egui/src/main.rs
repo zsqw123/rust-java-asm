@@ -1,9 +1,10 @@
-use crate::app::AsmApp;
+use crate::app::EguiApp;
 
 pub mod app;
 pub(crate) mod font;
 pub(crate) mod file_tree;
 pub(crate) mod util;
+mod smali;
 
 fn main() -> eframe::Result {
     let eframe_options = eframe::NativeOptions {
@@ -13,7 +14,7 @@ fn main() -> eframe::Result {
         "asm-gui",
         eframe_options,
         Box::new(|context| Ok(
-            Box::new(AsmApp::new(context))
+            Box::new(EguiApp::new(context))
         )),
     )
 }

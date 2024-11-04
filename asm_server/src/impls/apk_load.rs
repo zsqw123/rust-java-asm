@@ -2,8 +2,8 @@ use crate::server::OpenFileError;
 use crate::Accessor;
 use java_asm::dex::{ClassDef, DexFile, DexFileAccessor};
 use java_asm::smali::SmaliNode;
-use java_asm::StrRef;
-use log::{error, warn};
+use java_asm::{desc2fqn, StrRef};
+use log::{error, info, warn};
 use std::collections::HashMap;
 use std::io::{Read, Seek};
 use std::rc::Rc;
@@ -55,6 +55,7 @@ pub fn read_apk(zip_archive: ZipArchive<impl Read + Seek>) -> Result<ApkAccessor
             let class_name = dex_file.get_type(class_idx);
             if let Ok(class_name) = class_name {
                 let class_name = Rc::from(class_name);
+                let class_name = desc2fqn(class_name);
                 let existed = map.get(&class_name);
                 if existed.is_none() {
                     map.insert(class_name, (Rc::clone(&dex_file), *class_def));

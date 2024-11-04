@@ -17,7 +17,7 @@ impl AsmServer {
             Err(OpenFileError::Custom("unsupported file type".to_string()))
         }
     }
-    
+
     pub fn from_apk(apk_content: impl Read + Seek) -> Result<Self, OpenFileError> {
         let zip = ZipArchive::new(apk_content)
             .map_err(OpenFileError::LoadZip)?;

@@ -53,7 +53,7 @@ impl DirInfo {
     }
 
     pub fn get_entry(&self, path: &str) -> Option<FileTree<&FileInfo, &DirInfo>> {
-        let mut parts = path.split('/').peekable();
+        let mut parts = path.split('.').peekable();
         while let Some(part) = parts.next() {
             let part = Rc::from(part);
             let dir = self.dirs.get(&part);
@@ -69,7 +69,7 @@ impl DirInfo {
     }
 
     pub fn put_entry_if_absent(&mut self, path: StrRef) {
-        let mut parts = path.split('/').peekable();
+        let mut parts = path.split('.').peekable();
         let mut current = self;
         while let Some(part) = parts.next() {
             if parts.peek().is_none() {
@@ -99,13 +99,15 @@ impl DirInfo {
 
 #[derive(Clone, Debug, Default)]
 pub struct Content {
-    pub opened_tabs: Vec<Tab>,
+    pub current: Option<Rc<Tab>>,
+    pub opened_tabs: Vec<Rc<Tab>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct Tab {
     pub selected: bool,
-    pub title: String,
+    pub file_key: StrRef,
+    pub title: StrRef,
     pub content: SmaliNode,
 }
 

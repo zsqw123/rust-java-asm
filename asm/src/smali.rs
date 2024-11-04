@@ -14,7 +14,6 @@ pub struct SmaliNode {
 pub enum SmaliToken {
     Raw(ConstStr),
     Op(ConstStr),
-    Attribute(ConstStr),
 
     Offset {
         relative: i32,
@@ -82,11 +81,6 @@ impl SmaliTokensBuilder {
     }
 
     #[inline]
-    pub fn a(self, attr: ConstStr) -> Self {
-        self.push(SmaliToken::Attribute(attr))
-    }
-
-    #[inline]
     pub fn off(self, relative: impl Into<i32>, current: impl Into<u32>) -> Self {
         let relative = relative.into();
         let absolute = (current.into() as i32 + relative) as u32;
@@ -128,7 +122,6 @@ impl SmaliToken {
         match self {
             Self::Raw(tag) => tag.to_string(),
             Self::Op(op) => op.to_string(),
-            Self::Attribute(attr) => attr.to_string(),
             Self::Offset { relative, absolute } => {
                 format!("@{absolute}({relative:+})")
             }
