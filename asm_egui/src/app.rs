@@ -35,7 +35,7 @@ impl EguiApp {
 
     fn left_bar(&mut self, ctx: &Context) {
         egui::SidePanel::left("left_bar").show(ctx, |ui| {
-            ScrollArea::vertical().show(ui, |ui| {
+            ScrollArea::both().show(ui, |ui| {
                 ui.heading("File Tree");
                 render_dir(ui, self);
             });

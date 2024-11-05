@@ -1,7 +1,7 @@
 use crate::dex::DexFileAccessor;
 use crate::{ConstStr, StrRef};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Hash, Eq, PartialEq)]
 pub struct SmaliNode {
     pub tag: Option<ConstStr>,
     pub content: Vec<SmaliToken>,
@@ -10,7 +10,7 @@ pub struct SmaliNode {
     pub end_tag: Option<ConstStr>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum SmaliToken {
     Raw(ConstStr),
     Op(ConstStr),

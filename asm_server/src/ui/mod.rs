@@ -8,7 +8,9 @@ use java_asm::smali::SmaliNode;
 use java_asm::StrRef;
 use ::log::Level;
 use std::collections::HashMap;
+use std::iter::Peekable;
 use std::rc::Rc;
+use std::str::Split;
 
 #[derive(Default, Clone, Debug)]
 pub struct App {
@@ -53,7 +55,7 @@ impl DirInfo {
     }
 
     pub fn get_entry(&self, path: &str) -> Option<FileTree<&FileInfo, &DirInfo>> {
-        let mut parts = path.split('.').peekable();
+        let mut parts = Self::entry_parts(&path);
         while let Some(part) = parts.next() {
             let part = Rc::from(part);
             let dir = self.dirs.get(&part);
@@ -69,7 +71,7 @@ impl DirInfo {
     }
 
     pub fn put_entry_if_absent(&mut self, path: StrRef) {
-        let mut parts = path.split('.').peekable();
+        let mut parts = Self::entry_parts(&path);
         let mut current = self;
         while let Some(part) = parts.next() {
             if parts.peek().is_none() {
@@ -80,6 +82,10 @@ impl DirInfo {
                 current = current.put_dir_if_absent(Rc::from(part));
             }
         }
+    }
+    
+    fn entry_parts(path: &str) -> Peekable<Split<char>> {
+        path[1..(path.len() - 1)].split('/').peekable()
     }
 
     fn put_file_if_absent(&mut self, file_key: StrRef, file_name: StrRef) -> &mut FileInfo {

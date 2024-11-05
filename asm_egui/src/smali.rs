@@ -1,18 +1,35 @@
 use egui::text::LayoutJob;
+use egui::util::cache::{ComputerMut, FrameCache};
 use egui::{Color32, FontId, TextFormat, TextStyle, Ui};
 use java_asm::smali::{SmaliNode, SmaliToken};
 
+#[derive(Default)]
+struct SmaliHighlighter;
+
 pub fn smali_layout(ui: &mut Ui, smali_node: &SmaliNode) {
-    let mut job = LayoutJob::default();
+    let ctx = &mut ui.ctx();
+
+    // font, dft_color, dark_mode, smali_node
+    impl ComputerMut<(&FontId, Color32, bool, &SmaliNode), LayoutJob> for SmaliHighlighter {
+        fn compute(&mut self, key: (&FontId, Color32, bool, &SmaliNode)) -> LayoutJob {
+            let (font, dft_color, dark_mode, smali_node) = key;
+            let mut job = LayoutJob::default();
+            let smali_style = if dark_mode { SmaliStyle::DARK } else { SmaliStyle::LIGHT };
+            append_node(&font, dft_color, &smali_style, smali_node, &mut job, 0);
+            job
+        }
+    }
+
+    type HighlightCache = FrameCache<LayoutJob, SmaliHighlighter>;
+
     let style = ui.ctx().style();
-    let default_font = TextStyle::Monospace.resolve(&style);
-    let normal_color = style.visuals.text_color();
-    let smali_style = if ui.ctx().style().visuals.dark_mode {
-        SmaliStyle::DARK
-    } else {
-        SmaliStyle::LIGHT
-    };
-    append_node(&default_font, normal_color, &smali_style, smali_node, &mut job, 0);
+    let font = TextStyle::Monospace.resolve(&style);
+    let dft_color = style.visuals.text_color();
+    let dark_mode = style.visuals.dark_mode;
+    let job = ctx.memory_mut(|mem| {
+        mem.caches.cache::<HighlightCache>()
+            .get( (&font, dft_color, dark_mode, smali_node))
+    });
     ui.label(job);
 }
 

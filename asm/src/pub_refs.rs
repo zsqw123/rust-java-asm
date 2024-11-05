@@ -12,10 +12,3 @@ pub type QualifiedNameRef = StrRef;
 
 /// e.g.: Ljava/lang/Class;
 pub type DescriptorRef = StrRef;
-
-pub fn desc2fqn(type_descriptor: DescriptorRef) -> QualifiedNameRef {
-    let mut fqn = type_descriptor.replace("/", ".");
-    fqn.pop();
-    fqn.remove(0);
-    Rc::from(fqn)
-}
