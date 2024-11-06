@@ -3,6 +3,7 @@ use crate::font::inject_sys_font;
 use crate::smali::smali_layout;
 use eframe::{CreationContext, Frame};
 use egui::{Context, DroppedFile, ScrollArea};
+use egui_extras::{Size, StripBuilder};
 use java_asm_server::ui::log::{inject_log, LogHolder};
 use java_asm_server::ui::App;
 use java_asm_server::AsmServer;
@@ -34,16 +35,26 @@ impl EguiApp {
     }
 
     fn left_bar(&mut self, ctx: &Context) {
-        egui::SidePanel::left("left_bar").show(ctx, |ui| {
-            ScrollArea::both().show(ui, |ui| {
-                ui.heading("File Tree");
-                render_dir(ui, self);
+        let available = ctx.available_rect().width();
+        egui::SidePanel::left("left_bar")
+            .resizable(true)
+            .max_width(available * 0.75)
+            .default_width(available * 0.25)
+            .show(ctx, |ui| {
+                StripBuilder::new(ui).size(Size::remainder()).horizontal(|mut strip| {
+                    strip.cell(|ui| {
+                        ScrollArea::horizontal().show(ui, |ui| {
+                            ui.heading("File Tree");
+                            render_dir(ui, self);
+                        });
+                    });
+                });
             });
-        });
     }
 
     fn bottom_log_panel(&mut self, ctx: &Context) {
-        egui::TopBottomPanel::bottom("bottom_log_panel").show(ctx, |ui| {
+        egui::TopBottomPanel::bottom("bottom_log_panel").resizable(true)
+            .show(ctx, |ui| {
             ui.collapsing("Log 输出", |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
                     let current_records = self.log_holder.records.lock().unwrap();

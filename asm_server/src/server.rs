@@ -5,17 +5,22 @@ use java_asm::smali::SmaliNode;
 use java_asm::{AsmErr, StrRef};
 use std::io::{Read, Seek};
 use std::rc::Rc;
+use std::time::Instant;
+use log::info;
 use zip::result::ZipError;
 use zip::ZipArchive;
 
 impl AsmServer {
     pub fn smart_open(path: &str) -> Result<Self, OpenFileError> {
-        if path.ends_with(".apk") {
+        let open_start = Instant::now();
+        let res = if path.ends_with(".apk") {
             let file = std::fs::File::open(path).map_err(OpenFileError::Io)?;
             Self::from_apk(file)
         } else {
             Err(OpenFileError::Custom("unsupported file type".to_string()))
-        }
+        };
+        info!("open file cost: {:?}", open_start.elapsed());
+        res
     }
 
     pub fn from_apk(apk_content: impl Read + Seek) -> Result<Self, OpenFileError> {
@@ -31,12 +36,17 @@ impl AsmServer {
 
     pub fn render_to_app(&self, app: &mut App) {
         let classes = self.read_classes();
+        let start = Instant::now();
         let dir_info = DirInfo::from_classes(Rc::from("Root"), &classes);
+        info!("resolve dir info cost: {:?}", start.elapsed());
         app.left.root_node = dir_info;
     }
 
     pub fn read_classes(&self) -> Vec<StrRef> {
-        (&self.accessor).read_classes()
+        let start = Instant::now();
+        let classes = (&self.accessor).read_classes();
+        info!("{} classes loaded from server in {:?}", classes.len(), start.elapsed());
+        classes
     }
 
     pub fn find_class(&self, class_key: &str) -> bool {

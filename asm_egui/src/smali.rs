@@ -15,7 +15,8 @@ pub fn smali_layout(ui: &mut Ui, smali_node: &SmaliNode) {
             let (font, dft_color, dark_mode, smali_node) = key;
             let mut job = LayoutJob::default();
             let smali_style = if dark_mode { SmaliStyle::DARK } else { SmaliStyle::LIGHT };
-            append_node(&font, dft_color, &smali_style, smali_node, &mut job, 0);
+            let max_offset_len = max_offset_hint(smali_node).to_string().len();
+            append_node(&font, dft_color, &smali_style, smali_node, &mut job, 0, max_offset_len);
             job
         }
     }
@@ -35,12 +36,10 @@ pub fn smali_layout(ui: &mut Ui, smali_node: &SmaliNode) {
 
 fn append_node(
     font: &FontId, dft_color: Color32, smali_style: &SmaliStyle, node: &SmaliNode,
-    job: &mut LayoutJob, indent: usize,
+    job: &mut LayoutJob, indent: usize, max_offset_len: usize,
 ) {
     let SmaliNode { tag, content, offset_hint, children, end_tag } = node;
-    if let Some(offset_hint) = offset_hint {
-        append(job, &offset_hint.to_string(), font, smali_style.offset);
-    }
+    append_offset_or_stub(max_offset_len, node, job, font, smali_style);
     append_indent(job, font, smali_style, indent);
     if let Some(tag) = tag {
         append(job, tag, font, dft_color);
@@ -50,12 +49,41 @@ fn append_node(
         append_token(font, dft_color, smali_style, token, job);
         append_space(job, font, smali_style);
     }
-    if let Some(end_tag) = end_tag {
-        append(job, end_tag, font, dft_color);
-    }
     for child in children {
         append(job, "\n", font, dft_color);
-        append_node(font, dft_color, smali_style, child, job, indent + 1);
+        append_node(font, dft_color, smali_style, child, job, indent + 1, max_offset_len);
+    }
+    if children.len() > 0 {
+        append(job, "\n", font, dft_color);
+    }
+    if let Some(end_tag) = end_tag {
+        append_indent(job, font, smali_style, indent);
+        append(job, end_tag, font, dft_color);
+        append(job, "\n", font, dft_color);
+    }
+}
+
+#[inline]
+fn max_offset_hint(smali_node: &SmaliNode) -> u32 {
+    let mut max = 0;
+    for child in &smali_node.children {
+        max = max.max(max_offset_hint(child));
+    }
+    if let Some(offset_hint) = smali_node.offset_hint {
+        max = max.max(offset_hint);
+    }
+    max
+}
+
+fn append_offset_or_stub(
+    max_offset_len: usize, smali_node: &SmaliNode, job: &mut LayoutJob,
+    font: &FontId, smali_style: &SmaliStyle,
+) {
+    if let Some(offset_hint) = smali_node.offset_hint {
+        let offset_str = format!("{:width$}", offset_hint, width = max_offset_len);
+        append(job, &offset_str, font, smali_style.offset);
+    } else {
+        append(job, &" ".repeat(max_offset_len), font, smali_style.offset);
     }
 }
 

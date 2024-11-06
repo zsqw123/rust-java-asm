@@ -1,66 +1,84 @@
 use crate::app::EguiApp;
-use egui::CollapsingHeader;
-use egui_extras::{Column, TableBuilder};
-use java_asm_server::ui::{Content, DirInfo, FileInfo, Tab};
+use egui::text::LayoutJob;
+use egui::{ScrollArea, TextStyle};
+use java_asm_server::ui::{Content, FileEntry, FileInfo, RawDirInfo, Tab};
 use java_asm_server::AsmServer;
 use std::rc::Rc;
 
 pub fn render_dir(ui: &mut egui::Ui, app: &mut EguiApp) {
-    let root = &app.server_app.left.root_node;
+    let root = &mut app.server_app.left.root_node;
     let server = &app.server;
     let content = &mut app.server_app.content;
     if let Some(server) = server {
-        render_dir_row(ui, root, &mut 0, server, content);
+        let mut entries = root.visible_items();
+        let row_height = ui.text_style_height(&TextStyle::Body);
+        ScrollArea::vertical()
+            .show_rows(ui, row_height, entries.len(), |ui, range| {
+                for i in range {
+                    let entry = &mut entries[i];
+                    match entry {
+                        FileEntry::Dir(raw_dir) => {
+                            render_dir_raw(ui, raw_dir);
+                        }
+                        FileEntry::File(file_info) => {
+                            render_file(ui, file_info, server, content);
+                        }
+                    }
+                }
+            });
     }
 }
 
-fn render_dir_row(
-    ui: &mut egui::Ui, dir: &DirInfo, index: &mut usize,
+fn render_file(
+    ui: &mut egui::Ui, file_info: &mut FileInfo,
     server: &AsmServer, content: &mut Content,
 ) {
-    *index += 1;
-    CollapsingHeader::new(&*dir.title)
-        .id_salt(*index)
-        .default_open(dir.opened)
-        .show(ui, |ui| {
-            for (_, child) in &dir.dirs {
-                render_dir_row(ui, child, index, server, content);
+    let FileInfo { selected, title, file_key, level } = file_info;
+    ui.horizontal(|ui| {
+        ui.add_space((*level as f32) * 12.0);
+        let layout_job = layout_string(ui, title.to_string());
+        let label = ui.selectable_label(*selected, layout_job);
+        if label.clicked() {
+            let smali = server.read_content(file_key);
+            if let Some(smali) = smali {
+                let current_tab = Tab {
+                    selected: false,
+                    file_key: Rc::clone(file_key),
+                    title: Rc::clone(title),
+                    content: smali,
+                };
+                let current_tab = Rc::new(current_tab);
+                content.current = Some(Rc::clone(&current_tab));
             }
-            render_files(ui, dir, server, content);
-        });
+        }
+    });
 }
 
-fn render_files(ui: &mut egui::Ui, dir: &DirInfo, server: &AsmServer, content: &mut Content) {
-    let text_height = egui::TextStyle::Body
-        .resolve(ui.style()).size
-        .max(ui.spacing().interact_size.y);
+fn render_dir_raw(
+    ui: &mut egui::Ui, dir_info: &mut RawDirInfo,
+) {
+    let RawDirInfo { selected, opened, level, title } = dir_info;
+    ui.horizontal(|ui| {
+        ui.add_space((*level as f32) * 12.0);
+        let font = TextStyle::Body.resolve(ui.style());
+        let color = ui.style().visuals.text_color();
+        let title = if *opened {
+            format!("📂 {}", title)
+        } else {
+            format!("📁 {}", title)
+        };
+        let layout_job = LayoutJob::simple_singleline(title, font.clone(), color);
+        let label = ui.selectable_label(*selected, layout_job);
+        if label.clicked() {
+            *opened = !*opened;
+        }
+    });
+}
 
-    TableBuilder::new(ui).striped(true).resizable(true)
-        .vscroll(false)
-        .column(Column::remainder())
-        .body(|ui| {
-            let mut file_keys = dir.files.iter().collect::<Vec<_>>();
-            file_keys.sort_by_key(|(k, _)| Rc::clone(k));
-            ui.rows(text_height, file_keys.len(), |mut row| {
-                let index = row.index();
-                let (_, file_info) = &file_keys[index];
-                row.col(|ui| {
-                    let FileInfo { selected, title, file_key } = file_info;
-                    let label = ui.selectable_label(*selected, &**title);
-                    if label.clicked() {
-                        let smali = server.read_content(file_key);
-                        if let Some(smali) = smali {
-                            let current_tab = Tab {
-                                selected: false,
-                                file_key: Rc::clone(file_key),
-                                title: Rc::clone(title),
-                                content: smali,
-                            };
-                            let current_tab = Rc::new(current_tab);
-                            content.current = Some(Rc::clone(&current_tab));
-                        }
-                    }
-                });
-            });
-        });
+fn layout_string(
+    ui: &mut egui::Ui, string: String,
+) -> LayoutJob {
+    let font = TextStyle::Body.resolve(ui.style());
+    let color = ui.style().visuals.text_color();
+    LayoutJob::simple_singleline(string, font.clone(), color)
 }
