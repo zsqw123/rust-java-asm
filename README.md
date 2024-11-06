@@ -44,13 +44,13 @@ see some examples.
   - [ ] GUI backend:
     - [ ] unzip (whatever jar or dex) & parallel read
     - [ ] retrieve metadata and combine multiple metadata for better indexing
-    - [ ] using metadata to get the real data if needed (e.g. method instructions)
+    - [x] using metadata to get the real data if needed (e.g. method instructions)
     - [ ] search content, quick search for metadata and slow search for instructions.
   - [ ] GUI frontend:
-    - [ ] basic window with egui.
-    - [ ] load files into the backend
-    - [ ] show metadata in a tree view
-    - [ ] show instructions in a list view
+    - [x] basic window with egui.
+    - [x] load files from the backend
+    - [x] show metadata in a tree view
+    - [x] show instructions in a list view
     - [ ] quick jump to specific metadata
 
 ### Goals
@@ -60,6 +60,7 @@ see some examples.
 3. Support much newer Java version (higher priority for LTS, Java 21 currently).
 4. For parser core, not depends on any of other rust libraries at runtime, build everything from std only. (but some proc marco's
    dependencies are used for generate some template codes. e.g. `quote` and `syn`)
+5. Simple GUI to show decompiled jar like files. e.g. dex, apk, jar, class files.
 
 ---
 
