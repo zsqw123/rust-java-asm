@@ -140,8 +140,8 @@ impl DirInfo {
 
 #[derive(Clone, Debug, Default)]
 pub struct Content {
-    pub current: Option<Rc<Tab>>,
-    pub opened_tabs: Vec<Rc<Tab>>,
+    pub current: Option<usize>,
+    pub opened_tabs: Vec<Tab>,
 }
 
 #[derive(Clone, Debug)]

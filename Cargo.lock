@@ -1062,6 +1062,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_flex"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2493033babe116a1493ddaea0198ef2833cc6f4ad3a53de2a02376e8547b4d01"
+dependencies = [
+ "egui",
+ "log",
+]
+
+[[package]]
 name = "egui_glow"
 version = "0.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1674,18 +1684,19 @@ dependencies = [
 
 [[package]]
 name = "java_asm"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "java_asm_macro",
 ]
 
 [[package]]
 name = "java_asm_egui"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "eframe",
  "egui",
  "egui_extras",
+ "egui_flex",
  "fontdb",
  "java_asm",
  "java_asm_server",
@@ -1695,7 +1706,7 @@ dependencies = [
 
 [[package]]
 name = "java_asm_macro"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "quote",
  "syn 1.0.109",
@@ -1703,7 +1714,7 @@ dependencies = [
 
 [[package]]
 name = "java_asm_server"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "enum_dispatch",
  "fontdb",

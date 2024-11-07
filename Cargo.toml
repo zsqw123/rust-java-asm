@@ -30,6 +30,7 @@ zip = "2.2.0"
 egui = "0.29.1"
 eframe = "0.29.1"
 egui_extras = "0.29.1"
+egui_flex = "0.1.1"
 
 #iced = "0.13.1"
 #cosmic-text = "0.12.1"

@@ -47,8 +47,9 @@ fn render_file(
                     title: Rc::clone(title),
                     content: smali,
                 };
-                let current_tab = Rc::new(current_tab);
-                content.current = Some(Rc::clone(&current_tab));
+                let current = content.opened_tabs.len();
+                content.opened_tabs.push(current_tab);
+                content.current = Some(current);
             }
         }
     });

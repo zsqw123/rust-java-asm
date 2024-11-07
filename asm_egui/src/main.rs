@@ -5,6 +5,7 @@ pub(crate) mod font;
 pub(crate) mod file_tree;
 pub(crate) mod util;
 mod smali;
+mod file_tab;
 
 fn main() -> eframe::Result {
     let eframe_options = eframe::NativeOptions {

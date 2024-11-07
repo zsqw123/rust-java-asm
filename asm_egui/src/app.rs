@@ -1,8 +1,9 @@
+use crate::file_tab::render_tabs;
 use crate::file_tree::render_dir;
 use crate::font::inject_sys_font;
 use crate::smali::smali_layout;
 use eframe::{CreationContext, Frame};
-use egui::{Context, DroppedFile, ScrollArea};
+use egui::{Context, DroppedFile, ScrollArea, Widget};
 use egui_extras::{Size, StripBuilder};
 use java_asm_server::ui::log::{inject_log, LogHolder};
 use java_asm_server::ui::App;
@@ -70,15 +71,24 @@ impl EguiApp {
     fn central_panel(&mut self, ctx: &Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let content = &mut self.server_app.content;
-            let tabs = &content.opened_tabs;
-            for tab in tabs {}
+            let tabs = &mut content.opened_tabs;
 
-            let current_tab = &content.current;
-            if let Some(current_tab) = current_tab {
-                ui.heading(current_tab.title.to_string());
+            let mut deleted_tab = None;
+
+            render_tabs(ui, &mut content.current, tabs, &mut deleted_tab);
+
+            ui.separator();
+
+            if let Some(current_tab) = content.current {
+                let content = &mut tabs[current_tab].content;
                 ScrollArea::vertical().show(ui, |ui| {
-                    smali_layout(ui, &current_tab.content);
+                    smali_layout(ui, content);
                 });
+            }
+
+            // remove tab after this time rendering
+            if let Some(index) = deleted_tab {
+                tabs.remove(index);
             }
         });
     }
