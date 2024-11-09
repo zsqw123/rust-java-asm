@@ -3,7 +3,6 @@ use crate::err::AsmResultOkExt;
 use crate::impls::jvms::r::*;
 use crate::{mutf8_to_string, AsmErr, AsmResult};
 use std::collections::HashMap;
-use std::io::Read;
 
 impl ReadFrom for CodeItem {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {

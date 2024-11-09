@@ -3,7 +3,7 @@ use crate::ui::{App, DirInfo};
 use crate::{Accessor, AsmServer};
 use java_asm::smali::SmaliNode;
 use java_asm::{AsmErr, StrRef};
-use log::info;
+use log::{error, info};
 use std::io::{Read, Seek};
 use std::rc::Rc;
 use std::time::Instant;
@@ -11,16 +11,35 @@ use zip::result::ZipError;
 use zip::ZipArchive;
 
 impl AsmServer {
-    pub fn smart_open(path: &str) -> Result<Self, OpenFileError> {
+    pub fn dialog_to_open_file(server: &mut Option<Self>, render_target: &mut App) {
+        rfd::FileDialog::new()
+            .add_filter("APK", &["apk"])
+            .pick_file()
+            .map(|path| {
+                if let Some(path) = path.to_str() {
+                    Self::smart_open(server, path, render_target);
+                }
+            });
+    }
+
+    pub fn smart_open(server: &mut Option<Self>, path: &str, render_target: &mut App) {
         let open_start = Instant::now();
         let res = if path.ends_with(".apk") {
-            let file = std::fs::File::open(path).map_err(OpenFileError::Io)?;
-            Self::from_apk(file)
+            std::fs::File::open(path).map_err(OpenFileError::Io)
+                .and_then(Self::from_apk)
         } else {
-            Err(OpenFileError::Custom("unsupported file type".to_string()))
+            let err = format!("unsupported file type: {:?}", path);
+            error!("{}", err);
+            Err(OpenFileError::Custom(err))
         };
-        info!("open file cost: {:?}", open_start.elapsed());
-        res
+        match res {
+            Ok(res) => {
+                info!("open file cost: {:?}", open_start.elapsed());
+                res.render_to_app(render_target);
+                *server = Some(res);
+            }
+            Err(e) => error!("{:?}", e),
+        }
     }
 
     pub fn from_apk(apk_content: impl Read + Seek) -> Result<Self, OpenFileError> {

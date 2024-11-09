@@ -14,6 +14,9 @@ readme.workspace = true
 java_asm = { workspace = true }
 zip = { workspace = true }
 log = { workspace = true }
+
 fontdb = { workspace = true }
+rfd = { workspace = true }
+
 enum_dispatch = { workspace = true }
 

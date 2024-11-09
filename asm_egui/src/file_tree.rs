@@ -38,6 +38,11 @@ fn render_file(
         let layout_job = layout_string(ui, title.to_string());
         let label = ui.selectable_label(false, layout_job);
         if label.clicked() {
+            let existed_tab = content.opened_tabs.iter().position(|tab| tab.file_key == *file_key);
+            if let Some(existed_tab) = existed_tab {
+                content.current = Some(existed_tab);
+                return;
+            }
             let smali = server.read_content(file_key);
             if let Some(smali) = smali {
                 let current_tab = Tab {

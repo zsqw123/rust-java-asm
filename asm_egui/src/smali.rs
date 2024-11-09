@@ -95,7 +95,7 @@ fn append_token(
         SmaliToken::Raw(s) => append(job, s, font, dft_color),
         SmaliToken::Op(s) => append(job, s, font, smali_style.op),
         SmaliToken::Offset { relative, absolute } => {
-            let text = format!("{absolute} ({relative:+})");
+            let text = format!("@{absolute}({relative:+})");
             append(job, &text, font, smali_style.offset);
         }
         SmaliToken::Register(s) => append(job, &format!("v{s}"), font, smali_style.register),

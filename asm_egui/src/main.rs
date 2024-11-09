@@ -1,4 +1,5 @@
 use crate::app::EguiApp;
+use egui::ViewportBuilder;
 
 pub mod app;
 pub(crate) mod font;
@@ -9,6 +10,7 @@ mod file_tab;
 
 fn main() -> eframe::Result {
     let eframe_options = eframe::NativeOptions {
+        persist_window: true,
         ..Default::default()
     };
     eframe::run_native(

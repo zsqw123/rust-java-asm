@@ -65,12 +65,12 @@ impl InsnContainer {
                 }
                 insn_list.push(stb.s());
             }
-            
+
             let mut insn = insn.to_smali(accessor, offset, &payload_map);
             insn.offset_hint = Some(offset as u32);
             insn_list.push(insn);
         };
-        
+
         SmaliNode {
             tag: Some(".code"),
             end_tag: Some(".end code"),
@@ -717,15 +717,20 @@ impl ClassDef {
         let class_type = accessor.opt_type(self.class_idx);
         let mut smali = tb.d(class_type).s();
 
+        if self.source_file_idx.0 != NO_INDEX {
+            let source_file = accessor.opt_str(self.source_file_idx);
+            smali.add_child(stb().raw(".source").other(source_file).s());
+        };
+        
         if self.superclass_idx.0 != NO_INDEX {
             let super_type = accessor.opt_type(self.superclass_idx);
             smali.add_child(stb().raw(".super").d(super_type).s());
         };
 
-        if self.source_file_idx.0 != NO_INDEX {
-            let source_file = accessor.opt_str(self.source_file_idx);
-            smali.add_child(stb().raw(".source").other(source_file).s());
-        };
+        let interfaces = accessor.get_type_list(self.interfaces_off)?;
+        for interface in interfaces {
+            smali.add_child(stb().raw(".implements").d(interface).s());
+        }
 
         if self.class_data_off != 0 {
             let class_element = accessor.get_class_element(self.class_data_off)?;
@@ -787,7 +792,7 @@ impl CodeItem {
     pub fn to_smali(&self, accessor: &DexFileAccessor) -> SmaliNode {
         let mut smali = SmaliNode::empty();
         let debug_info_item: Option<DebugInfoItem> = accessor.get_data_impl(self.debug_info_off).ok();
-        
+
         let registers_size = self.registers_size;
         smali.add_child(stb().raw(".registers").l(registers_size.to_ref()).s());
 
@@ -805,7 +810,10 @@ impl CodeItem {
     ) {
         let Some(debug_info) = debug_info else { return; };
         let parameter_names = &debug_info.parameter_names;
-        for (i, name) in parameter_names.iter().enumerate() {
+        // some dex modification magic might shares same debug info with different method
+        // to minimize the package size. We only takes debug info that we need.
+        let parameter_count = self.ins_size as usize;
+        for (i, name) in parameter_names.iter().enumerate().take(parameter_count) {
             let Some(name_idx) = name.value() else { continue };
             let name = accessor.opt_str(name_idx as usize);
             smali_node.add_child(stb().raw(".parameter").v(i as u16).l(name).s());

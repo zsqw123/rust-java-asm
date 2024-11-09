@@ -3,7 +3,7 @@ use crate::file_tree::render_dir;
 use crate::font::inject_sys_font;
 use crate::smali::smali_layout;
 use eframe::{CreationContext, Frame};
-use egui::{Context, DroppedFile, ScrollArea, Widget};
+use egui::{Context, DroppedFile, ScrollArea};
 use egui_extras::{Size, StripBuilder};
 use java_asm_server::ui::log::{inject_log, LogHolder};
 use java_asm_server::ui::App;
@@ -30,7 +30,9 @@ impl EguiApp {
     fn top_bar(&mut self, ctx: &Context) {
         egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
-                if ui.button("📂 Open...").clicked() {}
+                if ui.button("📂 Open...").clicked() {
+                    AsmServer::dialog_to_open_file(&mut self.server, &mut self.server_app);
+                }
             });
         });
     }
@@ -98,11 +100,7 @@ impl EguiApp {
             if let Some(DroppedFile { path, .. }) = input.raw.dropped_files.get(0) {
                 if let Some(path) = path {
                     let path = path.display().to_string();
-                    let server = AsmServer::smart_open(&path).ok();
-                    if let Some(server) = server {
-                        server.render_to_app(&mut self.server_app);
-                        self.server = Some(server);
-                    }
+                    AsmServer::smart_open(&mut self.server, &path, &mut self.server_app);
                 }
             }
         })
