@@ -47,7 +47,6 @@ fn visible_items<'a, 'b>(dir_info: &'b mut DirInfo, container: &'a mut Vec<FileE
 
 #[derive(Clone, Debug, Default)]
 pub struct FileInfo {
-    pub selected: bool,
     pub title: StrRef,
     pub level: u16,
     pub file_key: StrRef,
@@ -56,7 +55,6 @@ pub struct FileInfo {
 // raw data without children
 #[derive(Clone, Debug, Default)]
 pub struct RawDirInfo {
-    pub selected: bool,
     pub opened: bool,
     pub level: u16,
     pub title: StrRef,

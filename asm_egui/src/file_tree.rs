@@ -33,11 +33,11 @@ fn render_file(
     ui: &mut egui::Ui, file_info: &mut FileInfo,
     server: &AsmServer, content: &mut Content,
 ) {
-    let FileInfo { selected, title, file_key, level } = file_info;
+    let FileInfo { title, file_key, level } = file_info;
     ui.horizontal(|ui| {
         ui.add_space((*level as f32) * 12.0);
         let layout_job = layout_string(ui, title.to_string());
-        let label = ui.selectable_label(*selected, layout_job);
+        let label = ui.selectable_label(false, layout_job);
         if label.clicked() {
             let smali = server.read_content(file_key);
             if let Some(smali) = smali {
@@ -58,7 +58,7 @@ fn render_file(
 fn render_dir_raw(
     ui: &mut egui::Ui, dir_info: &mut RawDirInfo,
 ) {
-    let RawDirInfo { selected, opened, level, title } = dir_info;
+    let RawDirInfo { opened, level, title } = dir_info;
     ui.horizontal(|ui| {
         ui.add_space((*level as f32) * 12.0);
         let font = TextStyle::Body.resolve(ui.style());
@@ -69,7 +69,7 @@ fn render_dir_raw(
             format!("📁 {}", title)
         };
         let layout_job = LayoutJob::simple_singleline(title, font.clone(), color);
-        let label = ui.selectable_label(*selected, layout_job);
+        let label = ui.selectable_label(false, layout_job);
         if label.clicked() {
             *opened = !*opened;
         }

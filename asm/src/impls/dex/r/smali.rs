@@ -111,21 +111,21 @@ impl DexInsn {
             DexInsn::ConstStringJumbo(F31c { vA, constB, .. }) =>
                 tb.op("const-string/jumbo").v(*vA).l(accessor.opt_str(*constB)).s(),
             DexInsn::ConstClass(F21c { vA, constB, .. }) =>
-                tb.op("const-class").v(*vA).l(accessor.opt_type(*constB)).s(),
+                tb.op("const-class").v(*vA).d(accessor.opt_type(*constB)).s(),
             DexInsn::MonitorEnter(F11x { vA, .. }) =>
                 tb.op("monitor-enter").v(*vA).s(),
             DexInsn::MonitorExit(F11x { vA, .. }) =>
                 tb.op("monitor-exit").v(*vA).s(),
             DexInsn::CheckCast(F21c { vA, constB, .. }) =>
-                tb.op("check-cast").v(*vA).l(accessor.opt_type(*constB)).s(),
+                tb.op("check-cast").v(*vA).d(accessor.opt_type(*constB)).s(),
             DexInsn::InstanceOf(F22c { vA, vB, constC, .. }) =>
-                tb.op("instance-of").v(*vA).v(*vB).l(accessor.opt_type(*constC)).s(),
+                tb.op("instance-of").v(*vA).v(*vB).d(accessor.opt_type(*constC)).s(),
             DexInsn::ArrayLength(F12x { vA, vB, .. }) =>
                 tb.op("array-length").v(*vA).v(*vB).s(),
             DexInsn::NewInstance(F21c { vA, constB, .. }) =>
-                tb.op("new-instance").v(*vA).l(accessor.opt_type(*constB)).s(),
+                tb.op("new-instance").v(*vA).d(accessor.opt_type(*constB)).s(),
             DexInsn::NewArray(F22c { vA, vB, constC, .. }) =>
-                tb.op("new-array").v(*vA).v(*vB).l(accessor.opt_type(*constC)).s(),
+                tb.op("new-array").v(*vA).v(*vB).d(accessor.opt_type(*constC)).s(),
             DexInsn::FilledNewArray(F35c { a, vC, vD, vE, vF, vG, constB, .. }) =>
                 render_f35("filled-new-array", *a, tb.l(accessor.opt_str(*constB)).s(),
                            *vC, *vD, *vE, *vF, *vG),
@@ -591,7 +591,7 @@ impl Dex2Smali for EncodedValue {
             EncodedValue::MethodType(v) => tb.l(render_proto(dex_file_accessor, v.0 as u16)).s(),
             EncodedValue::MethodHandle(v) => render_method_handle(dex_file_accessor, v.0 as u16),
             EncodedValue::String(v) => tb.l(dex_file_accessor.opt_str(*v)).s(),
-            EncodedValue::Type(v) => tb.l(dex_file_accessor.opt_type(*v)).s(),
+            EncodedValue::Type(v) => tb.d(dex_file_accessor.opt_type(*v)).s(),
             EncodedValue::Field(v) => render_field(dex_file_accessor, v.0 as u16),
             EncodedValue::Method(v) => render_method(dex_file_accessor, v.0 as u16),
             EncodedValue::Enum(v) => render_field(dex_file_accessor, v.0 as u16),
