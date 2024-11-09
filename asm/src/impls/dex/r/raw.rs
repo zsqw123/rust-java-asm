@@ -1,7 +1,9 @@
-use crate::dex::{CodeItem, DSleb128, DUByte, DUInt, DULeb128, DexFile, EncodedCatchHandler, EncodedValue, EncodedValueType, Header, InsnContainer, StringData};
+use crate::dex::{CodeItem, DSleb128, DUByte, DUInt, DULeb128, DULeb128P1, DebugInfoItem, DexFile, EncodedCatchHandler, EncodedValue, EncodedValueType, Header, InsnContainer, LocalVar, StringData};
 use crate::err::AsmResultOkExt;
 use crate::impls::jvms::r::*;
 use crate::{mutf8_to_string, AsmErr, AsmResult};
+use std::collections::HashMap;
+use std::io::Read;
 
 impl ReadFrom for CodeItem {
     fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
@@ -44,6 +46,109 @@ impl ReadFrom for InsnContainer {
             cur += end - start;
         }
         Ok(InsnContainer { insns_size, insns })
+    }
+}
+
+impl DebugInfoItem {
+    const DBG_END_SEQUENCE: u8 = 0x00;
+    const DBG_ADVANCE_PC: u8 = 0x01;
+    const DBG_ADVANCE_LINE: u8 = 0x02;
+    const DBG_START_LOCAL: u8 = 0x03;
+    const DBG_START_LOCAL_EXTENDED: u8 = 0x04;
+    const DBG_END_LOCAL: u8 = 0x05;
+    const DBG_RESTART_LOCAL: u8 = 0x06;
+    const DBG_SET_PROLOGUE_END: u8 = 0x07;
+    const DBG_SET_EPILOGUE_BEGIN: u8 = 0x08;
+    const DBG_SET_FILE: u8 = 0x09;
+
+    // the smallest special opcode
+    const DBG_FIRST_SPECIAL: u8 = 0x0a;
+    // the smallest line number increment
+    const DBG_LINE_BASE: i8 = -4;
+    // the number of line increments represented
+    const DBG_LINE_RANGE: u8 = 15;
+}
+
+impl ReadFrom for DebugInfoItem {
+    fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
+        let line_start: DULeb128 = context.read()?;
+        let parameters_size: DULeb128 = context.read()?;
+        let parameter_names: Vec<DULeb128P1> = context.read_vec(parameters_size)?;
+        let mut records = Vec::new();
+        let mut local_vars: Vec<LocalVar> = Vec::new();
+        let mut local_var_map: HashMap<DULeb128, LocalVar> = HashMap::new();
+
+        let mut cur_line = line_start.value();
+        let mut cur_addr = 0;
+        let mut cur_source: DULeb128P1 = DULeb128P1::ZERO;
+        loop {
+            let opcode: u8 = context.read()?;
+            match opcode {
+                DebugInfoItem::DBG_END_SEQUENCE => break,
+
+                DebugInfoItem::DBG_ADVANCE_PC => {
+                    let addr_diff: DULeb128 = context.read()?;
+                    cur_addr += addr_diff.value();
+                }
+                DebugInfoItem::DBG_ADVANCE_LINE => {
+                    let line_diff: DSleb128 = context.read()?;
+                    cur_line = (cur_line as i32 + line_diff.value()) as u32;
+                }
+                DebugInfoItem::DBG_START_LOCAL => {
+                    let register: DULeb128 = context.read()?;
+                    let name_idx: DULeb128P1 = context.read()?;
+                    let type_idx: DULeb128P1 = context.read()?;
+                    let sig_idx = DULeb128P1::ZERO;
+                    let start_addr = Some(cur_addr);
+                    let end_addr = None;
+                    let local_var = LocalVar { register, name_idx, type_idx, sig_idx, start_addr, end_addr };
+                    local_var_map.insert(register, local_var);
+                }
+                DebugInfoItem::DBG_START_LOCAL_EXTENDED => {
+                    let register: DULeb128 = context.read()?;
+                    let name_idx: DULeb128P1 = context.read()?;
+                    let type_idx: DULeb128P1 = context.read()?;
+                    let sig_idx: DULeb128P1 = context.read()?;
+                    let start_addr = Some(cur_addr);
+                    let end_addr = None;
+                    let local_var = LocalVar { register, name_idx, type_idx, sig_idx, start_addr, end_addr };
+                    local_var_map.insert(register, local_var);
+                }
+                DebugInfoItem::DBG_END_LOCAL => {
+                    let reg_num: DULeb128 = context.read()?;
+                    if let Some(mut local_var) = local_var_map.remove(&reg_num) {
+                        local_var.end_addr = Some(cur_addr);
+                        local_vars.push(local_var);
+                    }
+                }
+                DebugInfoItem::DBG_RESTART_LOCAL => {
+                    let reg_num: DULeb128 = context.read()?;
+                    if let Some(mut old_var) = local_var_map.remove(&reg_num) {
+                        old_var.end_addr = Some(cur_addr);
+                        let mut new_var = old_var.clone();
+                        new_var.start_addr = Some(cur_addr);
+                        local_vars.push(old_var); // push old one
+                        local_var_map.insert(reg_num, new_var); // insert new one
+                    }
+                }
+                DebugInfoItem::DBG_SET_PROLOGUE_END | DebugInfoItem::DBG_SET_EPILOGUE_BEGIN => continue,
+                DebugInfoItem::DBG_SET_FILE => cur_source = context.read()?,
+                _ => {
+                    let adjusted_opcode = opcode - DebugInfoItem::DBG_FIRST_SPECIAL;
+                    let line_diff = DebugInfoItem::DBG_LINE_BASE as i16 + (adjusted_opcode % DebugInfoItem::DBG_LINE_RANGE) as i16;
+                    let addr_diff = adjusted_opcode / DebugInfoItem::DBG_LINE_RANGE;
+                    cur_line = (cur_line as i32 + line_diff as i32) as u32;
+                    cur_addr += addr_diff as u32;
+                    records.push((cur_addr, cur_line, cur_source));
+                }
+            }
+        }
+        
+        if !local_var_map.is_empty() {
+            local_vars.extend(local_var_map.into_values());
+        }
+
+        DebugInfoItem { line_start, parameter_names, records, local_vars }.ok()
     }
 }
 

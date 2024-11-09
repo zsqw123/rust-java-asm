@@ -7,7 +7,7 @@ use crate::ui::AbsFile::{Dir, File};
 use java_asm::smali::SmaliNode;
 use java_asm::StrRef;
 use ::log::Level;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::iter::{Enumerate, Peekable};
 use std::rc::Rc;
 use std::str::Split;
@@ -45,7 +45,7 @@ fn visible_items<'a, 'b>(dir_info: &'b mut DirInfo, container: &'a mut Vec<FileE
 }
 
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FileInfo {
     pub title: StrRef,
     pub level: u16,
@@ -53,17 +53,17 @@ pub struct FileInfo {
 }
 
 // raw data without children
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct RawDirInfo {
     pub opened: bool,
     pub level: u16,
     pub title: StrRef,
 }
 
-pub type DirMap = HashMap<StrRef, DirInfo>;
-pub type FileMap = HashMap<StrRef, FileInfo>;
+pub type DirMap = BTreeMap<StrRef, DirInfo>;
+pub type FileMap = BTreeMap<StrRef, FileInfo>;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct DirInfo {
     pub raw: RawDirInfo,
     pub dirs: DirMap,

@@ -38,7 +38,7 @@ fn append_node(
     font: &FontId, dft_color: Color32, smali_style: &SmaliStyle, node: &SmaliNode,
     job: &mut LayoutJob, indent: usize, max_offset_len: usize,
 ) {
-    let SmaliNode { tag, content, offset_hint, children, end_tag } = node;
+    let SmaliNode { tag, content, children, end_tag, .. } = node;
     append_offset_or_stub(max_offset_len, node, job, font, smali_style);
     append_indent(job, font, smali_style, indent);
     if let Some(tag) = tag {

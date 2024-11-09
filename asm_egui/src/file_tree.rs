@@ -6,12 +6,11 @@ use java_asm_server::AsmServer;
 use std::rc::Rc;
 
 pub fn render_dir(ui: &mut egui::Ui, app: &mut EguiApp) {
-    let root = &mut app.server_app.left.root_node;
+    let entries = &mut app.server_app.left.root_node.visible_items();
     let server = &app.server;
-    let content = &mut app.server_app.content;
     if let Some(server) = server {
-        let mut entries = root.visible_items();
-        let row_height = ui.text_style_height(&TextStyle::Body);
+        let content = &mut app.server_app.content;
+        let row_height = ui.spacing().interact_size.y;
         ScrollArea::vertical()
             .show_rows(ui, row_height, entries.len(), |ui, range| {
                 for i in range {

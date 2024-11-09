@@ -81,7 +81,7 @@ impl SmaliTokensBuilder {
     }
 
     #[inline]
-    pub fn off(self, relative: impl Into<i32>, current: impl Into<u32>) -> Self {
+    pub fn off(self, current: impl Into<u32>, relative: impl Into<i32>) -> Self {
         let relative = relative.into();
         let absolute = (current.into() as i32 + relative) as u32;
         self.push(SmaliToken::Offset { relative, absolute })

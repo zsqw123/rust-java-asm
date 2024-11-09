@@ -206,6 +206,26 @@ pub struct CodeItem {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DebugInfoItem {
+    pub line_start: DULeb128,
+    // -1 -> no name
+    pub parameter_names: Vec<DULeb128P1>,
+    // addr, source line, alternative source file name_idx 
+    pub records: Vec<(DUInt, DUInt, DULeb128P1)>,
+    pub local_vars: Vec<LocalVar>,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct LocalVar {
+    pub register: DULeb128,
+    pub name_idx: DULeb128P1,
+    pub type_idx: DULeb128P1,
+    pub sig_idx: DULeb128P1,
+    pub start_addr: Option<DUInt>,
+    pub end_addr: Option<DUInt>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InsnContainer {
     pub insns_size: DUInt,
     pub insns: Vec<DexInsn>,
@@ -325,11 +345,11 @@ pub type DUInt = u32;
 pub type DLong = i64;
 pub type DULong = u64;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default, Hash)]
 pub struct DSleb128(pub(crate) u32);
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default, Hash)]
 pub struct DULeb128(pub(crate) u32);
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default, Hash)]
 pub struct DULeb128P1(pub(crate) u32);
 
 pub const NO_INDEX: u32 = 0xFFFFFFFF;
@@ -355,6 +375,8 @@ impl Into<usize> for DULeb128 {
 }
 
 impl DULeb128P1 {
+    pub const ZERO: DULeb128P1 = DULeb128P1(0);
+    
     // -1 usually used for representing null (NO_INDEX in dex format)
     #[inline]
     pub const fn value(&self) -> Option<u32> {

@@ -1,8 +1,71 @@
 use crate::dex::element::{AsElement, ClassContentElement, FieldElement, MethodElement};
-use crate::dex::{ClassDataItem, DexFileAccessor, EncodedField, EncodedMethod, FieldId, MethodId};
+use crate::dex::{ClassDataItem, DUInt, DULeb128P1, DebugInfoItem, DexFileAccessor, EncodedField, EncodedMethod, FieldId, LocalVar, MethodId};
 use crate::err::{AsmResultExt, AsmResultOkExt};
 use crate::impls::dex::r::accessor::ProtoConst;
 use crate::{AsmErr, AsmResult};
+
+#[derive(Default)]
+pub struct DebugInfoMap {
+    // addr, source line, alternative source file name_idx
+    pub records: LineTable<(DUInt, DULeb128P1)>,
+    // addr, local var
+    pub local_vars: LineTable<LocalVar>,
+}
+
+
+impl DebugInfoMap {
+    pub(crate) fn from_raw(debug_info_item: Option<DebugInfoItem>) -> Self {
+        let Some(debug_info_item) = debug_info_item else { return Default::default() };
+        let DebugInfoItem { records: records_vec, local_vars: local_var_vec, .. } = debug_info_item;
+        let mut records = Vec::with_capacity(records_vec.len());
+        let mut local_vars = Vec::with_capacity(local_var_vec.len());
+        for record in records_vec {
+            let (addr, source_line, alternative_source_file) = record;
+            records.push((addr, (source_line, alternative_source_file)));
+        };
+        for local_var in local_var_vec {
+            let addr = local_var.start_addr;
+            if let Some(addr) = addr {
+                local_vars.push((addr, local_var.clone()));
+            }
+        }
+        local_vars.shrink_to_fit();
+        let records = LineTable::new(records);
+        let local_vars = LineTable::new(local_vars);
+        DebugInfoMap { records, local_vars }
+    }
+}
+
+pub struct LineTable<T> {
+    current_off: DUInt,
+    current_idx: usize,
+    pub lines: Vec<(DUInt, T)>,
+}
+
+impl<T> Default for LineTable<T> {
+    fn default() -> Self {
+        LineTable::new(vec![])
+    }
+}
+
+impl<T> LineTable<T> {
+    pub fn new(lines: Vec<(DUInt, T)>) -> Self {
+        LineTable { current_off: 0, current_idx: 0, lines }
+    }
+
+    pub fn move_to(&mut self, offset: DUInt) -> Vec<&T> {
+        let mut result = Vec::new();
+        loop {
+            if self.current_idx >= self.lines.len() { break }
+            let Some((current_off, t)) = self.lines.get(self.current_idx) else { break };
+            if *current_off > offset { break }
+            result.push(t);
+            self.current_off = *current_off;
+            self.current_idx += 1;
+        };
+        result
+    }
+}
 
 // C: origin element which located in vec
 // E: returned element

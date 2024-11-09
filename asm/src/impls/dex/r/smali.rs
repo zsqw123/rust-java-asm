@@ -3,15 +3,16 @@
 use crate::dex::element::{ClassContentElement, FieldElement, MethodElement};
 use crate::dex::insn::{DexInsn, FillArrayDataPayload, PackedSwitchPayload, SparseSwitchPayload};
 use crate::dex::insn_syntax::*;
-use crate::dex::{ClassAccessFlags, ClassDef, CodeItem, DexFileAccessor, EncodedAnnotation, EncodedAnnotationAttribute, EncodedArray, EncodedValue, FieldAccessFlags, InsnContainer, MethodAccessFlags, MethodHandle, MethodHandleType, NO_INDEX, U4};
+use crate::dex::{ClassAccessFlags, ClassDef, CodeItem, DebugInfoItem, DexFileAccessor, EncodedAnnotation, EncodedAnnotationAttribute, EncodedArray, EncodedValue, FieldAccessFlags, InsnContainer, MethodAccessFlags, MethodHandle, MethodHandleType, NO_INDEX, U4};
+use crate::impls::dex::r::element::DebugInfoMap;
 use crate::impls::ToStringRef;
 use crate::smali::{stb, tokens_to_raw, Dex2Smali, SmaliNode};
 use crate::{raw_smali, AsmResult, ConstContainer, DescriptorRef, StrRef};
 use std::collections::HashMap;
 use std::rc::Rc;
 
-impl Dex2Smali for InsnContainer {
-    fn to_smali(&self, accessor: &DexFileAccessor) -> SmaliNode {
+impl InsnContainer {
+    fn to_smali(&self, accessor: &DexFileAccessor, mut debug_info: DebugInfoMap) -> SmaliNode {
         let mut current_offset = 0usize;
         let (payloads, insns): (Vec<_>, Vec<_>) = self.insns.iter()
             .map(|insn| {
@@ -28,12 +29,48 @@ impl Dex2Smali for InsnContainer {
             });
         let payload_map: HashMap<usize, &DexInsn> = HashMap::from_iter(payloads);
         let payload_map = PayloadMap { payload_map };
-        let insn_list = insns.iter().map(|(offset, insn)| {
-            let offset = *offset;
+
+        let mut insn_list: Vec<SmaliNode> = Vec::with_capacity(
+            insns.len() + debug_info.records.lines.len() + debug_info.local_vars.lines.len()
+        );
+        insn_list.shrink_to_fit();
+        for (offset, insn) in insns {
+            let line_info = debug_info.records.move_to(offset as u32);
+            let local_var_info = debug_info.local_vars.move_to(offset as u32);
+
+            for (src_line, src_file_name_idx) in line_info {
+                let mut stb = stb().raw(".source-line").other(src_line.to_ref());
+                if let Some(src_file_name_idx) = src_file_name_idx.value() {
+                    let src_file_name = accessor.opt_str(src_file_name_idx as usize);
+                    stb = stb.l(src_file_name);
+                }
+                insn_list.push(SmaliNode::empty());
+                insn_list.push(stb.s());
+            }
+
+            for var_info in local_var_info {
+                let mut stb = stb().raw(".local").v(var_info.register.value() as u16);
+                if let Some(end_addr) = var_info.end_addr {
+                    let relative = end_addr - offset as u32;
+                    stb = stb.off(offset as u16, relative as u16);
+                }
+                if let Some(name_idx) = var_info.name_idx.value() {
+                    stb = stb.other(accessor.opt_str(name_idx as usize));
+                }
+                if let Some(type_idx) = var_info.type_idx.value() {
+                    stb = stb.d(accessor.opt_type(type_idx as usize));
+                }
+                if let Some(sig_idx) = var_info.sig_idx.value() {
+                    stb = stb.d(accessor.opt_type(sig_idx as usize));
+                }
+                insn_list.push(stb.s());
+            }
+            
             let mut insn = insn.to_smali(accessor, offset, &payload_map);
             insn.offset_hint = Some(offset as u32);
-            insn
-        }).collect();
+            insn_list.push(insn);
+        };
+        
         SmaliNode {
             tag: Some(".code"),
             end_tag: Some(".end code"),
@@ -138,11 +175,11 @@ impl DexInsn {
             DexInsn::Throw(F11x { vA, .. }) =>
                 tb.op("throw").v(*vA).s(),
             DexInsn::Goto(F10t { offsetA, .. }) =>
-                tb.op("goto").off(*offsetA, cur).s(),
+                tb.op("goto").off(cur, *offsetA).s(),
             DexInsn::Goto16(F20t { offsetA, .. }) =>
-                tb.op("goto/16").off(*offsetA, cur).s(),
+                tb.op("goto/16").off(cur, *offsetA).s(),
             DexInsn::Goto32(F30t { offsetA, .. }) =>
-                tb.op("goto/32").off(*offsetA, cur).s(),
+                tb.op("goto/32").off(cur, *offsetA).s(),
             DexInsn::PackedSwitch(F31t { vA, offsetB, .. }) => {
                 let payload = payload_map.read(cur, *offsetB);
                 tb.op("packed-switch").v(*vA)
@@ -174,7 +211,7 @@ impl DexInsn {
                     0x37 => "if-le",
                     _ => "if-test",
                 };
-                tb.op(op_name).v(*vA).v(*vB).off(*offsetC, cur).s()
+                tb.op(op_name).v(*vA).v(*vB).off(cur, *offsetC).s()
             }
             DexInsn::IfTestz(F21t { opcode, vA, offsetB }) => {
                 let op_name = match opcode {
@@ -186,7 +223,7 @@ impl DexInsn {
                     0x3d => "if-lez",
                     _ => "if-testz"
                 };
-                tb.op(op_name).v(*vA).off(*offsetB, cur).s()
+                tb.op(op_name).v(*vA).off(cur, *offsetB).s()
             }
             DexInsn::ArrayOp(F23x { opcode, vA, vB, vC }) => {
                 let op_name = match opcode {
@@ -432,13 +469,13 @@ impl PayloadMap<'_> {
         let tb = stb();
         let payload = match self.payload_map.get(&payload_offset) {
             Some(p) => p,
-            None => return tb.raw("payload").off(offset, current).s(),
+            None => return tb.raw("payload").off(current, offset).s(),
         };
         match payload {
             DexInsn::PackedSwitchPayload(p) => p.to_smali(current),
             DexInsn::SparseSwitchPayload(p) => p.to_smali(current),
             DexInsn::FillArrayDataPayload(p) => p.to_smali(),
-            _ => tb.raw("payload").off(offset, current).s(),
+            _ => tb.raw("payload").off(current, offset).s(),
         }
     }
 }
@@ -633,7 +670,7 @@ impl PackedSwitchPayload {
         for i in 0..size {
             let target_offset = self.targets[i as usize];
             let key = first_key + i as i32;
-            let child = stb().l(key.to_ref()).raw("->").off(target_offset, current_offset);
+            let child = stb().l(key.to_ref()).raw("->").off(current_offset, target_offset);
             children.push(child.s())
         }
         SmaliNode {
@@ -651,7 +688,7 @@ impl SparseSwitchPayload {
         for i in 0..self.size {
             let key = self.keys[i as usize];
             let target_offset = self.targets[i as usize];
-            let child = stb().l(key.to_ref()).raw("->").off(target_offset, current_offset);
+            let child = stb().l(key.to_ref()).raw("->").off(current_offset, target_offset);
             children.push(child.s())
         }
         SmaliNode {
@@ -749,15 +786,33 @@ impl MethodElement {
 impl CodeItem {
     pub fn to_smali(&self, accessor: &DexFileAccessor) -> SmaliNode {
         let mut smali = SmaliNode::empty();
-
+        let debug_info_item: Option<DebugInfoItem> = accessor.get_data_impl(self.debug_info_off).ok();
+        
         let registers_size = self.registers_size;
         smali.add_child(stb().raw(".registers").l(registers_size.to_ref()).s());
 
-        let insn_container_smali = self.insn_container.to_smali(accessor);
+        self.add_parameters(accessor, &mut smali, &debug_info_item);
+
+        let debug_info = DebugInfoMap::from_raw(debug_info_item);
+        let insn_container_smali = self.insn_container.to_smali(accessor, debug_info);
         smali.children.extend(insn_container_smali.children);
 
         smali
     }
+
+    fn add_parameters(
+        &self, accessor: &DexFileAccessor, smali_node: &mut SmaliNode, debug_info: &Option<DebugInfoItem>,
+    ) {
+        let Some(debug_info) = debug_info else { return; };
+        let parameter_names = &debug_info.parameter_names;
+        for (i, name) in parameter_names.iter().enumerate() {
+            let Some(name_idx) = name.value() else { continue };
+            let name = accessor.opt_str(name_idx as usize);
+            smali_node.add_child(stb().raw(".parameter").v(i as u16).l(name).s());
+        }
+    }
 }
+
+
 
 

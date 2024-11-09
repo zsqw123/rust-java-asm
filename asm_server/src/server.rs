@@ -3,10 +3,10 @@ use crate::ui::{App, DirInfo};
 use crate::{Accessor, AsmServer};
 use java_asm::smali::SmaliNode;
 use java_asm::{AsmErr, StrRef};
+use log::info;
 use std::io::{Read, Seek};
 use std::rc::Rc;
 use std::time::Instant;
-use log::info;
 use zip::result::ZipError;
 use zip::ZipArchive;
 
