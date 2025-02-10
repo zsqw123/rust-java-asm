@@ -26,7 +26,7 @@ pub fn read_apk(zip_archive: ZipArchive<impl Read + Seek>) -> Result<ApkAccessor
         ).collect::<Vec<_>>();
     dex_files.sort_by(|a, b| dex_index(a).cmp(&dex_index(b)));
     
-    // read indices
+    // read zip entry indices
     let dex_files: Vec<_> = dex_files.iter().map(|s| {
         zip_archive.index_for_name(s)
     }).filter_map(|v|v).collect();

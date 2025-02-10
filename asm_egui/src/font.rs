@@ -12,7 +12,9 @@ pub fn inject_sys_font(context: &CreationContext) -> Option<()> {
     let mut db = fontdb::Database::new();
     let start = Instant::now();
     db.load_system_fonts();
-    let faces = db.faces().collect::<Vec<_>>();
+    let faces = db.faces().map(
+        |face| &face.post_script_name
+    ).collect::<Vec<_>>();
     info!("system fonts loaded in {}ms: {:?}", start.elapsed().as_millis(), &faces);
 
     let start = Instant::now();

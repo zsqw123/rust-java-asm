@@ -58,7 +58,7 @@ impl EguiApp {
     fn bottom_log_panel(&mut self, ctx: &Context) {
         egui::TopBottomPanel::bottom("bottom_log_panel").resizable(true)
             .show(ctx, |ui| {
-            ui.collapsing("Log 输出", |ui| {
+            ui.collapsing("Log / 日志", |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
                     let current_records = self.log_holder.records.lock().unwrap();
                     let current_records = current_records.iter();
@@ -94,7 +94,10 @@ impl EguiApp {
             }
         });
     }
+}
 
+// action triggers
+impl EguiApp {
     fn process_dropped_file(&mut self, ctx: &Context) {
         ctx.input(|input| {
             if let Some(DroppedFile { path, .. }) = input.raw.dropped_files.get(0) {

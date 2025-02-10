@@ -10,18 +10,8 @@ use std::time::Instant;
 use zip::result::ZipError;
 use zip::ZipArchive;
 
+/// Builders of [AsmServer]
 impl AsmServer {
-    pub fn dialog_to_open_file(server: &mut Option<Self>, render_target: &mut App) {
-        rfd::FileDialog::new()
-            .add_filter("APK", &["apk"])
-            .pick_file()
-            .map(|path| {
-                if let Some(path) = path.to_str() {
-                    Self::smart_open(server, path, render_target);
-                }
-            });
-    }
-
     pub fn smart_open(server: &mut Option<Self>, path: &str, render_target: &mut App) {
         let open_start = Instant::now();
         let res = if path.ends_with(".apk") {
@@ -52,6 +42,20 @@ impl AsmServer {
     pub fn from_dex(dex_path: &str) -> Self {
         unimplemented!()
     }
+}
+
+/// input operation processing
+impl AsmServer {
+    pub fn dialog_to_open_file(server: &mut Option<Self>, render_target: &mut App) {
+        rfd::FileDialog::new()
+            .add_filter("APK", &["apk"])
+            .pick_file()
+            .map(|path| {
+                if let Some(path) = path.to_str() {
+                    Self::smart_open(server, path, render_target);
+                }
+            });
+    }
 
     pub fn render_to_app(&self, app: &mut App) {
         let classes = self.read_classes();
@@ -60,7 +64,24 @@ impl AsmServer {
         info!("resolve dir info cost: {:?}", start.elapsed());
         app.left.root_node = dir_info;
     }
+}
 
+#[derive(Debug)]
+pub enum OpenFileError {
+    Io(std::io::Error),
+    LoadZip(ZipError),
+    ResolveError(AsmErr),
+    Custom(String),
+}
+
+
+/// Abilities when file loaded.
+///
+/// Such abilities just a wrapper of [Accessor], but provided a more convenient interface and 
+/// record some logs at the backend.
+impl AsmServer {
+    // read the input content (apk/dex/jar/class...)
+    // return all class's internal names inside of this input.
     pub fn read_classes(&self) -> Vec<StrRef> {
         let start = Instant::now();
         let classes = (&self.accessor).read_classes();
@@ -77,11 +98,4 @@ impl AsmServer {
     }
 }
 
-#[derive(Debug)]
-pub enum OpenFileError {
-    Io(std::io::Error),
-    LoadZip(ZipError),
-    ResolveError(AsmErr),
-    Custom(String),
-}
 
