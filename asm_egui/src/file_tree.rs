@@ -3,13 +3,17 @@ use egui::text::LayoutJob;
 use egui::{ScrollArea, TextStyle};
 use java_asm_server::ui::{Content, FileEntry, FileInfo, RawDirInfo, Tab};
 use java_asm_server::AsmServer;
-use std::rc::Rc;
+use std::ops::Deref;
+use std::sync::Arc;
 
 pub fn render_dir(ui: &mut egui::Ui, app: &mut EguiApp) {
-    let entries = &mut app.server_app.left.root_node.visible_items();
-    let server = &app.server;
-    if let Some(server) = server {
-        let content = &mut app.server_app.content;
+    let server_app = app.server_app.app();
+    let mut server_app_left = server_app.left.lock().unwrap();
+    let mut server_app_content = server_app.content.lock().unwrap();
+    let entries = &mut server_app_left.root_node.visible_items();
+    let server = app.server.lock().unwrap();
+    if let Some(server) = server.deref() {
+        let content = &mut server_app_content;
         let row_height = ui.spacing().interact_size.y;
         ScrollArea::vertical()
             .show_rows(ui, row_height, entries.len(), |ui, range| {
@@ -47,8 +51,8 @@ fn render_file(
             if let Some(smali) = smali {
                 let current_tab = Tab {
                     selected: false,
-                    file_key: Rc::clone(file_key),
-                    title: Rc::clone(title),
+                    file_key: Arc::clone(file_key),
+                    title: Arc::clone(title),
                     content: smali,
                 };
                 let current = content.opened_tabs.len();

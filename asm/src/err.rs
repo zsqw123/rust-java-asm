@@ -1,5 +1,5 @@
 use std::io;
-use std::rc::Rc;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub enum AsmErr {
@@ -8,9 +8,9 @@ pub enum AsmErr {
     // e.g. `this_class` declared it is 3, but `constant_pool` has only 2 elements.
     OutOfRange(usize),
     // io error while reading content.
-    IOReadErr(Rc<io::Error>),
+    IOReadErr(Arc<io::Error>),
     // io error while writing content.
-    IOWriteErr(Rc<io::Error>),
+    IOWriteErr(Arc<io::Error>),
     // illegal format with custom messages.
     IllegalFormat(String),
     // illegal utf8 format when reading an utf8 character from the constant pool.

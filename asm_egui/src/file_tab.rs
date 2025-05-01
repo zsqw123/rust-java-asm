@@ -4,15 +4,14 @@ use egui::{Layout, Pos2, Rect, Response, Sense, TextStyle, Ui, Vec2, WidgetInfo,
 use egui_flex::{item, Flex, FlexAlignContent};
 use java_asm::StrRef;
 use java_asm_server::ui::Tab;
-use std::rc::Rc;
 
-pub fn render_tabs(ui: &mut Ui, current: &mut Option<usize>, tabs: &mut Vec<Tab>, deleted_tab: &mut Option<usize>) {
+pub fn render_tabs(ui: &mut Ui, current: &mut Option<usize>, tabs: &Vec<Tab>, deleted_tab: &mut Option<usize>) {
     Flex::horizontal()
         .align_content(FlexAlignContent::Start)
         .w_full()
         .wrap(true)
         .show(ui, |flex| {
-        for tab in tabs.iter_mut().enumerate() {
+        for tab in tabs.iter().enumerate() {
             flex.add_ui(item(), |ui: &mut Ui| {
                 file_title(ui, current, deleted_tab, tab)
             });
@@ -20,10 +19,10 @@ pub fn render_tabs(ui: &mut Ui, current: &mut Option<usize>, tabs: &mut Vec<Tab>
     });
 }
 
-fn file_title(ui: &mut Ui, current: &mut Option<usize>, deleted_tab: &mut Option<usize>, tab: (usize, &mut Tab)) {
+fn file_title(ui: &mut Ui, current: &mut Option<usize>, deleted_tab: &mut Option<usize>, tab: (usize, &Tab)) {
     let (index, tab) = tab;
     let selected = current.map(|current| current == index).unwrap_or_default();
-    let title = Rc::clone(&tab.title);
+    let title = tab.title.clone();
     let selectable_label = SelectableClosableLabel { selected, title };
     let response = selectable_label.ui(ui);
     if response.closed {

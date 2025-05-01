@@ -1,15 +1,14 @@
-use std::rc::Rc;
-
-use crate::*;
-use crate::jvms::attr::{LineNumberTableInfo, StackMapFrame};
-use crate::jvms::attr::Attribute as JvmsAttribute;
 use crate::jvms::attr::type_annotation::{TypeAnnotationTargetInfo, TypeAnnotationTargetPath};
+use crate::jvms::attr::Attribute as JvmsAttribute;
+use crate::jvms::attr::{LineNumberTableInfo, StackMapFrame};
 use crate::jvms::element::AttributeInfo;
-use crate::node::InsnNode;
 use crate::node::values::{
     AnnotationValue, ConstValue, FieldInitialValue, LocalVariableInfo, LocalVariableTypeInfo,
     ModuleAttrValue, ModuleExportValue, ModuleOpenValue, ModuleProvidesValue, ModuleRequireValue,
 };
+use crate::node::InsnNode;
+use crate::*;
+use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub struct ClassNode {
@@ -382,8 +381,8 @@ pub type LineNumberNode = LineNumberTableInfo;
 
 #[derive(Clone, Debug)]
 pub struct BootstrapMethodAttr {
-    pub method_handle: Rc<ConstValue>, // ConstValue::MethodHandle
-    pub arguments: Vec<Rc<ConstValue>>,
+    pub method_handle: Arc<ConstValue>, // ConstValue::MethodHandle
+    pub arguments: Vec<Arc<ConstValue>>,
 }
 
 /// each label contains a unique id in the method scope.

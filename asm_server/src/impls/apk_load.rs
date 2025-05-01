@@ -6,14 +6,14 @@ use java_asm::{DescriptorRef, StrRef};
 use log::{error, warn};
 use std::collections::HashMap;
 use std::io::{Read, Seek};
-use std::rc::Rc;
+use std::sync::Arc;
 use zip::ZipArchive;
 
 pub struct ApkAccessor {
     pub map: HashMap<DescriptorRef, ClassPosition>,
 }
 
-type ClassPosition = (Rc<DexFileAccessor>, ClassDef);
+type ClassPosition = (Arc<DexFileAccessor>, ClassDef);
 
 pub fn read_apk(zip_archive: ZipArchive<impl Read + Seek>) -> Result<ApkAccessor, OpenFileError> {
     let mut zip_archive = zip_archive;
@@ -37,8 +37,8 @@ pub fn read_apk(zip_archive: ZipArchive<impl Read + Seek>) -> Result<ApkAccessor
         let mut bytes = Vec::new();
         file.read_to_end(&mut bytes).map_err(OpenFileError::Io)?;
         let dex_file = DexFile::resolve_from_bytes(&bytes).map_err(OpenFileError::ResolveError)?;
-        Ok(Rc::new(DexFileAccessor::new(dex_file, bytes)))
-    }).map(|res: Result<Rc<DexFileAccessor>, OpenFileError>| {
+        Ok(Arc::new(DexFileAccessor::new(dex_file, bytes)))
+    }).map(|res: Result<Arc<DexFileAccessor>, OpenFileError>| {
         match res {
             Ok(dex_file) => Some(dex_file),
             Err(err) => {
@@ -54,10 +54,10 @@ pub fn read_apk(zip_archive: ZipArchive<impl Read + Seek>) -> Result<ApkAccessor
             let class_idx = class_def.class_idx;
             let class_name = dex_file.get_type(class_idx);
             if let Ok(class_name) = class_name {
-                let class_name = Rc::from(class_name);
+                let class_name = Arc::from(class_name);
                 let existed = map.get(&class_name);
                 if existed.is_none() {
-                    map.insert(class_name, (Rc::clone(&dex_file), *class_def));
+                    map.insert(class_name, (Arc::clone(&dex_file), *class_def));
                 }
             } else {
                 error!("Error when reading class name {}: {:?}", class_idx, class_name);

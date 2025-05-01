@@ -6,15 +6,15 @@ use eframe::{CreationContext, Frame};
 use egui::{Context, DroppedFile, ScrollArea};
 use egui_extras::{Size, StripBuilder};
 use java_asm_server::ui::log::{inject_log, LogHolder};
-use java_asm_server::ui::App;
-use java_asm_server::AsmServer;
+use java_asm_server::ui::{AppContainer, Content};
+use java_asm_server::{AsmServer, ServerMut};
+use std::ops::DerefMut;
 use std::sync::Arc;
 
-#[derive(Default)]
 pub struct EguiApp {
-    pub server: Option<AsmServer>,
+    pub server: ServerMut,
     pub log_holder: Arc<LogHolder>,
-    pub server_app: App,
+    pub server_app: AppContainer,
 }
 
 impl EguiApp {
@@ -22,7 +22,11 @@ impl EguiApp {
         let log_holder = Default::default();
         inject_log(Arc::clone(&log_holder));
         inject_sys_font(context);
-        Self { log_holder, ..Default::default() }
+        Self {
+            server: Default::default(),
+            log_holder,
+            server_app: Default::default(),
+        }
     }
 }
 
@@ -31,7 +35,9 @@ impl EguiApp {
         egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 if ui.button("📂 Open...").clicked() {
-                    AsmServer::dialog_to_open_file(&mut self.server, &mut self.server_app);
+                    AsmServer::dialog_to_open_file(
+                        self.server.clone(), self.server_app.clone(),
+                    );
                 }
             });
         });
@@ -72,17 +78,19 @@ impl EguiApp {
 
     fn central_panel(&mut self, ctx: &Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            let content = &mut self.server_app.content;
-            let tabs = &mut content.opened_tabs;
+            let server_app = self.server_app.app();
+            let mut server_content = server_app.content.lock().unwrap();
+            let Content { current, opened_tabs } = server_content.deref_mut();
 
             let mut deleted_tab = None;
 
-            render_tabs(ui, &mut content.current, tabs, &mut deleted_tab);
+            render_tabs(ui, current, opened_tabs, &mut deleted_tab);
 
             ui.separator();
 
-            if let Some(current_tab) = content.current {
-                let content = &mut tabs[current_tab].content;
+            if let Some(current_tab) = current {
+                let current_tab = *current_tab;
+                let content = &opened_tabs[current_tab].content;
                 ScrollArea::vertical().show(ui, |ui| {
                     smali_layout(ui, content);
                 });
@@ -90,7 +98,7 @@ impl EguiApp {
 
             // remove tab after this time rendering
             if let Some(index) = deleted_tab {
-                tabs.remove(index);
+                opened_tabs.remove(index);
             }
         });
     }
@@ -103,7 +111,7 @@ impl EguiApp {
             if let Some(DroppedFile { path, .. }) = input.raw.dropped_files.get(0) {
                 if let Some(path) = path {
                     let path = path.display().to_string();
-                    AsmServer::smart_open(&mut self.server, &path, &mut self.server_app);
+                    AsmServer::smart_open(self.server.clone(), &path, self.server_app.clone());
                 }
             }
         })

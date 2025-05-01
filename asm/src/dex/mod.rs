@@ -3,12 +3,12 @@ pub mod element;
 
 use crate::dex::element::{AsElement, ClassContentElement};
 use crate::impls::jvms::r::{ReadContext, U32BasedSize};
-use crate::impls::ToRc;
+use crate::impls::ToArc;
+use crate::smali::SmaliNode;
 use crate::{AsmErr, AsmResult};
 pub use constant::*;
 use std::io::Read;
 pub use util::*;
-use crate::smali::SmaliNode;
 
 pub mod insn;
 pub mod insn_syntax;
@@ -24,7 +24,7 @@ impl DexFile {
         let mut reader = reader;
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes)
-            .map_err(|e| AsmErr::IOReadErr(e.rc()))?;
+            .map_err(|e| AsmErr::IOReadErr(e.arc()))?;
         Self::resolve_from_bytes(&bytes)
     }
     pub fn resolve_from_bytes(bytes: &[u8]) -> AsmResult<Self> {

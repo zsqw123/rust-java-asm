@@ -5,7 +5,7 @@ use crate::impls::jvms::r::{ReadContext, ReadFrom};
 
 use crate::impls::jvms::r::transform::transform_class_file;
 use crate::impls::jvms::w::WriteContext;
-use crate::impls::ToRc;
+use crate::impls::ToArc;
 use crate::jvms::element::ClassFile;
 
 pub mod element;
@@ -18,7 +18,7 @@ impl JvmsClassReader {
         let mut reader = read;
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes)
-            .map_err(|e| AsmErr::IOReadErr(e.rc()))?;
+            .map_err(|e| AsmErr::IOReadErr(e.arc()))?;
         Self::read_class_bytes(&bytes)
     }
 
@@ -38,7 +38,7 @@ impl JvmsClassWriter {
         let bytes = Self::write_class_bytes(vec![], class_file)?;
         match writer.write(bytes.as_slice()) {
             Ok(_) => { Ok(()) }
-            Err(e) => { Err(AsmErr::IOWriteErr(e.rc())) }
+            Err(e) => { Err(AsmErr::IOWriteErr(e.arc())) }
         }
     }
 

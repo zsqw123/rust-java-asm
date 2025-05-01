@@ -1,36 +1,36 @@
 use crate::err::AsmErr;
-use crate::ComputableSizedVec;
 use crate::jvms::element::ClassFile;
 use crate::node::element::BootstrapMethodAttr;
 use crate::node::values::ConstValue;
+use crate::ComputableSizedVec;
 use std::cell::OnceCell;
 use std::fmt::Display;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct ConstPool {
-    pub jvms_file: Rc<ClassFile>,
+    pub jvms_file: Arc<ClassFile>,
     pub pool: ComputableSizedVec<ConstValue>,
 }
 
 pub(crate) struct ClassNodeContext {
-    pub jvms_file: Rc<ClassFile>,
-    pub cp: Rc<ConstPool>,
+    pub jvms_file: Arc<ClassFile>,
+    pub cp: Arc<ConstPool>,
     pub bootstrap_methods: OnceCell<Vec<BootstrapMethodAttr>>,
 }
 
 impl ClassNodeContext {
-    pub fn new(jvms_file: Rc<ClassFile>) -> ClassNodeContext {
+    pub fn new(jvms_file: Arc<ClassFile>) -> ClassNodeContext {
         let const_pool_size = jvms_file.constant_pool.len();
         let const_pool = ConstPool {
-            jvms_file: Rc::clone(&jvms_file),
+            jvms_file: Arc::clone(&jvms_file),
             pool: ComputableSizedVec::new(const_pool_size),
         };
         // attrs need to be read entirely, because we need to traverse the attributes
         // when constructing the class node, we just uses LazyCell for read it lazily.
-        let cp = Rc::new(const_pool);
+        let cp = Arc::new(const_pool);
         let bootstrap_methods = OnceCell::default();
         ClassNodeContext {
-            jvms_file: Rc::clone(&jvms_file),
+            jvms_file: Arc::clone(&jvms_file),
             cp, bootstrap_methods,
         }
     }

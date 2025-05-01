@@ -1,42 +1,79 @@
 use crate::impls::apk_load::read_apk;
-use crate::ui::{App, DirInfo};
-use crate::{Accessor, AsmServer};
+use crate::ui::{AppContainer, DirInfo, Left};
+use crate::{Accessor, AccessorEnum, AccessorMut, AsmServer, LoadingState, ServerMut};
 use java_asm::smali::SmaliNode;
 use java_asm::{AsmErr, StrRef};
 use log::{error, info};
+use std::fs::File;
 use std::io::{Read, Seek};
-use std::rc::Rc;
+use std::ops::{Deref, DerefMut};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use tokio::runtime;
 use zip::result::ZipError;
 use zip::ZipArchive;
 
 /// Builders of [AsmServer]
 impl AsmServer {
-    pub fn smart_open(server: &mut Option<Self>, path: &str, render_target: &mut App) {
-        let open_start = Instant::now();
-        let res = if path.ends_with(".apk") {
-            std::fs::File::open(path).map_err(OpenFileError::Io)
-                .and_then(Self::from_apk)
-        } else {
-            let err = format!("unsupported file type: {:?}", path);
-            error!("{}", err);
-            Err(OpenFileError::Custom(err))
-        };
-        match res {
-            Ok(res) => {
-                info!("open file cost: {:?}", open_start.elapsed());
-                res.render_to_app(render_target);
-                *server = Some(res);
-            }
-            Err(e) => error!("{:?}", e),
+    pub fn new() -> Self {
+        Self {
+            loading_state: LoadingState { in_loading: true, loading_progress: 0.0 },
+            accessor: Default::default(),
         }
     }
 
-    pub fn from_apk(apk_content: impl Read + Seek) -> Result<Self, OpenFileError> {
+    pub fn smart_open(server: ServerMut, path: &str, render_target: AppContainer) {
+        let context = FileOpenContext { path: path.to_string(), start_time: Instant::now() };
+        std::thread::spawn(move || {
+            // let tokio_runtime = runtime::Builder::new_multi_thread()
+            //     .enable_all().build().unwrap();
+            // tokio_runtime.spawn(async move {
+                let new_server = AsmServer::new();
+                let path = &context.path;
+                let accessor = new_server.accessor.clone();
+                if path.ends_with(".apk") {
+                    let opened_file = File::open(path);
+                    match opened_file {
+                        Ok(opened_file) => {
+                            let read_result = Self::from_apk(opened_file, accessor);
+                            if let Err(e) = read_result {
+                                error!("resolve file meets an error. {e:?}");
+                            }
+                        }
+                        Err(e) => {
+                            let error = OpenFileError::Io(e);
+                            error!("read {path} meet an io error. {error:?}");
+                        }
+                    }
+                } else {
+                    error!("unsupported file type: {:?}", path);
+                };
+                *server.lock().unwrap() = Some(new_server.clone());
+                new_server.on_file_opened(&context, render_target);
+            // })
+        });
+    }
+
+    fn on_file_opened(
+        &self,
+        context: &FileOpenContext,
+        render_target: AppContainer,
+    ) {
+        let FileOpenContext { path, start_time } = context;
+        info!("open file {path} cost: {:?}", start_time.elapsed());
+        self.render_to_app(render_target);
+    }
+
+    pub fn from_apk(
+        apk_content: impl Read + Seek,
+        accessor: AccessorMut,
+    ) -> Result<(), OpenFileError> {
         let zip = ZipArchive::new(apk_content)
             .map_err(OpenFileError::LoadZip)?;
-        let accessor = read_apk(zip)?.into();
-        Ok(Self { accessor })
+        let apk_accessor = read_apk(zip)?;
+        // safe unwrap, no other places in current thread will access it.
+        *accessor.try_lock().unwrap() = Some(Arc::new(AccessorEnum::Apk(apk_accessor)));
+        Ok(())
     }
 
     pub fn from_dex(dex_path: &str) -> Self {
@@ -44,9 +81,14 @@ impl AsmServer {
     }
 }
 
+struct FileOpenContext {
+    pub path: String,
+    pub start_time: Instant,
+}
+
 /// input operation processing
 impl AsmServer {
-    pub fn dialog_to_open_file(server: &mut Option<Self>, render_target: &mut App) {
+    pub fn dialog_to_open_file(server: ServerMut, render_target: AppContainer) {
         rfd::FileDialog::new()
             .add_filter("APK", &["apk"])
             .pick_file()
@@ -57,12 +99,12 @@ impl AsmServer {
             });
     }
 
-    pub fn render_to_app(&self, app: &mut App) {
+    pub fn render_to_app(&self, app: AppContainer) {
         let classes = self.read_classes();
         let start = Instant::now();
-        let dir_info = DirInfo::from_classes(Rc::from("Root"), &classes);
+        let dir_info = DirInfo::from_classes(Arc::from("Root"), &classes);
         info!("resolve dir info cost: {:?}", start.elapsed());
-        app.left.root_node = dir_info;
+        app.app().deref_mut().left = Arc::new(Mutex::new(Left { root_node: dir_info }));
     }
 }
 
@@ -83,18 +125,32 @@ impl AsmServer {
     // read the input content (apk/dex/jar/class...)
     // return all class's internal names inside of this input.
     pub fn read_classes(&self) -> Vec<StrRef> {
-        let start = Instant::now();
-        let classes = (&self.accessor).read_classes();
-        info!("{} classes loaded from server in {:?}", classes.len(), start.elapsed());
-        classes
+        let accessor = self.accessor_or_none();
+        match accessor {
+            None => Vec::new(),
+            Some(accessor) => {
+                let start = Instant::now();
+                let classes = accessor.read_classes();
+                info!("{} classes loaded from server in {:?}", classes.len(), start.elapsed());
+                classes
+            }
+        }
     }
 
     pub fn find_class(&self, class_key: &str) -> bool {
-        (&self.accessor).exist_class(class_key)
+        let accessor = self.accessor_or_none();
+        match accessor {
+            None => false,
+            Some(accessor) => accessor.exist_class(class_key),
+        }
     }
 
     pub fn read_content(&self, class_key: &str) -> Option<SmaliNode> {
-        (&self.accessor).read_content(class_key)
+        self.accessor_or_none()?.read_content(class_key)
+    }
+
+    fn accessor_or_none(&self) -> Option<Arc<AccessorEnum>> {
+        self.accessor.try_lock().ok()?.deref().clone()
     }
 }
 

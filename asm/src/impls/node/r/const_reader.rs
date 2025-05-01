@@ -1,13 +1,12 @@
-use std::ops::Deref;
-use std::rc::Rc;
-
 use crate::constants::Constants;
 use crate::err::{AsmErr, AsmResult};
 use crate::impls::node::r::node_reader::{ClassNodeContext, ConstPool};
+use crate::impls::ToStringRef;
 use crate::jvms::element::Const;
 use crate::node::values::{ConstValue, Handle};
 use crate::*;
-use crate::impls::ToStringRef;
+use std::ops::Deref;
+use std::sync::Arc;
 
 impl ComputableSizedVecOwner<ConstValue> for ConstPool {
     fn computable_vec(&self) -> &ComputableSizedVec<ConstValue> {
@@ -33,7 +32,7 @@ macro_rules! read_const {
                         index, constant, stringify!($variant))
                 ).e();
             };
-            Ok(($(Rc::clone($arg)),*))
+            Ok(($(Arc::clone($arg)),*))
         })*
     };
 }
@@ -89,7 +88,7 @@ impl ConstPool {
     }
 
     #[inline]
-    pub fn get_res(&self, index: u16) -> AsmResult<Rc<ConstValue>> {
+    pub fn get_res(&self, index: u16) -> AsmResult<Arc<ConstValue>> {
         self.get_or_compute(index as usize)
     }
 

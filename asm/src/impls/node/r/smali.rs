@@ -4,7 +4,6 @@ use crate::node::InsnNode;
 use crate::smali::{stb, SmaliNode, ToSmali};
 use crate::{raw_smali, ConstContainer, MethodHandleKind, NewArrayTypeOperand, Opcodes, StrRef};
 use std::fmt::{Debug, Display, Formatter};
-use std::rc::Rc;
 
 fn insn_name(opcode: &u8) -> String {
     Opcodes::const_name_or_default(*opcode, "insn")
@@ -107,7 +106,7 @@ impl ToStringRef for Handle {
         let owner = &self.owner;
         let name = &self.name;
         let desc = &self.desc;
-        Rc::from(format!("Handle({ref_kind_name}, {owner}, {name}, {desc})"))
+        StrRef::from(format!("Handle({ref_kind_name}, {owner}, {name}, {desc})"))
     }
 }
 

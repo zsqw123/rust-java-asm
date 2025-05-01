@@ -1,7 +1,6 @@
-use std::rc::Rc;
-
-use crate::*;
 use crate::node::element::{AnnotationNode, LabelNode};
+use crate::*;
+use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub enum ConstValue {
@@ -34,7 +33,7 @@ pub enum ConstValue {
 
 #[derive(Clone, Debug)]
 pub enum AnnotationValue {
-    Const(Rc<ConstValue>),
+    Const(Arc<ConstValue>),
     Enum(StrRef, StrRef),
     Class(InternalNameRef),
     Annotation(AnnotationNode),

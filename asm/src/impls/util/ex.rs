@@ -1,12 +1,12 @@
 use crate::AsmResult;
-use std::rc::Rc;
+use std::sync::Arc;
 
-pub(crate) trait ToRc<T> {
-    fn rc(self) -> Rc<T>;
+pub(crate) trait ToArc<T> {
+    fn arc(self) -> Arc<T>;
 }
 
-impl<T> ToRc<T> for T {
-    fn rc(self) -> Rc<T> { Rc::new(self) }
+impl<T> ToArc<T> for T {
+    fn arc(self) -> Arc<T> { Arc::new(self) }
 }
 
 pub(crate) trait VecEx<T> {

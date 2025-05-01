@@ -20,3 +20,4 @@ rfd = { workspace = true }
 
 enum_dispatch = { workspace = true }
 
+tokio = { workspace = true }

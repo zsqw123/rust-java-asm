@@ -1,6 +1,6 @@
 use crate::AsmResult;
 use std::cell::UnsafeCell;
-use std::rc::Rc;
+use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub enum InnerValue<V> {
@@ -11,7 +11,7 @@ pub enum InnerValue<V> {
 
 #[derive(Debug)]
 pub struct Computable<V> {
-    pub(crate) inner_value: UnsafeCell<InnerValue<Rc<V>>>,
+    pub(crate) inner_value: UnsafeCell<InnerValue<Arc<V>>>,
 }
 
 pub trait ComputableOwner<V> {
@@ -21,7 +21,7 @@ pub trait ComputableOwner<V> {
 
 
 pub trait ComputableAccessor<V> {
-    fn force(&self) -> AsmResult<Rc<V>>;
+    fn force(&self) -> AsmResult<Arc<V>>;
 }
 
 pub struct ComputableSizedVec<V> {
@@ -36,5 +36,5 @@ pub trait ComputableSizedVecOwner<V> {
 pub trait ComputableSizedVecAccessor<V> {
     /// Get the value at the index, compute value if needed.
     /// Returns [AsmErr::OutOfRange] if the `index` is out of range. 
-    fn get_or_compute(&self, index: usize) -> AsmResult<Rc<V>>;
+    fn get_or_compute(&self, index: usize) -> AsmResult<Arc<V>>;
 }

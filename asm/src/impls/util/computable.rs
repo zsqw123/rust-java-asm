@@ -1,7 +1,7 @@
+use crate::computable::{Computable, InnerValue};
 use crate::{AsmErr, AsmResult, ComputableAccessor, ComputableOwner, ComputableSizedVec, ComputableSizedVecAccessor, ComputableSizedVecOwner};
 use std::cell::UnsafeCell;
-use std::rc::Rc;
-use crate::computable::{Computable, InnerValue};
+use std::sync::Arc;
 
 impl<V> Default for InnerValue<V> {
     fn default() -> Self { InnerValue::UnInit }
@@ -30,23 +30,23 @@ impl<T, V> ComputableAccessor<V> for T
 where
     T: ComputableOwner<V>,
 {
-    fn force(&self) -> AsmResult<Rc<V>> {
+    fn force(&self) -> AsmResult<Arc<V>> {
         self.computable_ref().force_with_fn(|| self.compute())
     }
 }
 
 impl<V> Computable<V> {
-    pub fn force_with_fn(&self, f: impl FnOnce() -> AsmResult<V>) -> AsmResult<Rc<V>> {
+    pub fn force_with_fn(&self, f: impl FnOnce() -> AsmResult<V>) -> AsmResult<Arc<V>> {
         let inner_value_ptr = self.inner_value.get();
         let inner = unsafe { &mut *inner_value_ptr };
         match inner {
             InnerValue::UnInit => {
-                let value = Rc::new(f()?);
-                let copied = Rc::clone(&value);
+                let value = Arc::new(f()?);
+                let copied = value.clone();
                 *inner = InnerValue::Initialized(value);
                 Ok(copied)
             }
-            InnerValue::Initialized(value) => Ok(Rc::clone(value))
+            InnerValue::Initialized(value) => Ok(Arc::clone(value))
         }
     }
 }
@@ -63,7 +63,7 @@ impl<T, V> ComputableSizedVecAccessor<V> for T
 where
     T: ComputableSizedVecOwner<V>,
 {
-    fn get_or_compute(&self, index: usize) -> AsmResult<Rc<V>> {
+    fn get_or_compute(&self, index: usize) -> AsmResult<Arc<V>> {
         self.computable_vec().vec_ref.get(index)
             .ok_or_else(|| AsmErr::OutOfRange(index))?
             .force_with_fn(|| self.compute(index))

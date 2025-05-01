@@ -1,6 +1,5 @@
 use crate::StrRef;
-use std::rc::Rc;
-
+use std::sync::Arc;
 
 pub trait ToStringRef {
     fn to_ref(&self) -> StrRef;
@@ -13,17 +12,17 @@ impl<T: ToStringRef> ToStringRef for &T {
 
 impl ToStringRef for StrRef {
     #[inline]
-    fn to_ref(&self) -> StrRef { Rc::clone(self) }
+    fn to_ref(&self) -> StrRef { Arc::clone(self) }
 }
 
 impl ToStringRef for str {
     #[inline]
-    fn to_ref(&self) -> StrRef { Rc::from(self) }
+    fn to_ref(&self) -> StrRef { Arc::from(self) }
 }
 
 impl ToStringRef for String {
     #[inline]
-    fn to_ref(&self) -> StrRef { Rc::from(self.as_str()) }
+    fn to_ref(&self) -> StrRef { Arc::from(self.as_str()) }
 }
 
 macro_rules! to_str_ref_impls {
@@ -31,7 +30,7 @@ macro_rules! to_str_ref_impls {
         $(
             impl ToStringRef for $ty {
                 #[inline]
-                fn to_ref(&self) -> StrRef { Rc::from(self.to_string()) }
+                fn to_ref(&self) -> StrRef { StrRef::from(self.to_string()) }
             }
         )*
     };

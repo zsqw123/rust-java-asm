@@ -9,7 +9,6 @@ use crate::impls::ToStringRef;
 use crate::smali::{stb, tokens_to_raw, Dex2Smali, SmaliNode};
 use crate::{raw_smali, AsmResult, ConstContainer, DescriptorRef, StrRef};
 use std::collections::HashMap;
-use std::rc::Rc;
 
 impl InsnContainer {
     fn to_smali(&self, accessor: &DexFileAccessor, mut debug_info: DebugInfoMap) -> SmaliNode {
@@ -765,8 +764,8 @@ impl FieldElement {
         let mut tb = stb();
         let access_flags = self.access_flags;
         tb = FieldAccessFlags::render(access_flags, tb);
-        let name = Rc::clone(&self.name);
-        let descriptor = Rc::clone(&self.descriptor);
+        let name = self.name.clone();
+        let descriptor = self.descriptor.clone();
         let smali = tb.other(name).d(descriptor).s();
         smali
     }
@@ -777,7 +776,7 @@ impl MethodElement {
         let mut tb = stb();
         let access_flags = self.access_flags;
         tb = MethodAccessFlags::render(access_flags, tb);
-        let name = Rc::clone(&self.name);
+        let name = self.name.clone();
         let descriptor = format!("({}){}", self.parameters.join(""), self.return_type);
         let mut smali = tb.other(name).d(descriptor.to_ref()).s();
         let code = accessor.get_code_item(self.code_off)?;

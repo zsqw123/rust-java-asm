@@ -9,13 +9,34 @@ use java_asm::StrRef;
 use ::log::Level;
 use std::collections::BTreeMap;
 use std::iter::{Enumerate, Peekable};
-use std::rc::Rc;
 use std::str::Split;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 #[derive(Default, Clone, Debug)]
 pub struct App {
-    pub left: Left,
-    pub content: Content,
+    pub left: Arc<Mutex<Left>>,
+    pub content: Arc<Mutex<Content>>,
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct AppContainer(Arc<Mutex<App>>);
+
+impl AppContainer {
+    pub fn content(&self) -> Arc<Mutex<Content>> {
+        self.0.lock().unwrap().content.clone()
+    }
+
+    pub fn left(&self) -> Arc<Mutex<Left>> {
+        self.0.lock().unwrap().left.clone()
+    }
+
+    pub fn app(&self) -> MutexGuard<'_, App> {
+        self.0.lock().unwrap()
+    }
+}
+
+impl AppContainer {
+    
 }
 
 #[derive(Default, Clone, Debug)]
@@ -74,7 +95,7 @@ impl DirInfo {
     pub fn from_classes(title: StrRef, class_names: &[StrRef]) -> Self {
         let mut root_node = DirInfo { raw: RawDirInfo { title, ..Default::default() }, ..Default::default() };
         for class_name in class_names {
-            root_node.put_entry_if_absent(Rc::clone(class_name));
+            root_node.put_entry_if_absent(class_name.clone());
         }
         root_node
     }
@@ -82,7 +103,7 @@ impl DirInfo {
     pub fn get_entry(&self, path: &str) -> Option<AbsFile<&FileInfo, &DirInfo>> {
         let mut parts = Self::entry_parts(&path);
         while let Some((_, part)) = parts.next() {
-            let part = Rc::from(part);
+            let part = Arc::from(part);
             let dir = self.dirs.get(&part);
             if let Some(dir) = dir {
                 let next = parts.peek();
@@ -101,11 +122,11 @@ impl DirInfo {
         while let Some((index, part)) = parts.next() {
             let index = index as u16;
             if parts.peek().is_none() {
-                let file_key = Rc::clone(&path);
-                let file_name = Rc::from(part);
+                let file_key = Arc::clone(&path);
+                let file_name = Arc::from(part);
                 current.put_file_if_absent(index, file_key, file_name);
             } else {
-                current = current.put_dir_if_absent(index, Rc::from(part));
+                current = current.put_dir_if_absent(index, Arc::from(part));
             }
         }
     }
@@ -121,14 +142,14 @@ impl DirInfo {
     }
 
     fn put_file_if_absent(&mut self, level: u16, file_key: StrRef, file_name: StrRef) -> &mut FileInfo {
-        let title = Rc::clone(&file_name);
+        let title = file_name.clone();
         self.files.entry(file_name).or_insert_with(|| {
             FileInfo { title, level, file_key, ..Default::default() }
         })
     }
 
     fn put_dir_if_absent(&mut self, level: u16, folder_name: StrRef) -> &mut DirInfo {
-        let title = Rc::clone(&folder_name);
+        let title = folder_name.clone();
         self.dirs.entry(folder_name).or_insert_with(|| {
             let raw = RawDirInfo { title, level, ..Default::default() };
             DirInfo { raw, ..Default::default() }

@@ -1,5 +1,4 @@
 use crate::app::EguiApp;
-use egui::ViewportBuilder;
 
 pub mod app;
 pub(crate) mod font;

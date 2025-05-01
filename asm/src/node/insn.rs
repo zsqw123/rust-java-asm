@@ -1,8 +1,7 @@
-use std::rc::Rc;
-
-use crate::{InternalNameRef, StrRef};
 use crate::node::element::LabelNode;
 use crate::node::values::{ConstDynamic, ConstValue};
+use crate::{InternalNameRef, StrRef};
+use std::sync::Arc;
 
 //noinspection SpellCheckingInspection
 #[derive(Clone)]
@@ -40,7 +39,7 @@ pub enum InsnNode {
         opcode: u8,
         label: LabelNode,
     },
-    LdcInsnNode(Rc<ConstValue>),
+    LdcInsnNode(Arc<ConstValue>),
     TableSwitchInsnNode {
         default: LabelNode, // Beginning of the default handler block.
         min: i32, // The minimum key value.

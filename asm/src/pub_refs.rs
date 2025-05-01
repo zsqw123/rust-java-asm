@@ -1,8 +1,8 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub type ConstStr = &'static str;
 
-pub type StrRef = Rc<str>;
+pub type StrRef = Arc<str>;
 
 /// e.g.: java/lang/Class
 pub type InternalNameRef = StrRef;
