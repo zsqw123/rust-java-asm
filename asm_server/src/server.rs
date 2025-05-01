@@ -25,9 +25,9 @@ impl AsmServer {
     pub fn smart_open(server: ServerMut, path: &str, render_target: AppContainer) {
         let context = FileOpenContext { path: path.to_string(), start_time: Instant::now() };
         std::thread::spawn(move || {
-            // let tokio_runtime = runtime::Builder::new_multi_thread()
-            //     .enable_all().build().unwrap();
-            // tokio_runtime.spawn(async move {
+            let tokio_runtime = runtime::Builder::new_multi_thread()
+                .enable_all().build().unwrap();
+            tokio_runtime.block_on(async move {
                 let new_server = AsmServer::new();
                 let path = &context.path;
                 let accessor = new_server.accessor.clone();
@@ -50,7 +50,7 @@ impl AsmServer {
                 };
                 *server.lock().unwrap() = Some(new_server.clone());
                 new_server.on_file_opened(&context, render_target);
-            // })
+            })
         });
     }
 
