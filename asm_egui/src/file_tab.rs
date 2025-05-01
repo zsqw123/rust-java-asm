@@ -1,15 +1,19 @@
 use eframe::emath::Align;
 use eframe::epaint::StrokeKind;
 use egui::{Layout, Pos2, Rect, Response, Sense, TextStyle, Ui, Vec2, WidgetInfo, WidgetText, WidgetType};
-use egui_flex::{item, Flex};
+use egui_flex::{item, Flex, FlexAlignContent};
 use java_asm::StrRef;
 use java_asm_server::ui::Tab;
 use std::rc::Rc;
 
 pub fn render_tabs(ui: &mut Ui, current: &mut Option<usize>, tabs: &mut Vec<Tab>, deleted_tab: &mut Option<usize>) {
-    Flex::horizontal().show(ui, |ui| {
+    Flex::horizontal()
+        .align_content(FlexAlignContent::Start)
+        .w_full()
+        .wrap(true)
+        .show(ui, |flex| {
         for tab in tabs.iter_mut().enumerate() {
-            ui.add_ui(item(), |ui: &mut Ui| {
+            flex.add_ui(item(), |ui: &mut Ui| {
                 file_title(ui, current, deleted_tab, tab)
             });
         }
