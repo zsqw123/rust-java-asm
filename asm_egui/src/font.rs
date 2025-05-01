@@ -4,6 +4,7 @@ use egui::FontFamily;
 use java_asm_server::ui::font::FontFallbacks;
 use log::info;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::time::Instant;
 
 pub fn inject_sys_font(context: &CreationContext) -> Option<()> {
@@ -45,8 +46,8 @@ pub fn inject_sys_font(context: &CreationContext) -> Option<()> {
 }
 
 fn insert_font_into_definitions(
-    font_map: &mut BTreeMap<String, FontData>, font_name: &str, font_data: Vec<u8>,
+    font_map: &mut BTreeMap<String, Arc<FontData>>, font_name: &str, font_data: Vec<u8>,
 ) {
     let egui_font_data = FontData::from_owned(font_data);
-    font_map.insert(font_name.into(), egui_font_data);
+    font_map.insert(font_name.into(), Arc::new(egui_font_data));
 }

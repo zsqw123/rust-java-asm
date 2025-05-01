@@ -1,5 +1,6 @@
 use eframe::emath::Align;
-use egui::{Button, Layout, Pos2, Rect, Response, Sense, TextStyle, Ui, Vec2, Widget, WidgetInfo, WidgetText, WidgetType};
+use eframe::epaint::StrokeKind;
+use egui::{Layout, Pos2, Rect, Response, Sense, TextStyle, Ui, Vec2, WidgetInfo, WidgetText, WidgetType};
 use egui_flex::{item, Flex};
 use java_asm::StrRef;
 use java_asm_server::ui::Tab;
@@ -8,7 +9,7 @@ use std::rc::Rc;
 pub fn render_tabs(ui: &mut Ui, current: &mut Option<usize>, tabs: &mut Vec<Tab>, deleted_tab: &mut Option<usize>) {
     Flex::horizontal().show(ui, |ui| {
         for tab in tabs.iter_mut().enumerate() {
-            ui.add_simple(item(), |ui: &mut Ui| {
+            ui.add_ui(item(), |ui: &mut Ui| {
                 file_title(ui, current, deleted_tab, tab)
             });
         }
@@ -87,7 +88,10 @@ impl SelectableClosableLabel {
             .align_size_within_rect(galley.size(), rect.shrink2(padding)).min;
         if selected || response.hovered() {
             let hover_rect = rect.expand(visuals.expansion);
-            ui.painter().rect(hover_rect, visuals.rounding, visuals.weak_bg_fill, visuals.bg_stroke);
+            ui.painter().rect(
+                hover_rect, visuals.corner_radius, visuals.weak_bg_fill,
+                visuals.bg_stroke, StrokeKind::Middle
+            );
         }
 
         let close_btn_start = Pos2::new(
