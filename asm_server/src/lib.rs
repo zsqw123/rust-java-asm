@@ -20,7 +20,7 @@ pub struct AsmServer {
 pub type ServerMut = Arc<Mutex<Option<AsmServer>>>;
 type AccessorMut = Arc<Mutex<Option<AccessorEnum>>>;
 
-#[derive(Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct LoadingState {
     pub in_loading: bool,
     // file loading progress, 0.0 ~ 1.0

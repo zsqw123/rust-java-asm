@@ -4,6 +4,7 @@ pub mod font;
 
 use crate::ui::log::LogHolder;
 use crate::ui::AbsFile::{Dir, File};
+use crate::LoadingState;
 use java_asm::smali::SmaliNode;
 use java_asm::StrRef;
 use ::log::Level;
@@ -15,6 +16,7 @@ use std::sync::Arc;
 
 #[derive(Default, Clone, Debug)]
 pub struct App {
+    pub top: Arc<Mutex<Top>>,
     pub left: Arc<Mutex<Left>>,
     pub content: Arc<Mutex<Content>>,
 }
@@ -23,17 +25,18 @@ pub struct App {
 pub struct AppContainer(Arc<App>);
 
 impl AppContainer {
-    pub fn content(&self) -> &Arc<Mutex<Content>> {
-        &self.0.content
-    }
+    pub fn top(&self) -> &Arc<Mutex<Top>> { &self.0.top }
 
-    pub fn left(&self) -> &Arc<Mutex<Left>> {
-        &self.0.left
-    }
+    pub fn left(&self) -> &Arc<Mutex<Left>> { &self.0.left }
 
-    pub fn set_left(&self, left: Left) {
-        *self.0.left.lock() = left;
-    }
+    pub fn set_left(&self, left: Left) { *self.0.left.lock() = left; }
+
+    pub fn content(&self) -> &Arc<Mutex<Content>> { &self.0.content }
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct Top {
+    pub loading_state: LoadingState,
 }
 
 #[derive(Default, Clone, Debug)]
@@ -48,20 +51,6 @@ pub enum AbsFile<F, D> {
 }
 
 pub type FileEntry<'a> = AbsFile<&'a mut FileInfo, &'a mut RawDirInfo>;
-
-
-fn visible_items<'a, 'b>(dir_info: &'b mut DirInfo, container: &'a mut Vec<FileEntry<'b>>) {
-    let opened = dir_info.raw.opened;
-    container.push(Dir(&mut dir_info.raw));
-    if !opened { return; }
-    for (_, dir) in dir_info.dirs.iter_mut() {
-        visible_items(dir, container);
-    }
-    for (_, file) in dir_info.files.iter_mut() {
-        container.push(File(file));
-    }
-}
-
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FileInfo {
@@ -86,6 +75,18 @@ pub struct DirInfo {
     pub raw: RawDirInfo,
     pub dirs: DirMap,
     pub files: FileMap,
+}
+
+fn visible_items<'a, 'b>(dir_info: &'b mut DirInfo, container: &'a mut Vec<FileEntry<'b>>) {
+    let opened = dir_info.raw.opened;
+    container.push(Dir(&mut dir_info.raw));
+    if !opened { return; }
+    for (_, dir) in dir_info.dirs.iter_mut() {
+        visible_items(dir, container);
+    }
+    for (_, file) in dir_info.files.iter_mut() {
+        container.push(File(file));
+    }
 }
 
 impl DirInfo {

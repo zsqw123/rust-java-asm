@@ -38,8 +38,11 @@ impl AsmServer {
             *server.lock() = Some(new_server.clone());
 
             let server_for_receiver = server.clone();
+            let render_target_for_receiver = render_target.clone();
             runtime.spawn(async move {
-                let server = server_for_receiver;
+                let server = &server_for_receiver;
+                let render_target = &render_target_for_receiver;
+                
                 let mut receiver = receiver;
                 while let Some(msg) = receiver.recv().await {
                     let mut server = server.lock();
@@ -47,9 +50,9 @@ impl AsmServer {
                     let Some(server_ref) = server_ref else { continue };
                     match msg {
                         ServerMessage::Progress(progress) => {
-                            println!("progress: {}", progress.progress);
                             server_ref.loading_state.loading_progress = progress.progress;
                             server_ref.loading_state.in_loading = progress.in_loading;
+                            server_ref.on_progress_update(&render_target);
                         }
                     }
                 }

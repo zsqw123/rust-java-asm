@@ -1,6 +1,7 @@
 use crate::ui::AppContainer;
 use crate::AsmServer;
 use log::info;
+use std::ops::DerefMut;
 use std::time::Instant;
 
 pub enum ServerMessage {
@@ -28,5 +29,12 @@ impl AsmServer {
         let FileOpenContext { path, start_time } = context;
         info!("open file {path} cost: {:?}", start_time.elapsed());
         self.render_to_app(render_target);
+    }
+
+    pub fn on_progress_update(&self, render_target: &AppContainer) {
+        let current_loading_state = &self.loading_state;
+        let mut top = render_target.top().lock();
+        let top_mut = top.deref_mut();
+        (*top_mut).loading_state = current_loading_state.clone();
     }
 }
