@@ -6,20 +6,20 @@ use java_asm::smali::{SmaliNode, SmaliToken};
 #[derive(Default)]
 struct SmaliHighlighter;
 
+// font, dft_color, dark_mode, smali_node
+impl ComputerMut<(&FontId, Color32, bool, &SmaliNode), LayoutJob> for SmaliHighlighter {
+    fn compute(&mut self, key: (&FontId, Color32, bool, &SmaliNode)) -> LayoutJob {
+        let (font, dft_color, dark_mode, smali_node) = key;
+        let mut job = LayoutJob::default();
+        let smali_style = if dark_mode { SmaliStyle::DARK } else { SmaliStyle::LIGHT };
+        let max_offset_len = max_offset_hint(smali_node).to_string().len();
+        append_node(&font, dft_color, &smali_style, smali_node, &mut job, 0, max_offset_len);
+        job
+    }
+}
+
 pub fn smali_layout(ui: &mut Ui, smali_node: &SmaliNode) {
     let ctx = &mut ui.ctx();
-
-    // font, dft_color, dark_mode, smali_node
-    impl ComputerMut<(&FontId, Color32, bool, &SmaliNode), LayoutJob> for SmaliHighlighter {
-        fn compute(&mut self, key: (&FontId, Color32, bool, &SmaliNode)) -> LayoutJob {
-            let (font, dft_color, dark_mode, smali_node) = key;
-            let mut job = LayoutJob::default();
-            let smali_style = if dark_mode { SmaliStyle::DARK } else { SmaliStyle::LIGHT };
-            let max_offset_len = max_offset_hint(smali_node).to_string().len();
-            append_node(&font, dft_color, &smali_style, smali_node, &mut job, 0, max_offset_len);
-            job
-        }
-    }
 
     type HighlightCache = FrameCache<LayoutJob, SmaliHighlighter>;
 

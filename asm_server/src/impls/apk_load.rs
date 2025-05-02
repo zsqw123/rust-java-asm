@@ -1,3 +1,4 @@
+use crate::impls::server::{ProgressMessage, ServerMessage};
 use crate::server::OpenFileError;
 use crate::Accessor;
 use java_asm::dex::{ClassDef, DexFile, DexFileAccessor};
@@ -7,6 +8,7 @@ use log::{error, warn};
 use std::collections::HashMap;
 use std::io::{Read, Seek};
 use std::sync::Arc;
+use tokio::sync::mpsc::Sender;
 use zip::ZipArchive;
 
 pub struct ApkAccessor {
@@ -15,7 +17,9 @@ pub struct ApkAccessor {
 
 type ClassPosition = (Arc<DexFileAccessor>, ClassDef);
 
-pub fn read_apk(zip_archive: ZipArchive<impl Read + Seek>) -> Result<ApkAccessor, OpenFileError> {
+pub async fn read_apk(
+    zip_archive: ZipArchive<impl Read + Seek>, sender: Sender<ServerMessage>,
+) -> Result<ApkAccessor, OpenFileError> {
     let mut zip_archive = zip_archive;
     // read dex files
     let mut dex_files = zip_archive
@@ -32,6 +36,7 @@ pub fn read_apk(zip_archive: ZipArchive<impl Read + Seek>) -> Result<ApkAccessor
     }).filter_map(|v|v).collect();
     
     // put dex files
+    let dex_file_count = dex_files.len();
     let dex_files = dex_files.iter().map(|name| {
         let mut file = zip_archive.by_index(*name).map_err(OpenFileError::LoadZip)?;
         let mut bytes = Vec::new();
@@ -46,10 +51,9 @@ pub fn read_apk(zip_archive: ZipArchive<impl Read + Seek>) -> Result<ApkAccessor
                 None
             }
         }
-    }).filter_map(|v| v).collect::<Vec<_>>();
-    let classes_count = dex_files.iter().map(|dex_file| dex_file.file.class_defs.len()).sum();
-    let mut map = HashMap::with_capacity(classes_count);
-    for dex_file in dex_files {
+    }).filter_map(|v| v);
+    let mut map = HashMap::new();
+    for (index, dex_file) in dex_files.enumerate() {
         for class_def in dex_file.file.class_defs.iter() {
             let class_idx = class_def.class_idx;
             let class_name = dex_file.get_type(class_idx);
@@ -63,9 +67,32 @@ pub fn read_apk(zip_archive: ZipArchive<impl Read + Seek>) -> Result<ApkAccessor
                 error!("Error when reading class name {}: {:?}", class_idx, class_name);
             }
         }
+        send_progress(&sender, index + 1, dex_file_count).await;
     };
     map.shrink_to_fit();
+    send_loaded(&sender).await;
     Ok(ApkAccessor { map })
+}
+
+async fn send_progress(
+    sender: &Sender<ServerMessage>, current: usize, total: usize,
+) {
+    let progress = current as f32 / total as f32;
+    let message = ServerMessage::Progress(ProgressMessage {
+        progress,
+        in_loading: true,
+    });
+    sender.send(message).await.unwrap();
+}
+
+async fn send_loaded(
+    sender: &Sender<ServerMessage>,
+) {
+    let message = ServerMessage::Progress(ProgressMessage {
+        progress: 1.0,
+        in_loading: false,
+    });
+    sender.send(message).await.unwrap();
 }
 
 // classes.dex -> 0

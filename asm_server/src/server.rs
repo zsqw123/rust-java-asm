@@ -1,4 +1,6 @@
 use crate::impls::apk_load::read_apk;
+use crate::impls::server::{FileOpenContext, ServerMessage};
+use crate::impls::util::new_tokio_thread;
 use crate::ui::{AppContainer, DirInfo, Left};
 use crate::{Accessor, AccessorEnum, AccessorMut, AsmServer, LoadingState, ServerMut};
 use java_asm::smali::SmaliNode;
@@ -7,9 +9,10 @@ use log::{error, info};
 use std::fs::File;
 use std::io::{Read, Seek};
 use std::ops::{Deref, DerefMut};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Instant;
-use tokio::runtime;
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::Sender;
 use zip::result::ZipError;
 use zip::ZipArchive;
 
@@ -28,53 +31,61 @@ impl AsmServer {
 
     pub fn smart_open(server: ServerMut, path: &str, render_target: AppContainer) {
         let context = FileOpenContext { path: path.to_string(), start_time: Instant::now() };
-        std::thread::spawn(move || {
-            let tokio_runtime = runtime::Builder::new_multi_thread()
-                .enable_all().build().unwrap();
-            tokio_runtime.block_on(async move {
-                let new_server = AsmServer::new();
-                let path = &context.path;
-                let accessor = new_server.accessor.clone();
-                if path.ends_with(".apk") {
-                    let opened_file = File::open(path);
-                    match opened_file {
-                        Ok(opened_file) => {
-                            let read_result = Self::from_apk(opened_file, accessor);
-                            if let Err(e) = read_result {
-                                error!("resolve file meets an error. {e:?}");
-                            }
-                        }
-                        Err(e) => {
-                            let error = OpenFileError::Io(e);
-                            error!("read {path} meet an io error. {error:?}");
+        new_tokio_thread(|runtime| async move {
+            let (sender, receiver) = mpsc::channel::<ServerMessage>(5);
+
+            let new_server = AsmServer::new();
+            *server.lock() = Some(new_server.clone());
+
+            let server_for_receiver = server.clone();
+            runtime.spawn(async move {
+                let server = server_for_receiver;
+                let mut receiver = receiver;
+                while let Some(msg) = receiver.recv().await {
+                    let mut server = server.lock();
+                    let server_ref = server.deref_mut();
+                    let Some(server_ref) = server_ref else { continue };
+                    match msg {
+                        ServerMessage::Progress(progress) => {
+                            println!("progress: {}", progress.progress);
+                            server_ref.loading_state.loading_progress = progress.progress;
+                            server_ref.loading_state.in_loading = progress.in_loading;
                         }
                     }
-                } else {
-                    error!("unsupported file type: {:?}", path);
-                };
-                *server.lock() = Some(new_server.clone());
-                new_server.on_file_opened(&context, render_target);
-            })
+                }
+            });
+
+            let path = &context.path;
+            let accessor = new_server.accessor.clone();
+            if path.ends_with(".apk") {
+                let opened_file = File::open(path);
+                match opened_file {
+                    Ok(opened_file) => {
+                        let read_result = Self::from_apk(opened_file, sender, accessor).await;
+                        if let Err(e) = read_result {
+                            error!("resolve file meets an error. {e:?}");
+                        }
+                    }
+                    Err(e) => {
+                        let error = OpenFileError::Io(e);
+                        error!("read {path} meet an io error. {error:?}");
+                    }
+                }
+            } else {
+                error!("unsupported file type: {:?}", path);
+            };
+            new_server.on_file_opened(&context, render_target);
         });
     }
 
-    fn on_file_opened(
-        &self,
-        context: &FileOpenContext,
-        render_target: AppContainer,
-    ) {
-        let FileOpenContext { path, start_time } = context;
-        info!("open file {path} cost: {:?}", start_time.elapsed());
-        self.render_to_app(render_target);
-    }
-
-    pub fn from_apk(
+    pub async fn from_apk(
         apk_content: impl Read + Seek,
+        sender: Sender<ServerMessage>,
         accessor: AccessorMut,
     ) -> Result<(), OpenFileError> {
         let zip = ZipArchive::new(apk_content)
             .map_err(OpenFileError::LoadZip)?;
-        let apk_accessor = read_apk(zip)?;
+        let apk_accessor = read_apk(zip, sender).await?;
         // safe unwrap, no other places in current thread will access it.
         *accessor.lock() = Some(AccessorEnum::Apk(apk_accessor));
         Ok(())
@@ -85,10 +96,6 @@ impl AsmServer {
     }
 }
 
-struct FileOpenContext {
-    pub path: String,
-    pub start_time: Instant,
-}
 
 /// input operation processing
 impl AsmServer {

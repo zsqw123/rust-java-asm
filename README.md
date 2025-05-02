@@ -42,6 +42,7 @@ see some examples.
 - [ ] Isolate AsmResult as multiple different errors, and provide a better error message.
 - [ ] GUI interactions
   - [ ] GUI backend:
+    - [x] add progress when loading files
     - [ ] unzip (whatever jar or dex) & parallel read
     - [ ] retrieve metadata and combine multiple metadata for better indexing
     - [x] using metadata to get the real data if needed (e.g. method instructions)
@@ -49,6 +50,7 @@ see some examples.
   - [ ] GUI frontend:
     - [x] basic window with egui.
     - [x] load files from the backend
+    - [ ] add progress bar UI when loading files
     - [x] show metadata in a tree view
     - [x] show instructions in a list view
     - [ ] quick jump to specific metadata
