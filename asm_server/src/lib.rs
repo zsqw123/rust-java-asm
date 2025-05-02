@@ -2,7 +2,8 @@ use crate::impls::apk_load::ApkAccessor;
 use enum_dispatch::enum_dispatch;
 use java_asm::smali::SmaliNode;
 use java_asm::{DescriptorRef, StrRef};
-use std::sync::{Arc, Mutex};
+use parking_lot::Mutex;
+use std::sync::Arc;
 
 pub mod server;
 
@@ -17,13 +18,15 @@ pub struct AsmServer {
 }
 
 pub type ServerMut = Arc<Mutex<Option<AsmServer>>>;
-type AccessorMut = Arc<Mutex<Option<Arc<AccessorEnum>>>>;
+type AccessorMut = Arc<Mutex<Option<AccessorEnum>>>;
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct LoadingState {
     pub in_loading: bool,
     // file loading progress, 0.0 ~ 1.0
     pub loading_progress: f32,
+    // when loading failed, the error will be set.
+    pub err: Option<String>,
 }
 
 #[enum_dispatch]

@@ -7,10 +7,11 @@ use crate::ui::AbsFile::{Dir, File};
 use java_asm::smali::SmaliNode;
 use java_asm::StrRef;
 use ::log::Level;
+use parking_lot::Mutex;
 use std::collections::BTreeMap;
 use std::iter::{Enumerate, Peekable};
 use std::str::Split;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::Arc;
 
 #[derive(Default, Clone, Debug)]
 pub struct App {
@@ -19,24 +20,20 @@ pub struct App {
 }
 
 #[derive(Default, Clone, Debug)]
-pub struct AppContainer(Arc<Mutex<App>>);
+pub struct AppContainer(Arc<App>);
 
 impl AppContainer {
-    pub fn content(&self) -> Arc<Mutex<Content>> {
-        self.0.lock().unwrap().content.clone()
+    pub fn content(&self) -> &Arc<Mutex<Content>> {
+        &self.0.content
     }
 
-    pub fn left(&self) -> Arc<Mutex<Left>> {
-        self.0.lock().unwrap().left.clone()
+    pub fn left(&self) -> &Arc<Mutex<Left>> {
+        &self.0.left
     }
 
-    pub fn app(&self) -> MutexGuard<'_, App> {
-        self.0.lock().unwrap()
+    pub fn set_left(&self, left: Left) {
+        *self.0.left.lock() = left;
     }
-}
-
-impl AppContainer {
-    
 }
 
 #[derive(Default, Clone, Debug)]

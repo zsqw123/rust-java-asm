@@ -17,7 +17,11 @@ use zip::ZipArchive;
 impl AsmServer {
     pub fn new() -> Self {
         Self {
-            loading_state: LoadingState { in_loading: true, loading_progress: 0.0 },
+            loading_state: LoadingState {
+                in_loading: true,
+                loading_progress: 0.0,
+                err: None,
+            },
             accessor: Default::default(),
         }
     }
@@ -48,7 +52,7 @@ impl AsmServer {
                 } else {
                     error!("unsupported file type: {:?}", path);
                 };
-                *server.lock().unwrap() = Some(new_server.clone());
+                *server.lock() = Some(new_server.clone());
                 new_server.on_file_opened(&context, render_target);
             })
         });
@@ -72,7 +76,7 @@ impl AsmServer {
             .map_err(OpenFileError::LoadZip)?;
         let apk_accessor = read_apk(zip)?;
         // safe unwrap, no other places in current thread will access it.
-        *accessor.try_lock().unwrap() = Some(Arc::new(AccessorEnum::Apk(apk_accessor)));
+        *accessor.lock() = Some(AccessorEnum::Apk(apk_accessor));
         Ok(())
     }
 
@@ -104,7 +108,7 @@ impl AsmServer {
         let start = Instant::now();
         let dir_info = DirInfo::from_classes(Arc::from("Root"), &classes);
         info!("resolve dir info cost: {:?}", start.elapsed());
-        app.app().deref_mut().left = Arc::new(Mutex::new(Left { root_node: dir_info }));
+        app.set_left(Left { root_node: dir_info });
     }
 }
 
@@ -125,7 +129,8 @@ impl AsmServer {
     // read the input content (apk/dex/jar/class...)
     // return all class's internal names inside of this input.
     pub fn read_classes(&self) -> Vec<StrRef> {
-        let accessor = self.accessor_or_none();
+        let accessor_locked = self.accessor.lock();
+        let accessor = accessor_locked.deref();
         match accessor {
             None => Vec::new(),
             Some(accessor) => {
@@ -138,7 +143,8 @@ impl AsmServer {
     }
 
     pub fn find_class(&self, class_key: &str) -> bool {
-        let accessor = self.accessor_or_none();
+        let accessor_locked = self.accessor.lock();
+        let accessor = accessor_locked.deref();
         match accessor {
             None => false,
             Some(accessor) => accessor.exist_class(class_key),
@@ -146,11 +152,12 @@ impl AsmServer {
     }
 
     pub fn read_content(&self, class_key: &str) -> Option<SmaliNode> {
-        self.accessor_or_none()?.read_content(class_key)
-    }
-
-    fn accessor_or_none(&self) -> Option<Arc<AccessorEnum>> {
-        self.accessor.try_lock().ok()?.deref().clone()
+        let accessor_locked = self.accessor.lock();
+        let accessor = accessor_locked.deref();
+        match accessor {
+            None => None,
+            Some(accessor) => accessor.read_content(class_key),
+        }
     }
 }
 

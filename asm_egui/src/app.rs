@@ -66,7 +66,7 @@ impl EguiApp {
             .show(ctx, |ui| {
             ui.collapsing("Log / 日志", |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
-                    let current_records = self.log_holder.records.lock().unwrap();
+                    let current_records = self.log_holder.records.lock();
                     let current_records = current_records.iter();
                     for log in current_records {
                         ui.label(format!("{}: {}", log.level, log.message));
@@ -78,8 +78,7 @@ impl EguiApp {
 
     fn central_panel(&mut self, ctx: &Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            let server_app = self.server_app.app();
-            let mut server_content = server_app.content.lock().unwrap();
+            let mut server_content = self.server_app.content().lock();
             let Content { current, opened_tabs } = server_content.deref_mut();
 
             let mut deleted_tab = None;

@@ -21,3 +21,4 @@ rfd = { workspace = true }
 enum_dispatch = { workspace = true }
 
 tokio = { workspace = true }
+parking_lot = { workspace = true }

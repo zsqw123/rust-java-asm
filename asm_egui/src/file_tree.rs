@@ -7,11 +7,11 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 pub fn render_dir(ui: &mut egui::Ui, app: &mut EguiApp) {
-    let server_app = app.server_app.app();
-    let mut server_app_left = server_app.left.lock().unwrap();
-    let mut server_app_content = server_app.content.lock().unwrap();
+    let server_app = &app.server_app;
+    let mut server_app_left = server_app.left().lock();
+    let mut server_app_content = server_app.content().lock();
     let entries = &mut server_app_left.root_node.visible_items();
-    let server = app.server.lock().unwrap();
+    let server = app.server.lock();
     if let Some(server) = server.deref() {
         let content = &mut server_app_content;
         let row_height = ui.spacing().interact_size.y;

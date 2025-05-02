@@ -1892,6 +1892,7 @@ dependencies = [
  "fontdb",
  "java_asm",
  "log",
+ "parking_lot",
  "rfd",
  "tokio",
  "zip",

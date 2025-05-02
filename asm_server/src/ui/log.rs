@@ -1,6 +1,7 @@
 use log::{Level, Metadata, Record};
+use parking_lot::Mutex;
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 pub struct LogHolder {
     pub min_level: Level,
@@ -32,7 +33,7 @@ impl log::Log for LogHolder {
         if !self.enabled(record.metadata()) {
             return;
         }
-        let deque = &mut self.records.lock().unwrap();
+        let deque = &mut self.records.lock();
         if deque.len() >= self.max_len {
             deque.pop_front();
         }
