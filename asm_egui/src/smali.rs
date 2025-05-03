@@ -49,7 +49,17 @@ fn token(
             let text = format!("v{start}..v{end}");
             simple_text(ui, text, font, smali_style.register)
         }
-        SmaliToken::Descriptor(s) => simple_text(ui, s.to_string(), font, smali_style.desc),
+        SmaliToken::Descriptor(s) => {
+            let text_ui = simple_text(ui, s.to_string(), font, smali_style.desc)
+                .on_hover_ui(|ui| {
+                    ui.style_mut().interaction.selectable_labels = true;
+                    ui.label(format!("descriptor: {s}"));
+                });
+            text_ui.context_menu(|ui| {
+                ui.label(format!("descriptor: {s}"));
+            });
+            text_ui
+        },
         SmaliToken::Literal(s) => simple_text(ui, s.to_string(), font, smali_style.literal),
         SmaliToken::Other(s) => simple_text(ui, s.to_string(), font, dft_color),
     }
