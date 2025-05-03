@@ -61,6 +61,8 @@ pub async fn read_apk(
                 let class_name = Arc::from(class_name);
                 let existed = map.get(&class_name);
                 if existed.is_none() {
+                    // dex index is the priority, the lower the index, the higher the priority.
+                    // if two classes have the same name, the one with the lower index will be kept.
                     map.insert(class_name, (Arc::clone(&dex_file), *class_def));
                 }
             } else {

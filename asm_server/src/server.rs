@@ -1,17 +1,13 @@
-use crate::impls::apk_load::read_apk;
-use crate::impls::server::{FileOpenContext, ServerMessage};
+use crate::impls::server::FileOpenContext;
 use crate::impls::util::new_tokio_thread;
-use crate::ui::{AppContainer, DirInfo, Left};
-use crate::{Accessor, AccessorEnum, AccessorMut, AsmServer, LoadingState, ServerMut};
+use crate::ui::AppContainer;
+use crate::{Accessor, AsmServer, LoadingState, ServerMut};
 use java_asm::smali::SmaliNode;
 use java_asm::{AsmErr, StrRef};
 use log::{error, info};
 use std::fs::File;
-use std::io::{Read, Seek};
-use std::ops::{Deref, DerefMut};
-use std::sync::Arc;
+use std::ops::Deref;
 use std::time::Instant;
-use tokio::sync::mpsc;
 use zip::result::ZipError;
 
 impl AsmServer {
@@ -42,7 +38,7 @@ impl AsmServer {
                 let opened_file = File::open(path);
                 match opened_file {
                     Ok(opened_file) => {
-                        let read_result = Self::from_apk(opened_file, sender, accessor).await;
+                        let read_result = Self::read_apk(opened_file, sender, accessor).await;
                         if let Err(e) = read_result {
                             error!("resolve file meets an error. {e:?}");
                         }
@@ -72,14 +68,6 @@ impl AsmServer {
                     Self::smart_open(server, path, render_target);
                 }
             });
-    }
-
-    pub fn render_to_app(&self, app: AppContainer) {
-        let classes = self.read_classes();
-        let start = Instant::now();
-        let dir_info = DirInfo::from_classes(Arc::from("Root"), &classes);
-        info!("resolve dir info cost: {:?}", start.elapsed());
-        app.set_left(Left { root_node: dir_info });
     }
 }
 

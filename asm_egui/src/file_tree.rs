@@ -15,7 +15,7 @@ pub fn render_dir(ui: &mut egui::Ui, app: &mut EguiApp) {
     if let Some(server) = server.deref() {
         let content = &mut server_app_content;
         let row_height = ui.spacing().interact_size.y;
-        ScrollArea::vertical()
+        ScrollArea::vertical().auto_shrink(false)
             .show_rows(ui, row_height, entries.len(), |ui, range| {
                 for i in range {
                     let entry = &mut entries[i];

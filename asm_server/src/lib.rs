@@ -10,6 +10,7 @@ pub mod server;
 pub(crate) mod impls;
 pub mod ui;
 
+// the server contains all information for single opened file.
 #[derive(Clone)]
 pub struct AsmServer {
     pub loading_state: LoadingState,

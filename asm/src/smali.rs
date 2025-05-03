@@ -51,20 +51,17 @@ impl SmaliTokensBuilder {
         self
     }
 
-    #[inline]
-    pub fn build(self) -> Vec<SmaliToken> {
-        self.0
-    }
-
     pub fn raw(self, raw: ConstStr) -> Self {
         self.push(SmaliToken::Raw(raw))
     }
 
+    // build the smali node with no children.
     #[inline]
     pub fn s(self) -> SmaliNode {
         SmaliNode { content: self.0, ..Default::default() }
     }
 
+    // build the smali node with children.
     #[inline]
     pub fn s_with_children(self, children: Vec<SmaliNode>) -> SmaliNode {
         SmaliNode { content: self.0, children, ..Default::default() }
@@ -194,36 +191,9 @@ impl SmaliNode {
         result
     }
     
-    fn render_internal(&self, ident_level: usize, result: &mut String) {
-        let indent_str = "    ".repeat(ident_level);
-        result.push_str(&indent_str);
-        if let Some(offset_hint) = self.offset_hint {
-            result.push_str(&offset_hint.to_string());
-            result.push_str(": ");
-        }
-        let tag = self.tag;
-        if let Some(tag) = tag {
-            result.push_str(&tag.to_string());
-            result.push(' ');
-        }
-        let content = &self.content;
-        if !content.is_empty() {
-            result.push_str(&tokens_to_raw(content));
-            result.push(' ')
-        }
-
-        if self.children.is_empty() && self.end_tag.is_none() {
-            return;
-        }
-        for child in &self.children {
-            result.push('\n');
-            child.render_internal(ident_level + 1, result);
-        }
-        if let Some(postfix) = &self.end_tag {
-            result.push('\n');
-            result.push_str(&indent_str);
-            result.push_str(&postfix);
-        }
+    #[inline]
+    pub fn render_to_lines(&self) -> Vec<Vec<SmaliToken>> {
+        self.render_to_lines_internal()
     }
 }
 

@@ -1,15 +1,16 @@
-use crate::ui::AppContainer;
+use crate::impls::apk_load::read_apk;
+use crate::server::OpenFileError;
+use crate::ui::{AppContainer, DirInfo, Left};
 use crate::{AccessorEnum, AccessorMut, AsmServer, ServerMut};
 use log::info;
 use std::io::{Read, Seek};
 use std::ops::DerefMut;
+use std::sync::Arc;
 use std::time::Instant;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
 use zip::ZipArchive;
-use crate::impls::apk_load::read_apk;
-use crate::server::OpenFileError;
 
 pub enum ServerMessage {
     Progress(ProgressMessage),
@@ -52,7 +53,7 @@ impl AsmServer {
         sender
     }
 
-    pub async fn from_apk(
+    pub async fn read_apk(
         apk_content: impl Read + Seek,
         sender: Sender<ServerMessage>,
         accessor: AccessorMut,
@@ -80,5 +81,13 @@ impl AsmServer {
         let mut top = render_target.top().lock();
         let top_mut = top.deref_mut();
         (*top_mut).loading_state = current_loading_state.clone();
+    }
+
+    fn render_to_app(&self, app: AppContainer) {
+        let classes = self.read_classes();
+        let start = Instant::now();
+        let dir_info = DirInfo::from_classes(Arc::from("Root"), &classes);
+        info!("resolve dir info cost: {:?}", start.elapsed());
+        app.set_left(Left { root_node: dir_info });
     }
 }

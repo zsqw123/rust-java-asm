@@ -14,6 +14,9 @@ use std::iter::{Enumerate, Peekable};
 use std::str::Split;
 use std::sync::Arc;
 
+/// contains all states of the app.
+/// It's not like the [crate::AsmServer] which only contains the information of a file.
+/// App will exists even no file opened. (no [crate::AsmServer] exists)
 #[derive(Default, Clone, Debug)]
 pub struct App {
     pub top: Arc<Mutex<Top>>,
