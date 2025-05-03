@@ -9,7 +9,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.11" # JAVA_ASM_VERSION
+version = "0.0.12" # JAVA_ASM_VERSION
 authors = ["zsqw123"]
 edition = "2021"
 license = "Apache-2.0"
@@ -20,9 +20,9 @@ homepage = "https://crates.io/crates/java_asm"
 readme = "README.md"
 
 [workspace.dependencies]
-java_asm_macro = { path = "asm_macro", version = "0.0.11" } # JAVA_ASM_VERSION
-java_asm = { path = "asm", version = "0.0.11" } # JAVA_ASM_VERSION
-java_asm_server = { path = "asm_server", version = "0.0.11" } # JAVA_ASM_VERSION
+java_asm_macro = { path = "asm_macro", version = "0.0.12" } # JAVA_ASM_VERSION
+java_asm = { path = "asm", version = "0.0.12" } # JAVA_ASM_VERSION
+java_asm_server = { path = "asm_server", version = "0.0.12" } # JAVA_ASM_VERSION
 
 enum_dispatch = "0.3.13"
 zip = "2.2.0"

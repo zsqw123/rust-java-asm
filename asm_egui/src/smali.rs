@@ -53,7 +53,10 @@ fn token(
             let text_ui = simple_text(ui, s.to_string(), font, smali_style.desc)
                 .on_hover_ui(|ui| {
                     ui.style_mut().interaction.selectable_labels = true;
-                    ui.label(format!("descriptor: {s}"));
+                    ui.horizontal(|ui| {
+                        ui.label(format!("1descriptor: {s}"));
+                        ui.label(format!("2descriptor: {s}"));
+                    });
                 });
             text_ui.context_menu(|ui| {
                 ui.label(format!("descriptor: {s}"));

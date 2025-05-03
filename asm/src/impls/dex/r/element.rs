@@ -77,18 +77,11 @@ where
 {
     let vec_size = vec.len();
     let mut result = Vec::with_capacity(vec_size);
-    let mut index = 0;
-    while index < vec_size {
-        let previous = if index != 0 {
-            Some(&vec[index - 1])
-        } else {
-            None // cannot using `index - 1` because it may overflow when index is 0u32
-        };
-        // SAFETY: index is always less than vec_size
-        let c = vec.get(index).unwrap();
-        let element = c.to_element(accessor, previous)?;
+    let mut prev_index = 0;
+    for c in vec {
+        let (current_index, element) = c.to_element(accessor, prev_index)?;
+        prev_index = current_index;
         result.push(element);
-        index += 1;
     }
     Ok(result)
 }
@@ -120,9 +113,9 @@ fn read_method(
     MethodElement { access_flags, name, shorty_descriptor, return_type, parameters, code_off }.ok()
 }
 
-impl AsElement<ClassContentElement> for ClassDataItem {
-    fn to_element(
-        &self, accessor: &DexFileAccessor, _previous: Option<&ClassDataItem>,
+impl ClassDataItem {
+    pub(crate) fn to_element(
+        &self, accessor: &DexFileAccessor
     ) -> AsmResult<ClassContentElement> {
         let static_fields = to_element_list_impl(
             accessor, &self.static_fields,
@@ -145,20 +138,18 @@ impl AsElement<ClassContentElement> for ClassDataItem {
 
 impl AsElement<FieldElement> for EncodedField {
     fn to_element(
-        &self, accessor: &DexFileAccessor, previous: Option<&EncodedField>,
-    ) -> AsmResult<FieldElement> {
-        let previous_field_idx = previous.map_or(0, |f| f.field_idx_diff.value());
-        let field_idx = self.field_idx_diff.value() + previous_field_idx;
-        read_field(accessor, self, field_idx)
+        &self, accessor: &DexFileAccessor, previous_index: u32,
+    ) -> AsmResult<(u32, FieldElement)> {
+        let field_idx = self.field_idx_diff.value() + previous_index;
+        Ok((field_idx, read_field(accessor, self, field_idx)?))
     }
 }
 
 impl AsElement<MethodElement> for EncodedMethod {
     fn to_element(
-        &self, accessor: &DexFileAccessor, previous: Option<&EncodedMethod>,
-    ) -> AsmResult<MethodElement> {
-        let previous_method_idx = previous.map_or(0, |m| m.method_idx_diff.value());
-        let method_idx = self.method_idx_diff.value() + previous_method_idx;
-        read_method(accessor, self, method_idx)
+        &self, accessor: &DexFileAccessor, previous_index: u32,
+    ) -> AsmResult<(u32, MethodElement)> {
+        let method_idx = self.method_idx_diff.value() + previous_index;
+        Ok((method_idx, read_method(accessor, self, method_idx)?))
     }
 }

@@ -69,7 +69,7 @@ impl DexFileAccessor {
     }
 
     pub fn get_class_element(&self, class_data_off: DUInt) -> AsmResult<ClassContentElement> {
-        self.get_data_impl::<ClassDataItem>(class_data_off)?.to_element(&self, None)
+        self.get_data_impl::<ClassDataItem>(class_data_off)?.to_element(&self)
     }
 
     pub fn get_class_smali(&self, class_def: ClassDef) -> AsmResult<SmaliNode> {

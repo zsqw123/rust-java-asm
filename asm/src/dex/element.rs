@@ -3,11 +3,7 @@ use crate::AsmResult;
 use crate::{DescriptorRef, StrRef};
 
 pub trait AsElement<E> {
-    fn to_element(&self, accessor: &DexFileAccessor, previous: Option<&Self>) -> AsmResult<E>;
-}
-
-pub struct DexElement {
-    
+    fn to_element(&self, accessor: &DexFileAccessor, previous_index: u32) -> AsmResult<(u32, E)>;
 }
 
 #[derive(Clone, Debug)]
