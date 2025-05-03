@@ -46,6 +46,10 @@ jobs:
           # the matrix because GitHub Actions changed the default architecture
           # of macos-latest since macos-14.
           target: ${{ matrix.target }}
+          # (optional) On which platform to distribute the `.tar.gz` file.
+          # [default value: unix]
+          # [possible values: all, unix, windows, none]
+          tar: none
           # (optional) On which platform to distribute the `.zip` file.
           # [default value: windows]
           # [possible values: all, unix, windows, none]

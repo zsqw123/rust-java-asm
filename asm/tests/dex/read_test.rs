@@ -1,5 +1,5 @@
 use java_asm::dex::{DexFile, DexFileAccessor};
-use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Instant;
 
 #[test]
@@ -14,7 +14,7 @@ fn read_dex_test() {
     let resolve_start = Instant::now();
     let demo_methods = demo_class_data.direct_methods.iter().map(|m| {
         let code_item = dex_accessor.get_code_item(m.code_off).unwrap();
-        (Rc::clone(&m.name), code_item)
+        (Arc::clone(&m.name), code_item)
     }).collect::<Vec<_>>();
     println!("Methods instructions resolved in {:?}", resolve_start.elapsed());
 
