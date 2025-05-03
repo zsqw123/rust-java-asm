@@ -1,8 +1,15 @@
 use crate::ui::AppContainer;
-use crate::AsmServer;
+use crate::{AccessorEnum, AccessorMut, AsmServer, ServerMut};
 use log::info;
+use std::io::{Read, Seek};
 use std::ops::DerefMut;
 use std::time::Instant;
+use tokio::runtime::Runtime;
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::Sender;
+use zip::ZipArchive;
+use crate::impls::apk_load::read_apk;
+use crate::server::OpenFileError;
 
 pub enum ServerMessage {
     Progress(ProgressMessage),
@@ -21,6 +28,43 @@ pub struct FileOpenContext {
 
 
 impl AsmServer {
+    pub fn create_message_handler(
+        server: &ServerMut, runtime: &Runtime, render_target: &AppContainer,
+    ) -> Sender<ServerMessage> {
+        let server = server.clone();
+        let render_target = render_target.clone();
+        let (sender, receiver) = mpsc::channel::<ServerMessage>(5);
+        runtime.spawn(async move {
+            let mut receiver = receiver;
+            while let Some(msg) = receiver.recv().await {
+                let mut server = server.lock();
+                let server_ref = server.deref_mut();
+                let Some(server_ref) = server_ref else { continue };
+                match msg {
+                    ServerMessage::Progress(progress) => {
+                        server_ref.loading_state.loading_progress = progress.progress;
+                        server_ref.loading_state.in_loading = progress.in_loading;
+                        server_ref.on_progress_update(&render_target);
+                    }
+                }
+            }
+        });
+        sender
+    }
+
+    pub async fn from_apk(
+        apk_content: impl Read + Seek,
+        sender: Sender<ServerMessage>,
+        accessor: AccessorMut,
+    ) -> Result<(), OpenFileError> {
+        let zip = ZipArchive::new(apk_content)
+            .map_err(OpenFileError::LoadZip)?;
+        let apk_accessor = read_apk(zip, sender).await?;
+        // safe unwrap, no other places in current thread will access it.
+        *accessor.lock() = Some(AccessorEnum::Apk(apk_accessor));
+        Ok(())
+    }
+    
     pub fn on_file_opened(
         &self,
         context: &FileOpenContext,

@@ -12,11 +12,8 @@ use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::Sender;
 use zip::result::ZipError;
-use zip::ZipArchive;
 
-/// Builders of [AsmServer]
 impl AsmServer {
     pub fn new() -> Self {
         Self {
@@ -32,31 +29,12 @@ impl AsmServer {
     pub fn smart_open(server: ServerMut, path: &str, render_target: AppContainer) {
         let context = FileOpenContext { path: path.to_string(), start_time: Instant::now() };
         new_tokio_thread(|runtime| async move {
-            let (sender, receiver) = mpsc::channel::<ServerMessage>(5);
-
             let new_server = AsmServer::new();
             *server.lock() = Some(new_server.clone());
 
-            let server_for_receiver = server.clone();
-            let render_target_for_receiver = render_target.clone();
-            runtime.spawn(async move {
-                let server = &server_for_receiver;
-                let render_target = &render_target_for_receiver;
-                
-                let mut receiver = receiver;
-                while let Some(msg) = receiver.recv().await {
-                    let mut server = server.lock();
-                    let server_ref = server.deref_mut();
-                    let Some(server_ref) = server_ref else { continue };
-                    match msg {
-                        ServerMessage::Progress(progress) => {
-                            server_ref.loading_state.loading_progress = progress.progress;
-                            server_ref.loading_state.in_loading = progress.in_loading;
-                            server_ref.on_progress_update(&render_target);
-                        }
-                    }
-                }
-            });
+            let sender = Self::create_message_handler(
+                &server, &runtime, &render_target,
+            );
 
             let path = &context.path;
             let accessor = new_server.accessor.clone();
@@ -79,23 +57,6 @@ impl AsmServer {
             };
             new_server.on_file_opened(&context, render_target);
         });
-    }
-
-    pub async fn from_apk(
-        apk_content: impl Read + Seek,
-        sender: Sender<ServerMessage>,
-        accessor: AccessorMut,
-    ) -> Result<(), OpenFileError> {
-        let zip = ZipArchive::new(apk_content)
-            .map_err(OpenFileError::LoadZip)?;
-        let apk_accessor = read_apk(zip, sender).await?;
-        // safe unwrap, no other places in current thread will access it.
-        *accessor.lock() = Some(AccessorEnum::Apk(apk_accessor));
-        Ok(())
-    }
-
-    pub fn from_dex(dex_path: &str) -> Self {
-        unimplemented!()
     }
 }
 
