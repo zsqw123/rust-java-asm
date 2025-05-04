@@ -38,6 +38,9 @@ pub enum AccessorEnum {
 #[enum_dispatch(AccessorEnum)]
 pub trait Accessor {
     fn read_classes(&self) -> Vec<StrRef>;
+
+    /// return true if the class exists.
+    /// the format of class_key is [DescriptorRef]
     fn exist_class(&self, class_key: &str) -> bool;
     fn read_content(&self, class_key: &str) -> Option<SmaliNode>;
 }

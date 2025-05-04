@@ -6,9 +6,8 @@ use eframe::{CreationContext, Frame};
 use egui::{Context, DroppedFile, ScrollArea};
 use egui_extras::{Size, StripBuilder};
 use java_asm_server::ui::log::{inject_log, LogHolder};
-use java_asm_server::ui::{AppContainer, Content};
+use java_asm_server::ui::AppContainer;
 use java_asm_server::{AsmServer, ServerMut};
-use std::ops::DerefMut;
 use std::sync::Arc;
 
 pub struct EguiApp {
@@ -89,27 +88,17 @@ impl EguiApp {
 
     fn central_panel(&mut self, ctx: &Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            let mut server_content = self.server_app.content().lock();
-            let Content { current, opened_tabs } = server_content.deref_mut();
+            let server_locked = self.server.lock();
+            let Some(server) = server_locked.as_ref() else {
+                return;
+            };
+            let server_app = &self.server_app;
 
-            let mut deleted_tab = None;
-
-            render_tabs(ui, current, opened_tabs, &mut deleted_tab);
+            render_tabs(ui, server_app);
 
             ui.separator();
 
-            if let Some(current_tab) = current {
-                let current_tab = *current_tab;
-                let content = &opened_tabs[current_tab].content;
-                ScrollArea::vertical().show(ui, |ui| {
-                    smali_layout(ui, content);
-                });
-            }
-
-            // remove tab after this time rendering
-            if let Some(index) = deleted_tab {
-                opened_tabs.remove(index);
-            }
+            smali_layout(ui, server, &self.server_app);
         });
     }
 }

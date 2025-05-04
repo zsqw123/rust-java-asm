@@ -160,7 +160,9 @@ impl DirInfo {
 
 #[derive(Clone, Debug, Default)]
 pub struct Content {
-    pub current: Option<usize>,
+    // the index of the selected tab in opened_tabs.
+    pub selected: Option<usize>,
+    // all opened tabs.
     pub opened_tabs: Vec<Tab>,
 }
 

@@ -1,12 +1,13 @@
 use crate::impls::server::FileOpenContext;
 use crate::impls::util::new_tokio_thread;
-use crate::ui::AppContainer;
-use crate::{Accessor, AsmServer, LoadingState, ServerMut};
+use crate::ui::{AppContainer, Content, Tab};
+use crate::{Accessor, AccessorEnum, AsmServer, LoadingState, ServerMut};
 use java_asm::smali::SmaliNode;
 use java_asm::{AsmErr, StrRef};
 use log::{error, info};
 use std::fs::File;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
+use std::sync::Arc;
 use std::time::Instant;
 use zip::result::ZipError;
 
@@ -53,6 +54,36 @@ impl AsmServer {
             };
             new_server.on_file_opened(&context, render_target);
         });
+    }
+
+    pub fn switch_or_open(&self, file_key: &str, render_target: &AppContainer) {
+        let accessor_locked = self.accessor.lock();
+        let Some(accessor) = accessor_locked.deref() else { return; };
+        let mut content_locked = render_target.content().lock();
+        let content = content_locked.deref_mut();
+        self.switch_or_open_lock_free(file_key, accessor, content);
+    }
+
+    pub fn switch_or_open_lock_free(
+        &self, file_key: &str, accessor: &AccessorEnum, content: &mut Content,
+    ) {
+        let existed_tab = content.opened_tabs.iter().position(|tab| *tab.file_key == *file_key);
+        if let Some(existed_tab) = existed_tab {
+            content.selected = Some(existed_tab);
+            return;
+        }
+
+        let smali = accessor.read_content(file_key);
+        let Some(smali) = smali else { return; };
+        let current_tab = Tab {
+            selected: false,
+            file_key: Arc::from(file_key),
+            title: Arc::from(file_key),
+            content: smali,
+        };
+        let current = content.opened_tabs.len();
+        content.opened_tabs.push(current_tab);
+        content.selected = Some(current);
     }
 }
 
@@ -101,6 +132,7 @@ impl AsmServer {
         }
     }
 
+    /// see also: [AccessorEnum::exist_class]
     pub fn find_class(&self, class_key: &str) -> bool {
         let accessor_locked = self.accessor.lock();
         let accessor = accessor_locked.deref();

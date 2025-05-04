@@ -1,42 +1,54 @@
+use std::ops::DerefMut;
 use eframe::emath::Align;
 use eframe::epaint::StrokeKind;
 use egui::{Layout, Pos2, Rect, Response, Sense, TextStyle, Ui, Vec2, WidgetInfo, WidgetText, WidgetType};
 use egui_flex::{item, Flex, FlexAlignContent};
 use java_asm::StrRef;
-use java_asm_server::ui::Tab;
+use java_asm_server::ui::{AppContainer, Tab};
 
-pub fn render_tabs(ui: &mut Ui, current: &mut Option<usize>, tabs: &Vec<Tab>, deleted_tab: &mut Option<usize>) {
+pub fn render_tabs(
+    ui: &mut Ui, app_container: &AppContainer,
+) {
+    let mut deleted_tab = None;
+    let mut content_locked = app_container.content().lock();
+    let content_ref = content_locked.deref_mut();
+    let selected_tab_index = &mut content_ref.selected;
+    let opened_tabs = &mut content_ref.opened_tabs;
     Flex::horizontal()
         .align_content(FlexAlignContent::Start)
         .w_full()
         .wrap(true)
         .show(ui, |flex| {
-        for tab in tabs.iter().enumerate() {
+            for tab in opened_tabs.iter().enumerate() {
             flex.add_ui(item(), |ui: &mut Ui| {
-                file_title(ui, current, deleted_tab, tab)
+                file_title(ui, selected_tab_index, &mut deleted_tab, tab)
             });
         }
     });
+    // remove tab after this time rendering
+    if let Some(index) = deleted_tab {
+        opened_tabs.remove(index);
+    }
 }
 
-fn file_title(ui: &mut Ui, current: &mut Option<usize>, deleted_tab: &mut Option<usize>, tab: (usize, &Tab)) {
+fn file_title(ui: &mut Ui, selected_tab_index: &mut Option<usize>, deleted_tab: &mut Option<usize>, tab: (usize, &Tab)) {
     let (index, tab) = tab;
-    let selected = current.map(|current| current == index).unwrap_or_default();
+    let selected = selected_tab_index.map(|current| current == index).unwrap_or_default();
     let title = tab.title.clone();
     let selectable_label = SelectableClosableLabel { selected, title };
     let response = selectable_label.ui(ui);
     if response.closed {
         *deleted_tab = Some(index);
         // recalculate current tab
-        if let Some(cur) = *current {
+        if let Some(cur) = *selected_tab_index {
             if cur == index {
-                *current = None;
+                *selected_tab_index = None;
             } else if cur > index {
-                *current = Some(cur - 1);
+                *selected_tab_index = Some(cur - 1);
             }
         }
     } else if response.raw.clicked() {
-        *current = Some(index);
+        *selected_tab_index = Some(index);
     }
 }
 

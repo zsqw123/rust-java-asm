@@ -1,19 +1,16 @@
 use crate::app::EguiApp;
 use egui::text::LayoutJob;
 use egui::{ScrollArea, TextStyle};
-use java_asm_server::ui::{Content, FileEntry, FileInfo, RawDirInfo, Tab};
+use java_asm_server::ui::{AppContainer, FileEntry, FileInfo, RawDirInfo};
 use java_asm_server::AsmServer;
 use std::ops::Deref;
-use std::sync::Arc;
 
 pub fn render_dir(ui: &mut egui::Ui, app: &mut EguiApp) {
     let server_app = &app.server_app;
     let mut server_app_left = server_app.left().lock();
-    let mut server_app_content = server_app.content().lock();
     let entries = &mut server_app_left.root_node.visible_items();
     let server = app.server.lock();
     if let Some(server) = server.deref() {
-        let content = &mut server_app_content;
         let row_height = ui.spacing().interact_size.y;
         ScrollArea::vertical().auto_shrink(false)
             .show_rows(ui, row_height, entries.len(), |ui, range| {
@@ -24,7 +21,7 @@ pub fn render_dir(ui: &mut egui::Ui, app: &mut EguiApp) {
                             render_dir_raw(ui, raw_dir);
                         }
                         FileEntry::File(file_info) => {
-                            render_file(ui, file_info, server, content);
+                            render_file(ui, file_info, server, server_app);
                         }
                     }
                 }
@@ -34,7 +31,7 @@ pub fn render_dir(ui: &mut egui::Ui, app: &mut EguiApp) {
 
 fn render_file(
     ui: &mut egui::Ui, file_info: &mut FileInfo,
-    server: &AsmServer, content: &mut Content,
+    server: &AsmServer, app: &AppContainer,
 ) {
     let FileInfo { title, file_key, level } = file_info;
     ui.horizontal(|ui| {
@@ -42,23 +39,7 @@ fn render_file(
         let layout_job = layout_string(ui, title.to_string());
         let label = ui.selectable_label(false, layout_job);
         if label.clicked() {
-            let existed_tab = content.opened_tabs.iter().position(|tab| tab.file_key == *file_key);
-            if let Some(existed_tab) = existed_tab {
-                content.current = Some(existed_tab);
-                return;
-            }
-            let smali = server.read_content(file_key);
-            if let Some(smali) = smali {
-                let current_tab = Tab {
-                    selected: false,
-                    file_key: Arc::clone(file_key),
-                    title: Arc::clone(title),
-                    content: smali,
-                };
-                let current = content.opened_tabs.len();
-                content.opened_tabs.push(current_tab);
-                content.current = Some(current);
-            }
+            server.switch_or_open(file_key, app);
         }
     });
 }

@@ -29,7 +29,7 @@ pub struct FileOpenContext {
 
 
 impl AsmServer {
-    pub fn create_message_handler(
+    pub(crate) fn create_message_handler(
         server: &ServerMut, runtime: &Runtime, render_target: &AppContainer,
     ) -> Sender<ServerMessage> {
         let server = server.clone();
@@ -53,7 +53,7 @@ impl AsmServer {
         sender
     }
 
-    pub async fn read_apk(
+    pub(crate) async fn read_apk(
         apk_content: impl Read + Seek,
         sender: Sender<ServerMessage>,
         accessor: AccessorMut,
@@ -65,8 +65,8 @@ impl AsmServer {
         *accessor.lock() = Some(AccessorEnum::Apk(apk_accessor));
         Ok(())
     }
-    
-    pub fn on_file_opened(
+
+    pub(crate) fn on_file_opened(
         &self,
         context: &FileOpenContext,
         render_target: AppContainer,
@@ -76,7 +76,7 @@ impl AsmServer {
         self.render_to_app(render_target);
     }
 
-    pub fn on_progress_update(&self, render_target: &AppContainer) {
+    fn on_progress_update(&self, render_target: &AppContainer) {
         let current_loading_state = &self.loading_state;
         let mut top = render_target.top().lock();
         let top_mut = top.deref_mut();
