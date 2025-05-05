@@ -15,10 +15,18 @@ pub enum SmaliToken {
     Raw(ConstStr),
     Op(ConstStr),
 
+    LineStartOffsetMarker {
+        // the offset of this instruction.
+        // None if this isn't a instruction.
+        offset: Option<u32>,
+        // rendered text for this marker.
+        raw: String,
+    },
     Offset {
         relative: i32,
         absolute: u32,
     },
+
     Register(u16),
     RegisterRange(u16, u16),
     Descriptor(StrRef),
@@ -119,6 +127,7 @@ impl SmaliToken {
         match self {
             Self::Raw(tag) => tag.to_string(),
             Self::Op(op) => op.to_string(),
+            Self::LineStartOffsetMarker { raw, .. } => raw.clone(),
             Self::Offset { relative, absolute } => {
                 format!("@{absolute}({relative:+})")
             }

@@ -47,8 +47,8 @@ fn render_to_lines(
     let mut lines = Vec::new();
 
     let mut current_line = Vec::new();
-    let SmaliNode { tag, content, children, end_tag, .. } = node;
-    current_line.push(offset_or_stub(max_offset_len, node));
+    let SmaliNode { tag, content, offset_hint, children, end_tag } = node;
+    current_line.push(offset_or_stub(max_offset_len, offset_hint));
     current_line.push(indent(ident_width));
     if let Some(tag) = tag {
         current_line.push(SmaliToken::Raw(tag));
@@ -88,14 +88,14 @@ fn max_offset_hint(smali_node: &SmaliNode) -> u32 {
 }
 
 fn offset_or_stub(
-    max_offset_len: usize, smali_node: &SmaliNode,
+    max_offset_len: usize, offset_hint: &Option<u32>,
 ) -> SmaliToken {
-    let raw = if let Some(offset_hint) = smali_node.offset_hint {
-        format!("{:width$}", offset_hint, width = max_offset_len)
+    let raw = if let Some(offset_hint) = offset_hint {
+        format!("{offset_hint:width$}", width = max_offset_len)
     } else {
         " ".repeat(max_offset_len)
     };
-    SmaliToken::Other(raw.to_ref())
+    SmaliToken::LineStartOffsetMarker { offset: *offset_hint, raw }
 }
 
 fn indent(indent_width: usize) -> SmaliToken {

@@ -1,6 +1,6 @@
 use eframe::epaint::Color32;
 use egui::text::LayoutJob;
-use egui::{FontId, Response, ScrollArea, TextStyle, Ui};
+use egui::{CursorIcon, FontId, Response, ScrollArea, TextStyle, Ui, Vec2};
 use java_asm::smali::SmaliToken;
 use java_asm_server::ui::{AppContainer, Content};
 use java_asm_server::AsmServer;
@@ -23,60 +23,119 @@ pub fn smali_layout(ui: &mut Ui, server: &AsmServer, app: &AppContainer) {
     let smali_style = if dark_mode { SmaliStyle::DARK } else { SmaliStyle::LIGHT };
 
     let lines = smali_node.render_to_lines();
-    let row_height = font.size;
+    let row_height = ui.text_style_height(&TextStyle::Monospace);
 
     let content_mut = content_locked.deref_mut();
-    ScrollArea::vertical().auto_shrink(false).show_rows(ui, row_height, lines.len(), |ui, range| {
+    let scroll_area = ScrollArea::vertical().auto_shrink(false);
+    let spacing_y = ui.spacing().item_spacing.y;
+    let mut render_context = RenderContext {
+        server,
+        font: &font,
+        content: content_mut,
+        lines: &lines,
+        smali_style: &smali_style,
+        dft_color,
+        row_height,
+        spacing_y,
+    };
+    scroll_area.show_rows(ui, row_height, lines.len(), |ui, range| {
         for i in range {
-            let line = &lines[i];
-            render_line(ui, server, content_mut, line, &font, &smali_style, dft_color);
+            render_context.render_line(ui, i);
         }
     });
 }
 
-fn render_line(
-    ui: &mut Ui, server: &AsmServer, content: &mut Content, line: &[SmaliToken],
-    font: &FontId, smali_style: &SmaliStyle, dft_color: Color32,
-) {
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 0.0;
-        for token_item in line {
-            token(ui, server, content, token_item, font, smali_style, dft_color);
-        }
-    });
+struct RenderContext<'a> {
+    pub server: &'a AsmServer,
+    pub content: &'a mut Content,
+    pub lines: &'a Vec<Vec<SmaliToken>>,
+
+    pub font: &'a FontId,
+    pub smali_style: &'a SmaliStyle,
+    pub dft_color: Color32,
+    pub row_height: f32,
+    pub spacing_y: f32,
 }
 
-fn token(
-    ui: &mut Ui, server: &AsmServer, content: &mut Content, token: &SmaliToken,
-    font: &FontId, smali_style: &SmaliStyle, dft_color: Color32,
-) -> Response {
-    match token {
-        SmaliToken::Raw(s) => simple_text(ui, s.to_string(), font, dft_color),
-        SmaliToken::Op(s) => simple_text(ui, s.to_string(), font, smali_style.op),
-        SmaliToken::Offset { relative, absolute } => {
-            let text = format!("@{absolute}({relative:+})");
-            simple_text(ui, text, font, smali_style.offset)
+impl<'a> RenderContext<'a> {
+    pub fn render_line(&mut self, ui: &mut Ui, line_index: usize) {
+        let line = &self.lines[line_index];
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 0.0;
+            for token_item in line {
+                self.token(ui, token_item, line_index);
+            }
+        });
+    }
+
+    fn scroll_lines(&self, ui: &mut Ui, line_delta: usize) {
+        let row_height_with_spacing = self.row_height + self.spacing_y;
+        let y_delta = line_delta as f32 * row_height_with_spacing;
+        let delta = Vec2::new(0.0, -y_delta);
+        ui.scroll_with_delta(delta)
+    }
+
+    fn scroll_to_offset(&self, ui: &mut Ui, current_line: usize, target_offset: u32) {
+        let start = current_line;
+        let mut i = current_line;
+        loop {
+            let current = i;
+            i += 1;
+            let Some(current_line) = self.lines.get(current) else { continue; };
+            let Some(first_node) = current_line.first() else { continue; };
+            let SmaliToken::LineStartOffsetMarker { offset: Some(current_offset), .. } = first_node else { continue; };
+            if *current_offset >= target_offset {
+                self.scroll_lines(ui, current - start);
+                break;
+            }
         }
-        SmaliToken::Register(s) => simple_text(ui, format!("v{s}"), font, smali_style.register),
-        SmaliToken::RegisterRange(start, end) => {
-            let text = format!("v{start}..v{end}");
-            simple_text(ui, text, font, smali_style.register)
-        }
-        SmaliToken::Descriptor(s) => {
-            let text_ui = simple_text(ui, s.to_string(), font, smali_style.desc)
-                .on_hover_ui(|ui| {
-                    ui.style_mut().interaction.selectable_labels = true;
+    }
+
+
+    fn token(
+        &mut self, ui: &mut Ui, token: &SmaliToken, line_index: usize,
+    ) -> Response {
+        let RenderContext {
+            server, content, font, smali_style, dft_color, ..
+        } = self;
+        let dft_color = *dft_color;
+        match token {
+            SmaliToken::Raw(s) => simple_text(ui, s.to_string(), font, dft_color),
+            SmaliToken::Op(s) => simple_text(ui, s.to_string(), font, smali_style.op),
+            SmaliToken::LineStartOffsetMarker { raw, .. } => {
+                simple_text(ui, raw.to_string(), font, dft_color)
+            },
+            SmaliToken::Offset { relative, absolute } => {
+                let text = format!("@{absolute}({relative:+})");
+                let text_ui = simple_text(ui, text, font, smali_style.offset)
+                    .on_hover_cursor(CursorIcon::PointingHand);
+                if text_ui.clicked() {
+                    self.scroll_to_offset(ui, line_index, *absolute);
+                }
+                text_ui
+            }
+            SmaliToken::Register(s) => simple_text(ui, format!("v{s}"), font, smali_style.register),
+            SmaliToken::RegisterRange(start, end) => {
+                let text = format!("v{start}..v{end}");
+                simple_text(ui, text, font, smali_style.register)
+            }
+            SmaliToken::Descriptor(s) => {
+                let text_ui = simple_text(ui, s.to_string(), font, smali_style.desc)
+                    .on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        descriptor_menu(ui, s, server, content);
+                    });
+                text_ui.context_menu(|ui| {
                     descriptor_menu(ui, s, server, content);
                 });
-            text_ui.context_menu(|ui| {
-                descriptor_menu(ui, s, server, content);
-            });
-            text_ui
-        },
-        SmaliToken::Literal(s) => simple_text(ui, s.to_string(), font, smali_style.literal),
-        SmaliToken::Other(s) => simple_text(ui, s.to_string(), font, dft_color),
+                text_ui
+            },
+            SmaliToken::Literal(s) => simple_text(ui, s.to_string(), font, smali_style.literal),
+            SmaliToken::Other(s) => simple_text(ui, s.to_string(), font, dft_color),
+        }
     }
 }
+
 
 fn descriptor_menu(
     ui: &mut Ui, descriptor: &str,

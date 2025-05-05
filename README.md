@@ -50,7 +50,7 @@ see some examples.
   - [ ] GUI frontend:
     - [x] basic window with egui.
     - [x] load files from the backend
-    - [ ] add progress bar UI when loading files
+    - [x] add progress bar UI when loading files
     - [x] show metadata in a tree view
     - [x] show instructions in a list view
     - [ ] quick jump to specific metadata
