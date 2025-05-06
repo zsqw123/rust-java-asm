@@ -40,6 +40,7 @@ impl AppContainer {
 #[derive(Default, Clone, Debug)]
 pub struct Top {
     pub loading_state: LoadingState,
+    pub file_path: Option<String>,
 }
 
 #[derive(Default, Clone, Debug)]

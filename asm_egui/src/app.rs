@@ -30,29 +30,6 @@ impl EguiApp {
 }
 
 impl EguiApp {
-    fn top_bar(&mut self, ctx: &Context) {
-        egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
-            let server_app = &self.server_app;
-            // loading state
-            let locked_top = server_app.top().lock();
-            let loading_state = &locked_top.loading_state;
-            if loading_state.in_loading {
-                ui.horizontal(|ui| {
-                    ui.label(format!("Loading... {:.2}%", loading_state.loading_progress * 100.0));
-                });
-            }
-
-            // interaction area
-            ui.horizontal(|ui| {
-                if ui.button("📂 Open...").clicked() {
-                    AsmServer::dialog_to_open_file(
-                        self.server.clone(), server_app.clone(),
-                    );
-                }
-            });
-        });
-    }
-
     fn left_bar(&mut self, ctx: &Context) {
         let available = ctx.available_rect().width();
         egui::SidePanel::left("left_bar")

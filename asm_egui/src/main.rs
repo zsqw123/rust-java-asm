@@ -6,6 +6,7 @@ pub(crate) mod file_tree;
 pub(crate) mod util;
 mod smali;
 mod file_tab;
+mod top_bar;
 
 fn main() -> eframe::Result {
     let eframe_options = eframe::NativeOptions {

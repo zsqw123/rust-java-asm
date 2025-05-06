@@ -32,6 +32,8 @@ eframe = { version = "0.31.1", features = ["persistence"] }
 egui_extras = "0.31.1"
 egui_flex = "0.3.0"
 
+egui_autocomplete = { version = "10.2.0", features = ["serde"] }
+
 tokio = { version = "1.44.2", features = ["full"] }
 parking_lot = { version = "0.12.3", features = ["deadlock_detection"] }
 

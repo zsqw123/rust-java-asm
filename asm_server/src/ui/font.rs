@@ -44,7 +44,9 @@ impl FontFallbacks {
 
     #[inline]
     fn needed_font(family: &str) -> bool {
-        Self::MONO == family || Self::NORMAL.iter().any(|&name| name == family)
+        Self::MONO == family ||
+            Self::NORMAL.iter().any(|&name| name == family) ||
+            Self::FALLBACKS.iter().any(|&name| name == family)
     }
 
     #[inline]
@@ -88,7 +90,7 @@ impl FontFallbacks {
                 fonts.push(emoji);
             }
         }
-        // load fallback
+        // load fallbacks
         for name in FontFallbacks::FALLBACKS {
             if let Some(font) = self.load_font(db, name) {
                 fonts.push(font);

@@ -1,15 +1,16 @@
-use std::ops::DerefMut;
 use eframe::emath::Align;
 use eframe::epaint::StrokeKind;
 use egui::{Layout, Pos2, Rect, Response, Sense, TextStyle, Ui, Vec2, WidgetInfo, WidgetText, WidgetType};
 use egui_flex::{item, Flex, FlexAlignContent};
 use java_asm::StrRef;
-use java_asm_server::ui::{AppContainer, Tab};
+use java_asm_server::ui::{AppContainer, Tab, Top};
+use std::ops::DerefMut;
 
 pub fn render_tabs(
     ui: &mut Ui, app_container: &AppContainer,
 ) {
     let mut deleted_tab = None;
+    let mut top = app_container.top().lock();
     let mut content_locked = app_container.content().lock();
     let content_ref = content_locked.deref_mut();
     let selected_tab_index = &mut content_ref.selected;
@@ -21,7 +22,7 @@ pub fn render_tabs(
         .show(ui, |flex| {
             for tab in opened_tabs.iter().enumerate() {
             flex.add_ui(item(), |ui: &mut Ui| {
-                file_title(ui, selected_tab_index, &mut deleted_tab, tab)
+                file_title(ui, &mut top, selected_tab_index, &mut deleted_tab, tab)
             });
         }
     });
@@ -31,10 +32,14 @@ pub fn render_tabs(
     }
 }
 
-fn file_title(ui: &mut Ui, selected_tab_index: &mut Option<usize>, deleted_tab: &mut Option<usize>, tab: (usize, &Tab)) {
+fn file_title(
+    ui: &mut Ui, top: &mut Top,
+    selected_tab_index: &mut Option<usize>, deleted_tab: &mut Option<usize>, tab: (usize, &Tab)
+) {
     let (index, tab) = tab;
     let selected = selected_tab_index.map(|current| current == index).unwrap_or_default();
     let title = tab.title.clone();
+    let title_cloned = title.clone();
     let selectable_label = SelectableClosableLabel { selected, title };
     let response = selectable_label.ui(ui);
     if response.closed {
@@ -49,6 +54,7 @@ fn file_title(ui: &mut Ui, selected_tab_index: &mut Option<usize>, deleted_tab: 
         }
     } else if response.raw.clicked() {
         *selected_tab_index = Some(index);
+        top.file_path = Some(title_cloned.to_string());
     }
 }
 

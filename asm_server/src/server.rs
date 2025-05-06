@@ -1,6 +1,6 @@
 use crate::impls::server::FileOpenContext;
 use crate::impls::util::new_tokio_thread;
-use crate::ui::{AppContainer, Content, Tab};
+use crate::ui::{AppContainer, Content, Tab, Top};
 use crate::{Accessor, AccessorEnum, AsmServer, LoadingState, ServerMut};
 use java_asm::smali::SmaliNode;
 use java_asm::{AsmErr, StrRef};
@@ -59,13 +59,13 @@ impl AsmServer {
     pub fn switch_or_open(&self, file_key: &str, render_target: &AppContainer) {
         let accessor_locked = self.accessor.lock();
         let Some(accessor) = accessor_locked.deref() else { return; };
-        let mut content_locked = render_target.content().lock();
-        let content = content_locked.deref_mut();
-        self.switch_or_open_lock_free(file_key, accessor, content);
+        let mut content = render_target.content().lock();
+        let mut top = render_target.top().lock();
+        self.switch_or_open_lock_free(file_key, accessor, &mut content, &mut top);
     }
 
     pub fn switch_or_open_lock_free(
-        &self, file_key: &str, accessor: &AccessorEnum, content: &mut Content,
+        &self, file_key: &str, accessor: &AccessorEnum, content: &mut Content, top: &mut Top,
     ) {
         let existed_tab = content.opened_tabs.iter().position(|tab| *tab.file_key == *file_key);
         if let Some(existed_tab) = existed_tab {
@@ -84,6 +84,8 @@ impl AsmServer {
         let current = content.opened_tabs.len();
         content.opened_tabs.push(current_tab);
         content.selected = Some(current);
+
+        top.file_path = Some(file_key.to_string());
     }
 }
 
@@ -113,7 +115,7 @@ pub enum OpenFileError {
 
 /// Abilities when file loaded.
 ///
-/// Such abilities just a wrapper of [Accessor], but provided a more convenient interface and 
+/// Such abilities just a wrapper of [Accessor], but provided a more convenient interface and
 /// record some logs at the backend.
 impl AsmServer {
     // read the input content (apk/dex/jar/class...)
