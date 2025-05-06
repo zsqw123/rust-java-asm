@@ -10,21 +10,31 @@ pub struct FontFallbacks {
 pub type FontData = (&'static str, Vec<u8>);
 
 impl FontFallbacks {
+    #[cfg(not(target_os = "macos"))]
     pub const MONO: &'static str = "Consolas";
-    pub const NORMAL_FAST: &'static str = "Segoe UI";
 
-    pub const NORMAL_ALL: &'static [&'static str] = &[
-        FontFallbacks::NORMAL_FAST,
+    #[cfg(target_os = "macos")]
+    pub const MONO: &'static str = "Menlo";
+
+    #[cfg(not(target_os = "macos"))]
+    pub const NORMAL: &'static [&'static str] = &[
+        "Segoe UI",
         // CJK
         "Microsoft YaHei UI", "Microsoft JhengHei UI", "Yu Gothic UI", "Malgun Gothic",
         // some special characters.
         "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI Historic",
     ];
 
+    #[cfg(target_os = "macos")]
+    pub const NORMAL: &'static [&'static str] = &[
+        "Arial", ".SF NS", "Menlo", "Geneva", "Arial Unicode MS",
+        // CJK
+        "PingFang SC", "PingFang HK", "PingFang TC", "Apple SD Gothic Neo", "Hiragino Sans",
+    ];
+
     #[inline]
     fn needed_font(family: &str) -> bool {
-        Self::MONO == family ||
-            Self::NORMAL_ALL.iter().any(|&name| name == family)
+        Self::MONO == family || Self::NORMAL.iter().any(|&name| name == family)
     }
 
     #[inline]
@@ -51,12 +61,8 @@ impl FontFallbacks {
         self.load_font(db, FontFallbacks::MONO)
     }
 
-    pub fn load_fast(&self, db: &fontdb::Database) -> Option<FontData> {
-        self.load_font(db, FontFallbacks::NORMAL_FAST)
-    }
-
     pub fn load_all(&self, db: &fontdb::Database) -> Vec<FontData> {
-        FontFallbacks::NORMAL_ALL.iter().filter_map(|name| {
+        let mut fonts: Vec<FontData> = FontFallbacks::NORMAL.iter().filter_map(|name| {
             match self.load_font(db, name) {
                 None => {
                     warn!("Failed to find system font family: {}", name);
@@ -64,7 +70,13 @@ impl FontFallbacks {
                 }
                 Some(data) => Some(data)
             }
-        }).collect()
+        }).collect();
+        if cfg!(target_os = "macos") {
+            if let Some(emoji) = self.load_macos_emoji() {
+                fonts.push(emoji);
+            }
+        }
+        fonts
     }
 
     #[inline]
@@ -72,5 +84,10 @@ impl FontFallbacks {
         let id = self.families.get(name)?;
         let font_data = db.with_face_data(*id, |font_data, _| font_data.to_vec())?;
         Some((name, font_data))
+    }
+
+    pub fn load_macos_emoji(&self) -> Option<FontData> {
+        let bytes = include_bytes!("../fonts/NotoEmoji-Regular.ttf");
+        Some(("NotoEmoji", bytes.to_vec()))
     }
 }
