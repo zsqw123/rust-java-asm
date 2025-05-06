@@ -17,12 +17,22 @@ impl FontFallbacks {
     pub const MONO: &'static str = "Menlo";
 
     #[cfg(not(target_os = "macos"))]
+    pub const FALLBACKS: &'static [&'static str] = &[
+        // some special characters.
+        "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI Historic",
+    ];
+
+    #[cfg(target_os = "macos")]
+    pub const FALLBACKS: &'static [&'static str] = &[
+        // some special characters.
+        "Apple Color Emoji",
+    ];
+
+    #[cfg(not(target_os = "macos"))]
     pub const NORMAL: &'static [&'static str] = &[
         "Segoe UI",
         // CJK
         "Microsoft YaHei UI", "Microsoft JhengHei UI", "Yu Gothic UI", "Malgun Gothic",
-        // some special characters.
-        "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI Historic",
     ];
 
     #[cfg(target_os = "macos")]
@@ -62,6 +72,7 @@ impl FontFallbacks {
     }
 
     pub fn load_all(&self, db: &fontdb::Database) -> Vec<FontData> {
+        // load normal
         let mut fonts: Vec<FontData> = FontFallbacks::NORMAL.iter().filter_map(|name| {
             match self.load_font(db, name) {
                 None => {
@@ -71,9 +82,18 @@ impl FontFallbacks {
                 Some(data) => Some(data)
             }
         }).collect();
+        // load customized
         if cfg!(target_os = "macos") {
-            if let Some(emoji) = self.load_macos_emoji() {
+            if let Some(emoji) = load_macos_emoji() {
                 fonts.push(emoji);
+            }
+        }
+        // load fallback
+        for name in FontFallbacks::FALLBACKS {
+            if let Some(font) = self.load_font(db, name) {
+                fonts.push(font);
+            } else {
+                warn!("Failed to find system font family as a fallback: {}", name);
             }
         }
         fonts
@@ -85,9 +105,8 @@ impl FontFallbacks {
         let font_data = db.with_face_data(*id, |font_data, _| font_data.to_vec())?;
         Some((name, font_data))
     }
-
-    pub fn load_macos_emoji(&self) -> Option<FontData> {
-        let bytes = include_bytes!("../fonts/NotoEmoji-Regular.ttf");
-        Some(("NotoEmoji", bytes.to_vec()))
-    }
+}
+fn load_macos_emoji() -> Option<FontData> {
+    let bytes = include_bytes!("../fonts/NotoEmoji-Regular.ttf");
+    Some(("NotoEmoji", bytes.to_vec()))
 }
