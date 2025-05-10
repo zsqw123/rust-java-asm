@@ -6,7 +6,7 @@ use crate::ui::log::LogHolder;
 use crate::ui::AbsFile::{Dir, File};
 use crate::LoadingState;
 use java_asm::smali::SmaliNode;
-use java_asm::StrRef;
+use java_asm::{DescriptorRef, StrRef};
 use ::log::Level;
 use parking_lot::Mutex;
 use std::collections::BTreeMap;
@@ -41,6 +41,7 @@ impl AppContainer {
 pub struct Top {
     pub loading_state: LoadingState,
     pub file_path: Option<String>,
+    pub search_result: Vec<StrRef>,
 }
 
 #[derive(Default, Clone, Debug)]

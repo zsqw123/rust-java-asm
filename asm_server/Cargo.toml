@@ -22,3 +22,4 @@ enum_dispatch = { workspace = true }
 
 tokio = { workspace = true }
 parking_lot = { workspace = true }
+trie-rs = { workspace = true }

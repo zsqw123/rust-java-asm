@@ -4,6 +4,7 @@ use java_asm::smali::SmaliNode;
 use java_asm::{DescriptorRef, StrRef};
 use parking_lot::Mutex;
 use std::sync::Arc;
+use trie_rs::Trie;
 
 pub mod server;
 
@@ -16,10 +17,14 @@ pub struct AsmServer {
     pub loading_state: LoadingState,
     // when in loading state, the accessor is None.
     pub accessor: AccessorMut,
+    classes: ArcNullable<Vec<StrRef>>,
+    trie: ArcNullable<Trie<u8>>,
 }
 
-pub type ServerMut = Arc<Mutex<Option<AsmServer>>>;
-type AccessorMut = Arc<Mutex<Option<AccessorEnum>>>;
+pub type ArcNullable<T> = Arc<Mutex<Option<T>>>;
+
+pub type ServerMut = ArcNullable<AsmServer>;
+type AccessorMut = ArcNullable<AccessorEnum>;
 
 #[derive(Default, Clone, Debug)]
 pub struct LoadingState {

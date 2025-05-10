@@ -1,14 +1,15 @@
 use crate::impls::server::FileOpenContext;
 use crate::impls::util::new_tokio_thread;
 use crate::ui::{AppContainer, Content, Tab, Top};
-use crate::{Accessor, AccessorEnum, AsmServer, LoadingState, ServerMut};
+use crate::{Accessor, AccessorEnum, ArcNullable, AsmServer, LoadingState, ServerMut};
 use java_asm::smali::SmaliNode;
 use java_asm::{AsmErr, StrRef};
 use log::{error, info};
 use std::fs::File;
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Instant;
+use trie_rs::{Trie, TrieBuilder};
 use zip::result::ZipError;
 
 impl AsmServer {
@@ -20,7 +21,33 @@ impl AsmServer {
                 err: None,
             },
             accessor: Default::default(),
+            classes: Default::default(),
+            trie: Default::default(),
         }
+    }
+
+    pub fn get_classes(&self) -> &ArcNullable<Vec<StrRef>> {
+        let mut current = self.classes.lock();
+        if current.is_some() { return &self.classes; }
+        let accessor_locked = self.accessor.lock();
+        let Some(accessor) = accessor_locked.deref() else { return &self.classes; };
+        let classes = accessor.read_classes();
+        current.replace(classes);
+        &self.classes
+    }
+
+    pub fn get_trie(&self) -> &ArcNullable<Trie<u8>> {
+        let mut current = self.trie.lock();
+        if current.is_some() { return &self.trie; }
+        let classes_locked = self.get_classes().lock();
+        let Some(classes) = classes_locked.deref() else { return &self.trie; };
+        let mut trie_builder = TrieBuilder::new();
+        for class in classes.iter() {
+            trie_builder.push(class.to_string());
+        };
+        let trie = trie_builder.build();
+        current.replace(trie);
+        &self.trie
     }
 
     pub fn smart_open(server: ServerMut, path: &str, render_target: AppContainer) {
@@ -74,7 +101,10 @@ impl AsmServer {
         }
 
         let smali = accessor.read_content(file_key);
-        let Some(smali) = smali else { return; };
+        let Some(smali) = smali else {
+            error!("content with key: `{file_key}` not found.");
+            return;
+        };
         let current_tab = Tab {
             selected: false,
             file_key: Arc::from(file_key),
@@ -86,6 +116,14 @@ impl AsmServer {
         content.selected = Some(current);
 
         top.file_path = Some(file_key.to_string());
+    }
+
+    pub fn search(&self, top: &mut Top) {
+        let Some(query) = &top.file_path else { return; };
+        let trie_locked = self.get_trie().lock();
+        let Some(trie) = trie_locked.deref() else { return; };
+        let results: Vec<String> = trie.predictive_search(query).collect();
+        top.search_result = results.into_iter().map(StrRef::from).collect();
     }
 }
 

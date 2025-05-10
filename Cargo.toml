@@ -24,6 +24,7 @@ java_asm_macro = { path = "asm_macro", version = "0.0.15" } # JAVA_ASM_VERSION
 java_asm = { path = "asm", version = "0.0.15" } # JAVA_ASM_VERSION
 java_asm_server = { path = "asm_server", version = "0.0.15" } # JAVA_ASM_VERSION
 
+trie-rs = "0.4.2"
 enum_dispatch = "0.3.13"
 zip = "2.2.0"
 
