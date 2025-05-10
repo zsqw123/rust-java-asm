@@ -21,7 +21,5 @@ eframe = { workspace = true }
 egui_extras = { workspace = true }
 egui_flex = { workspace = true }
 
-egui_autocomplete = { workspace = true }
-
 fontdb = { workspace = true }
 rfd = { workspace = true }
