@@ -15,6 +15,7 @@ java_asm = { workspace = true }
 java_asm_server = { workspace = true }
 log = { workspace = true }
 
+image = { workspace = true }
 egui = { workspace = true }
 eframe = { workspace = true }
 egui_extras = { workspace = true }

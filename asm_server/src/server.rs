@@ -163,7 +163,7 @@ impl AsmServer {
         };
         let parent_path = saved_path.parent();
         let Some(parent_path) = parent_path else { return; };
-        if (!parent_path.exists()) { return; };
+        if !parent_path.exists() { return; };
         open::that_in_background(&parent_path);
     }
 }
