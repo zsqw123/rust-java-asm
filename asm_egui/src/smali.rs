@@ -132,12 +132,15 @@ impl<'a> RenderContext<'a> {
                     self.scroll_to_offset(ui, line_index, *absolute);
                 }
                 text_ui
-            }
+            },
             SmaliToken::Register(s) => simple_text(ui, format!("v{s}"), font, smali_style.register),
             SmaliToken::RegisterRange(start, end) => {
                 let text = format!("v{start}..v{end}");
                 simple_text(ui, text, font, smali_style.register)
-            }
+            },
+            SmaliToken::MemberName(name) => {
+                simple_text(ui, name.to_string(), font, dft_color)
+            },
             SmaliToken::Descriptor(s) => {
                 let text_ui = simple_text(ui, s.to_string(), font, smali_style.desc)
                     .on_hover_ui(|ui| {

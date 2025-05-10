@@ -31,6 +31,8 @@ pub enum SmaliToken {
 
     Register(u16),
     RegisterRange(u16, u16),
+
+    MemberName(StrRef),
     Descriptor(StrRef),
     Literal(StrRef),
 
@@ -105,6 +107,11 @@ impl SmaliTokensBuilder {
     }
 
     #[inline]
+    pub fn mn(self, name: StrRef) -> Self {
+        self.push(SmaliToken::MemberName(name))
+    }
+    
+    #[inline]
     pub fn d(self, desc: StrRef) -> Self {
         self.push(SmaliToken::Descriptor(desc))
     }
@@ -136,6 +143,7 @@ impl SmaliToken {
             }
             Self::Register(reg) => format!("v{reg}"),
             Self::RegisterRange(start, end) => format!("v{start}..v{end}"),
+            Self::MemberName(name) => name.to_string(),
             Self::Descriptor(desc) => desc.to_string(),
             Self::Literal(lit) => lit.to_string(),
             Self::Other(other) => other.to_string(),

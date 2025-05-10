@@ -483,7 +483,7 @@ impl PayloadMap<'_> {
 fn render_field(accessor: &DexFileAccessor, field_idx: u16) -> SmaliNode {
     accessor.get_field(field_idx)
         .map(|f| stb()
-            .d(f.class_type).other(f.field_name).d(f.field_type).s()
+            .d(f.class_type).mn(f.field_name).d(f.field_type).s()
         ).unwrap_or_else(|_| raw_smali!("field@{}", field_idx))
 }
 
@@ -491,7 +491,7 @@ fn render_field(accessor: &DexFileAccessor, field_idx: u16) -> SmaliNode {
 fn render_method(accessor: &DexFileAccessor, method_idx: u16) -> SmaliNode {
     accessor.get_method(method_idx)
         .map(|m| stb()
-            .d(m.class_type).other(m.method_name).d(m.desc).s()
+            .d(m.class_type).mn(m.method_name).d(m.desc).s()
         ).unwrap_or_else(|_| raw_smali!("method@{}", method_idx))
 }
 
@@ -766,7 +766,7 @@ impl FieldElement {
         tb = FieldAccessFlags::render(access_flags, tb);
         let name = self.name.clone();
         let descriptor = self.descriptor.clone();
-        let smali = tb.other(name).d(descriptor).s();
+        let smali = tb.mn(name).d(descriptor).s();
         smali
     }
 }
@@ -778,7 +778,7 @@ impl MethodElement {
         tb = MethodAccessFlags::render(access_flags, tb);
         let name = self.name.clone();
         let descriptor = format!("({}){}", self.parameters.join(""), self.return_type);
-        let mut smali = tb.other(name).d(descriptor.to_ref()).s();
+        let mut smali = tb.mn(name).d(descriptor.to_ref()).s();
         let code = accessor.get_code_item(self.code_off)?;
         if let Some(code) = code {
             smali.children.extend(code.to_smali(accessor).children);

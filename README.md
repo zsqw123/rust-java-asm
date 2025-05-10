@@ -64,6 +64,8 @@ see some examples.
     - [x] quick jump to specific metadata
     - [x] search classes
     - [x] jump to offset or type descriptor
+    - [ ] Settings (e.g. custom fonts, theme, etc.)
+    - [ ] decompiling by using mapping file.
 
 ### Goals
 
