@@ -1935,14 +1935,14 @@ dependencies = [
 
 [[package]]
 name = "java_asm"
-version = "0.0.15"
+version = "0.1.0"
 dependencies = [
  "java_asm_macro",
 ]
 
 [[package]]
 name = "java_asm_egui"
-version = "0.0.15"
+version = "0.1.0"
 dependencies = [
  "eframe",
  "egui",
@@ -1958,7 +1958,7 @@ dependencies = [
 
 [[package]]
 name = "java_asm_macro"
-version = "0.0.15"
+version = "0.1.0"
 dependencies = [
  "quote",
  "syn 1.0.109",
@@ -1966,7 +1966,7 @@ dependencies = [
 
 [[package]]
 name = "java_asm_server"
-version = "0.0.15"
+version = "0.1.0"
 dependencies = [
  "enum_dispatch",
  "fontdb",
