@@ -19,7 +19,7 @@ fn main() -> eframe::Result {
     let image = image.decode().unwrap();
     let width = image.width();
     let height = image.height();
-    let decoded = image.as_rgba8().unwrap().to_vec();
+    let decoded = image.to_rgba8().to_vec();
     let icon_data = IconData {
         rgba: decoded,
         width,
