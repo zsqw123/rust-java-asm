@@ -1,6 +1,6 @@
 use crate::app::EguiApp;
 use egui::containers::PopupCloseBehavior;
-use egui::{popup_below_widget, Context, Ui};
+use egui::{popup_below_widget, Context, Id, Response, TextEdit, Ui};
 use java_asm_server::AsmServer;
 use std::ops::Deref;
 
@@ -38,14 +38,21 @@ impl EguiApp {
     fn file_path_input(&mut self, ui: &mut Ui) {
         let mut locked_top = self.server_app.top().lock();
         let Some(file_path) = &mut locked_top.file_path else { return; };
-        let edit_path_ui = ui.text_edit_singleline(file_path);
 
-        let popup_id = ui.make_persistent_id("file_path_popup");
+        let edit_path_ui = Self::file_path_input_area(ui, file_path);
+
+        let popup_id = Id::new("file_path_popup");
         if edit_path_ui.gained_focus() {
             let server_locked = self.server.lock();
             let Some(server) = server_locked.deref() else { return; };
             server.search(&mut locked_top);
             ui.memory_mut(|m| m.open_popup(popup_id));
+        }
+
+        if edit_path_ui.changed() {
+            let server_locked = self.server.lock();
+            let Some(server) = server_locked.deref() else { return; };
+            server.search(&mut locked_top);
         }
 
         let search_results = locked_top.search_result.clone();
@@ -56,20 +63,38 @@ impl EguiApp {
             ui, popup_id, &edit_path_ui,
             PopupCloseBehavior::CloseOnClickOutside, |ui| {
                 ui.vertical(|ui| {
-                    for result in search_results {
-                        if ui.label(result.to_string()).clicked() {
-                            let server_locked = self.server.lock();
-                            let Some(server) = server_locked.deref() else { return; };
-                            let mut content_locked = self.server_app.content().lock();
-                            let mut locked_top = self.server_app.top().lock();
-                            let accessor = server.accessor.lock();
-                            let Some(accessor) = accessor.deref() else { return; };
-                            server.switch_or_open_lock_free(
-                                &result, accessor, &mut content_locked, &mut locked_top,
-                            );
-                        }
-                    }
+                    Self::popup_file_path_ui(self, ui);
                 })
             });
+    }
+
+    fn file_path_input_area(ui: &mut Ui, file_path: &mut String) -> Response {
+        let id_for_input_remaining = Id::new("file_path_input_area_remaining");
+        let max_width = ui.max_rect().width();
+        let last_time_remaining = ui
+            .data(|data| data.get_temp(id_for_input_remaining)
+                .unwrap_or(max_width));
+        let target_width_for_content = max_width - last_time_remaining;
+
+        let edit_path_ui = TextEdit::singleline(file_path)
+            .desired_width(target_width_for_content).show(ui).response;
+
+        let remaining_width = ui.min_rect().width() - target_width_for_content;
+        ui.data_mut(|data| {
+            data.insert_temp(id_for_input_remaining, remaining_width);
+        });
+        edit_path_ui
+    }
+
+    fn popup_file_path_ui(&mut self, ui: &mut Ui) {
+        let search_results = self.server_app.top().lock().search_result.clone();
+        for result in search_results {
+            let selectable_label = ui.selectable_label(false, result.to_string());
+            if selectable_label.clicked() {
+                let server_locked = self.server.lock();
+                let Some(server) = server_locked.deref() else { return; };
+                server.switch_or_open(&result, &self.server_app);
+            }
+        }
     }
 }

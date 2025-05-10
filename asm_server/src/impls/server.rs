@@ -24,6 +24,8 @@ pub struct ProgressMessage {
     pub in_loading: bool,
 }
 
+// search is too fast now, it's meaningless to use the message to dispatch.
+// so we didn't use this message currently.
 pub struct SearchResultMessage {
     pub result: Vec<StrRef>,
 }

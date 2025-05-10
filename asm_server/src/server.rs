@@ -39,6 +39,7 @@ impl AsmServer {
     pub fn get_trie(&self) -> &ArcNullable<Trie<u8>> {
         let mut current = self.trie.lock();
         if current.is_some() { return &self.trie; }
+        let load_start = Instant::now();
         let classes_locked = self.get_classes().lock();
         let Some(classes) = classes_locked.deref() else { return &self.trie; };
         let mut trie_builder = TrieBuilder::new();
@@ -47,6 +48,11 @@ impl AsmServer {
         };
         let trie = trie_builder.build();
         current.replace(trie);
+        let load_end = Instant::now();
+        info!(
+            "trie loaded in {}ms",
+            load_end.duration_since(load_start).as_millis()
+        );
         &self.trie
     }
 
@@ -122,7 +128,7 @@ impl AsmServer {
         let Some(query) = &top.file_path else { return; };
         let trie_locked = self.get_trie().lock();
         let Some(trie) = trie_locked.deref() else { return; };
-        let results: Vec<String> = trie.predictive_search(query).collect();
+        let results: Vec<String> = trie.predictive_search(query).take(20).collect();
         top.search_result = results.into_iter().map(StrRef::from).collect();
     }
 }
