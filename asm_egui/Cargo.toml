@@ -23,3 +23,7 @@ egui_flex = { workspace = true }
 
 fontdb = { workspace = true }
 rfd = { workspace = true }
+
+[profile.release]
+strip = true
+lto = true
