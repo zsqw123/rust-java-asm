@@ -11,6 +11,13 @@ So I want to build this library to fully read and write Java bytecode informatio
 This project supports much newer LTS Java version(Java 21 currently) than other rust implementations. Only supports 
 `asm-tree` api currently, not supports visitor api because Tree API is much easier to use than visitor api.
 
+## GUI
+
+We have a simple GUI build by egui to show decompiled files. but current support only for apk, and we are actively
+working on it.
+
+![GUI](docs/egui.png)
+
 ## Current Stage
 
 After version 0.0.6, you can try to use `ClassNode::from_jvms` to read a class file into a `ClassNode`, 
@@ -44,16 +51,19 @@ see some examples.
   - [ ] GUI backend:
     - [x] add progress when loading files
     - [ ] unzip (whatever jar or dex) & parallel read
-    - [ ] retrieve metadata and combine multiple metadata for better indexing
+    - [x] retrieve metadata and combine multiple metadata for better indexing
     - [x] using metadata to get the real data if needed (e.g. method instructions)
     - [ ] search content, quick search for metadata and slow search for instructions.
+    - [ ] export sources / fake smali?
   - [ ] GUI frontend:
     - [x] basic window with egui.
     - [x] load files from the backend
     - [x] add progress bar UI when loading files
     - [x] show metadata in a tree view
     - [x] show instructions in a list view
-    - [ ] quick jump to specific metadata
+    - [x] quick jump to specific metadata
+    - [x] search classes
+    - [x] jump to offset or type descriptor
 
 ### Goals
 
