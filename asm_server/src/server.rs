@@ -1,15 +1,18 @@
 use crate::impls::server::FileOpenContext;
 use crate::impls::util::new_tokio_thread;
 use crate::ui::{AppContainer, Content, Tab, Top};
-use crate::{Accessor, AccessorEnum, ArcNullable, AsmServer, LoadingState, ServerMut};
+use crate::{Accessor, AccessorEnum, ArcNullable, AsmServer, ExportableSource, LoadingState, ServerMut};
 use java_asm::smali::SmaliNode;
 use java_asm::{AsmErr, StrRef};
 use log::{error, info};
-use std::fs::File;
+use std::fs;
+use std::fs::{exists, remove_file, File};
 use std::ops::Deref;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 use trie_rs::{Trie, TrieBuilder};
+use zip::result;
 use zip::result::ZipError;
 
 impl AsmServer {
@@ -134,7 +137,7 @@ impl AsmServer {
 }
 
 
-/// input operation processing
+/// I/O operation processing
 impl AsmServer {
     pub fn dialog_to_open_file(server: ServerMut, render_target: AppContainer) {
         rfd::FileDialog::new()
@@ -145,6 +148,23 @@ impl AsmServer {
                     Self::smart_open(server, path, render_target);
                 }
             });
+    }
+
+    pub fn dialog_to_save_file(&self, source_key: &str) {
+        let accessor_locked = self.accessor.lock();
+        let Some(accessor) = accessor_locked.deref() else { return; };
+        let Some(ExportableSource { exportable_name, source }) = accessor.peek_source(source_key) else { return; };
+        let Some(saved_path) = rfd::FileDialog::new()
+            .set_file_name(exportable_name.to_string())
+            .save_file() else { return; };
+        let result = fs::write(&saved_path, source);
+        if let Err(e) = result {
+            error!("save file {source_key} meets an error. {e:?}");
+        };
+        let parent_path = saved_path.parent();
+        let Some(parent_path) = parent_path else { return; };
+        if (!parent_path.exists()) { return; };
+        open::that_in_background(&parent_path);
     }
 }
 

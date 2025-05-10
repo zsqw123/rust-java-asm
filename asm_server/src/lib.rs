@@ -48,6 +48,13 @@ pub trait Accessor {
     /// the format of class_key is [DescriptorRef]
     fn exist_class(&self, class_key: &str) -> bool;
     fn read_content(&self, class_key: &str) -> Option<SmaliNode>;
+
+    fn peek_source(&self, source_key: &str) -> Option<ExportableSource>;
+}
+
+pub struct ExportableSource {
+    pub exportable_name: StrRef,
+    pub source: Vec<u8>,
 }
 
 pub struct MethodMeta {

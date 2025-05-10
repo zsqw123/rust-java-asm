@@ -2,6 +2,7 @@ use eframe::epaint::Color32;
 use egui::text::LayoutJob;
 use egui::{CursorIcon, FontId, Response, ScrollArea, TextStyle, Ui, Vec2};
 use java_asm::smali::SmaliToken;
+use java_asm::StrRef;
 use java_asm_server::ui::{AppContainer, Content, Top};
 use java_asm_server::AsmServer;
 use std::ops::{Deref, DerefMut};
@@ -104,6 +105,20 @@ impl<'a> RenderContext<'a> {
         } = self;
         let dft_color = *dft_color;
         match token {
+            SmaliToken::SourceInfo(source_info) => {
+                let text = format!("#from: {source_info}");
+                let text_ui = simple_text(ui, text, font, smali_style.literal)
+                    .on_hover_cursor(CursorIcon::PointingHand);
+                let text_ui = text_ui
+                    .on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        self.source_file_info_menu(ui, source_info);
+                    });
+                text_ui.context_menu(|ui| {
+                    self.source_file_info_menu(ui, source_info);
+                });
+                text_ui
+            },
             SmaliToken::Raw(s) => simple_text(ui, s.to_string(), font, dft_color),
             SmaliToken::Op(s) => simple_text(ui, s.to_string(), font, smali_style.op),
             SmaliToken::LineStartOffsetMarker { raw, .. } => {
@@ -137,6 +152,17 @@ impl<'a> RenderContext<'a> {
             SmaliToken::Literal(s) => simple_text(ui, s.to_string(), font, smali_style.literal),
             SmaliToken::Other(s) => simple_text(ui, s.to_string(), font, dft_color),
         }
+    }
+
+    fn source_file_info_menu(
+        &mut self, ui: &mut Ui, source_file_info: &StrRef,
+    ) {
+        ui.horizontal(|ui| {
+            let link = ui.link(format!("Export Source: {source_file_info}"));
+            if link.clicked() {
+                self.server.dialog_to_save_file(source_file_info);
+            }
+        });
     }
 
     fn descriptor_menu(

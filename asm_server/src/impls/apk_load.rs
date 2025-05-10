@@ -1,8 +1,8 @@
 use crate::impls::server::{ProgressMessage, ServerMessage};
 use crate::server::OpenFileError;
-use crate::Accessor;
+use crate::{Accessor, ExportableSource};
 use java_asm::dex::{ClassDef, DexFile, DexFileAccessor};
-use java_asm::smali::SmaliNode;
+use java_asm::smali::{stb, SmaliNode, SmaliToken};
 use java_asm::{DescriptorRef, StrRef};
 use log::{error, warn};
 use std::collections::HashMap;
@@ -13,6 +13,7 @@ use zip::ZipArchive;
 
 pub struct ApkAccessor {
     pub map: HashMap<DescriptorRef, ClassPosition>,
+    pub dex_sources: HashMap<StrRef, Arc<DexFileAccessor>>,
 }
 
 type ClassPosition = (Arc<DexFileAccessor>, ClassDef);
@@ -37,12 +38,18 @@ pub async fn read_apk(
     
     // put dex files
     let dex_file_count = dex_files.len();
-    let dex_files = dex_files.iter().map(|name| {
-        let mut file = zip_archive.by_index(*name).map_err(OpenFileError::LoadZip)?;
+    let mut dex_sources = HashMap::new();
+    let dex_files = dex_files.iter().map(|entry_index| {
+        let mut file = zip_archive.by_index(*entry_index).map_err(OpenFileError::LoadZip)?;
+        let file_name = StrRef::from(file.name());
+        let file_name_for_dex_sources = file_name.clone();
         let mut bytes = Vec::new();
         file.read_to_end(&mut bytes).map_err(OpenFileError::Io)?;
         let dex_file = DexFile::resolve_from_bytes(&bytes).map_err(OpenFileError::ResolveError)?;
-        Ok(Arc::new(DexFileAccessor::new(dex_file, bytes)))
+        let dex_file_accessor = Arc::new(DexFileAccessor::new(dex_file, bytes, file_name));
+
+        dex_sources.insert(file_name_for_dex_sources, dex_file_accessor.clone());
+        Ok(dex_file_accessor)
     }).map(|res: Result<Arc<DexFileAccessor>, OpenFileError>| {
         match res {
             Ok(dex_file) => Some(dex_file),
@@ -73,7 +80,7 @@ pub async fn read_apk(
     };
     map.shrink_to_fit();
     send_loaded(&sender).await;
-    Ok(ApkAccessor { map })
+    Ok(ApkAccessor { map, dex_sources })
 }
 
 async fn send_progress(
@@ -118,10 +125,34 @@ impl Accessor for ApkAccessor {
     fn read_content(&self, class_key: &str) -> Option<SmaliNode> {
         let class_position = self.map.get(class_key);
         if let Some((accessor, class_def)) = class_position {
-            accessor.get_class_smali(*class_def).ok()
+            let dex_file_name = accessor.file_name.clone();
+            let smali_node = accessor.get_class_smali(*class_def).ok();
+            let Some(smali_node) = smali_node else {
+                warn!("No class content found for: {}", class_key);
+                return None;
+            };
+            let mut smali_node = smali_node;
+            let source_tag_smali = stb().push(SmaliToken::SourceInfo(dex_file_name)).s();
+            smali_node.children.insert(0, source_tag_smali);
+            Some(smali_node)
         } else {
             warn!("No class content found for: {}", class_key);
             None
         }
+    }
+
+    // source key is the dex file name.
+    fn peek_source(&self, source_key: &str) -> Option<ExportableSource> {
+        let dex_source = self.dex_sources.get(source_key);
+        let Some(dex_source) = dex_source else {
+            warn!("No source found for: {source_key} when trying peek source.");
+            return None;
+        };
+        let file_name = dex_source.file_name.clone();
+        let source = dex_source.bytes.clone();
+        Some(ExportableSource {
+            exportable_name: file_name,
+            source,
+        })
     }
 }

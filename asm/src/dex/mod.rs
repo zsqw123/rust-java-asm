@@ -2,10 +2,10 @@ pub use raw::*;
 pub mod element;
 
 use crate::dex::element::{AsElement, ClassContentElement};
-use crate::impls::jvms::r::{ReadContext, U32BasedSize};
+use crate::impls::jvms::r::{ReadContext, ReadFrom, U32BasedSize};
 use crate::impls::ToArc;
 use crate::smali::SmaliNode;
-use crate::{AsmErr, AsmResult};
+use crate::{AsmErr, AsmResult, StrRef};
 pub use constant::*;
 use std::io::Read;
 pub use util::*;
@@ -29,12 +29,13 @@ impl DexFile {
     }
     pub fn resolve_from_bytes(bytes: &[u8]) -> AsmResult<Self> {
         let mut context = ReadContext::little_endian(bytes);
-        context.read()
+        DexFile::read_from(&mut context)
     }
 }
 
 pub struct DexFileAccessor {
     pub file: DexFile,
+    pub file_name: StrRef,
     pub bytes: Vec<u8>,
     pub endian: bool,
     pub call_site_ids: Vec<CallSiteId>,
@@ -42,7 +43,7 @@ pub struct DexFileAccessor {
 }
 
 impl DexFileAccessor {
-    pub fn new(file: DexFile, bytes: Vec<u8>) -> Self {
+    pub fn new(file: DexFile, bytes: Vec<u8>, file_name: StrRef) -> Self {
         let endian = file.header.endian_tag == Header::BIG_ENDIAN_TAG;
         let map_list = Self::get_map_list(&bytes, &file.header, endian)
             .unwrap_or_default();
@@ -65,7 +66,7 @@ impl DexFileAccessor {
         }
         let call_site_ids = Self::get_call_site_ids(&bytes, call_site_off, call_site_size, endian);
         let method_handles = Self::get_method_handles(&bytes, method_handle_off, method_handle_size, endian);
-        Self { file, bytes, endian, call_site_ids, method_handles }
+        Self { file, bytes, endian, call_site_ids, method_handles, file_name }
     }
 
     pub fn get_class_element(&self, class_data_off: DUInt) -> AsmResult<ClassContentElement> {

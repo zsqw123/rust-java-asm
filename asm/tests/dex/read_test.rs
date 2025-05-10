@@ -1,6 +1,7 @@
 use java_asm::dex::{DexFile, DexFileAccessor};
 use std::sync::Arc;
 use std::time::Instant;
+use java_asm::StrRef;
 
 #[test]
 fn read_dex_test() {
@@ -30,5 +31,5 @@ fn read_test_dex_file() -> DexFileAccessor {
     let dex_file_bytes = include_bytes!("../res/dex/classes14.dex");
     let dex_file = DexFile::resolve_from_bytes(dex_file_bytes).unwrap();
     println!("Dex file resolved in {:?}", start.elapsed());
-    DexFileAccessor::new(dex_file, dex_file_bytes.to_vec())
+    DexFileAccessor::new(dex_file, dex_file_bytes.to_vec(), StrRef::from("classes14.dex"))
 }

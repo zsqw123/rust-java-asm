@@ -12,6 +12,8 @@ pub struct SmaliNode {
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum SmaliToken {
+    SourceInfo(StrRef),
+    
     Raw(ConstStr),
     Op(ConstStr),
 
@@ -125,6 +127,7 @@ pub fn tokens_to_raw(tokens: &[SmaliToken]) -> String {
 impl SmaliToken {
     pub fn raw(&self) -> String {
         match self {
+            Self::SourceInfo(source) => format!("# source: {source}"),
             Self::Raw(tag) => tag.to_string(),
             Self::Op(op) => op.to_string(),
             Self::LineStartOffsetMarker { raw, .. } => raw.clone(),

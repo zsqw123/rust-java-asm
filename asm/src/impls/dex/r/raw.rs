@@ -166,8 +166,8 @@ impl ReadFrom for EncodedCatchHandler {
     }
 }
 
-impl ReadFrom for DexFile {
-    fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
+impl DexFile {
+    pub(crate) fn read_from(context: &mut ReadContext) -> AsmResult<Self> {
         let header: Header = context.read()?;
         let string_ids = context.read_vec(header.string_ids_size)?;
         let type_ids = context.read_vec(header.type_ids_size)?;
