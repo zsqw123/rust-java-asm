@@ -3,7 +3,7 @@ use eframe::CreationContext;
 use egui::FontFamily;
 use java_asm_server::ui::font::FontFallbacks;
 use log::info;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -13,10 +13,17 @@ pub fn inject_sys_font(context: &CreationContext) -> Option<()> {
     let mut db = fontdb::Database::new();
     let start = Instant::now();
     db.load_system_fonts();
-    let faces = db.faces().map(
-        |face| &face.post_script_name
-    ).collect::<Vec<_>>();
-    info!("system fonts loaded in {}ms: {:?}", start.elapsed().as_millis(), &faces);
+    let mut families: HashSet<String> = HashSet::new();
+    for face_info in db.faces() {
+        let families_for_single_face = &face_info.families;
+        for (family, _) in families_for_single_face {
+            families.insert(family.to_string());
+        }
+    }
+    let families_print_to_str = families.iter().map(|s| s.as_str())
+        .collect::<Vec<&str>>().join(", ");
+    let families_print_to_str = format!("[{families_print_to_str}]");
+    info!("system fonts loaded in {}ms: {families_print_to_str}", start.elapsed().as_millis());
 
     let start = Instant::now();
     let font_fallbacks = FontFallbacks::new(&db);
