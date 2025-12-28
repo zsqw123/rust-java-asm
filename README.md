@@ -55,7 +55,7 @@ see some examples.
     - [x] using metadata to get the real data if needed (e.g. method instructions)
     - [ ] search content, quick search for metadata and slow search for instructions.
     - [ ] export sources / fake smali?
-  - [ ] GUI frontend:
+  - [ ] EGUI frontend. (`asm_egui` folder)
     - [x] basic window with egui.
     - [x] load files from the backend
     - [x] add progress bar UI when loading files
@@ -66,6 +66,10 @@ see some examples.
     - [x] jump to offset or type descriptor
     - [ ] Settings (e.g. custom fonts, theme, etc.)
     - [ ] decompiling by using mapping file.
+  - [ ] Tauri frontend. (`ta` folder)
+    > Recent days, I think using tauri will bring us a better UX, so I decided to use tauri for 
+flexible interactions and share web technologies to boost the development. Using pure rust for frontend (egui or iced solution) 
+is complex for handle so many things (like font fallbacks, search bars, code highlighting and copy & paste, etc.)
 
 ### Goals
 
