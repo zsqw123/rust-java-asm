@@ -13,7 +13,7 @@ mod top_bar;
 
 fn main() -> eframe::Result {
     let mut image = ImageReader::new(
-        Cursor::new(include_bytes!("../res/icon.png"))
+        Cursor::new(include_bytes!("../../res/icon.png"))
     );
     image.set_format(ImageFormat::Png);
     let image = image.decode().unwrap();
