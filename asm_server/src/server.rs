@@ -1,18 +1,16 @@
 use crate::impls::server::FileOpenContext;
 use crate::impls::util::new_tokio_thread;
 use crate::ui::{AppContainer, Content, Tab, Top};
-use crate::{Accessor, AccessorEnum, ArcNullable, AsmServer, ExportableSource, LoadingState, ServerMut};
+use crate::{Accessor, AccessorEnum, ArcVarOpt, AsmServer, ExportableSource, LoadingState, ServerMut};
 use java_asm::smali::SmaliNode;
 use java_asm::{AsmErr, StrRef};
 use log::{error, info};
 use std::fs;
-use std::fs::{exists, remove_file, File};
+use std::fs::{File};
 use std::ops::Deref;
-use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 use trie_rs::{Trie, TrieBuilder};
-use zip::result;
 use zip::result::ZipError;
 
 impl AsmServer {
@@ -29,7 +27,7 @@ impl AsmServer {
         }
     }
 
-    pub fn get_classes(&self) -> &ArcNullable<Vec<StrRef>> {
+    pub fn get_classes(&self) -> &ArcVarOpt<Vec<StrRef>> {
         let mut current = self.classes.lock();
         if current.is_some() { return &self.classes; }
         let accessor_locked = self.accessor.lock();
@@ -39,7 +37,7 @@ impl AsmServer {
         &self.classes
     }
 
-    pub fn get_trie(&self) -> &ArcNullable<Trie<u8>> {
+    pub fn get_trie(&self) -> &ArcVarOpt<Trie<u8>> {
         let mut current = self.trie.lock();
         if current.is_some() { return &self.trie; }
         let load_start = Instant::now();

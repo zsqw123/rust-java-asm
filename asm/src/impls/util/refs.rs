@@ -41,3 +41,13 @@ to_str_ref_impls!(
     u8, u16, u32, u64, u128, usize,
     f32, f64, char, bool, &'static str,
 );
+
+#[macro_export]
+macro_rules! vec_str_ref {
+    () => (
+        Vec::new()
+    );
+    ($($x:expr),+ $(,)?) => (
+        vec![$($x),+].iter().map(|s| (*s).into()).collect::<Vec<StrRef>>()
+    );
+}

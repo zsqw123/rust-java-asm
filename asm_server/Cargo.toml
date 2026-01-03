@@ -12,6 +12,9 @@ readme.workspace = true
 
 [dependencies]
 java_asm = { workspace = true }
+
+nucleo-matcher = { workspace = true }
+rand = { workspace = true }
 zip = { workspace = true }
 log = { workspace = true }
 

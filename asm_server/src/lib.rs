@@ -17,14 +17,14 @@ pub struct AsmServer {
     pub loading_state: LoadingState,
     // when in loading state, the accessor is None.
     pub accessor: AccessorMut,
-    classes: ArcNullable<Vec<StrRef>>,
-    trie: ArcNullable<Trie<u8>>,
+    classes: ArcVarOpt<Vec<StrRef>>,
+    trie: ArcVarOpt<Trie<u8>>,
 }
 
-pub type ArcNullable<T> = Arc<Mutex<Option<T>>>;
+pub type ArcVarOpt<T> = Arc<Mutex<Option<T>>>;
 
-pub type ServerMut = ArcNullable<AsmServer>;
-type AccessorMut = ArcNullable<AccessorEnum>;
+pub type ServerMut = ArcVarOpt<AsmServer>;
+type AccessorMut = ArcVarOpt<AccessorEnum>;
 
 #[derive(Default, Clone, Debug)]
 pub struct LoadingState {

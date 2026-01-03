@@ -12,7 +12,7 @@ members = [
 [workspace.package]
 version = "0.1.2" # JAVA_ASM_VERSION
 authors = ["zsqw123"]
-edition = "2021"
+edition = "2024"
 license = "Apache-2.0"
 description = "Java bytecode reader & writer in rust"
 documentation = "https://github.com/zsqw123/rust-java-asm"
@@ -25,6 +25,14 @@ java_asm_macro = { path = "asm_macro", version = "0.1.2" } # JAVA_ASM_VERSION
 java_asm = { path = "asm", version = "0.1.2" } # JAVA_ASM_VERSION
 java_asm_server = { path = "asm_server", version = "0.1.2" } # JAVA_ASM_VERSION
 
+# used for fuzzy search
+# - at the begining, I tried to use nucleo, but I found it's very hard to use
+#    and the document is not enough.
+# - but the most important thing is that its event-loop driven design, that's
+#    not easy for test.
+# so finally I choose `nucleo-matcher` rather than `necleo`.
+nucleo-matcher = "0.3.1"
+rand = "0.9.2"
 image = "0.25.6"
 trie-rs = "0.4.2"
 enum_dispatch = "0.3.13"
