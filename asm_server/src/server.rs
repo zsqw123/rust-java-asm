@@ -1,3 +1,4 @@
+use crate::impls::fuzzy::FuzzyMatchModel;
 use crate::impls::server::FileOpenContext;
 use crate::impls::util::new_tokio_thread;
 use crate::ui::{AppContainer, Content, Tab, Top};
@@ -6,11 +7,10 @@ use java_asm::smali::SmaliNode;
 use java_asm::{AsmErr, StrRef};
 use log::{error, info};
 use std::fs;
-use std::fs::{File};
-use std::ops::Deref;
+use std::fs::File;
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use std::time::Instant;
-use trie_rs::{Trie, TrieBuilder};
 use zip::result::ZipError;
 
 impl AsmServer {
@@ -23,7 +23,7 @@ impl AsmServer {
             },
             accessor: Default::default(),
             classes: Default::default(),
-            trie: Default::default(),
+            fuzzy: Default::default(),
         }
     }
 
@@ -37,24 +37,20 @@ impl AsmServer {
         &self.classes
     }
 
-    pub fn get_trie(&self) -> &ArcVarOpt<Trie<u8>> {
-        let mut current = self.trie.lock();
-        if current.is_some() { return &self.trie; }
+    fn get_or_create_fuzzy(&self, input: StrRef) -> &ArcVarOpt<FuzzyMatchModel> {
+        let mut current = self.fuzzy.lock();
+        if current.is_some() { return &self.fuzzy; }
         let load_start = Instant::now();
         let classes_locked = self.get_classes().lock();
-        let Some(classes) = classes_locked.deref() else { return &self.trie; };
-        let mut trie_builder = TrieBuilder::new();
-        for class in classes.iter() {
-            trie_builder.push(class.to_string());
-        };
-        let trie = trie_builder.build();
-        current.replace(trie);
+        let Some(classes) = classes_locked.deref() else { return &self.fuzzy; };
+        let fuzzy = FuzzyMatchModel::new(input, classes, 30);
+        current.replace(fuzzy);
         let load_end = Instant::now();
         info!(
             "trie loaded in {}ms",
             load_end.duration_since(load_start).as_millis()
         );
-        &self.trie
+        &self.fuzzy
     }
 
     pub fn smart_open(server: ServerMut, path: &str, render_target: AppContainer) {
@@ -127,10 +123,11 @@ impl AsmServer {
 
     pub fn search(&self, top: &mut Top) {
         let Some(query) = &top.file_path else { return; };
-        let trie_locked = self.get_trie().lock();
-        let Some(trie) = trie_locked.deref() else { return; };
-        let results: Vec<String> = trie.predictive_search(query).take(20).collect();
-        top.search_result = results.into_iter().map(StrRef::from).collect();
+        let query: StrRef = query.as_str().into();
+        let mut fuzzy_locked = self.get_or_create_fuzzy(query.clone()).lock();
+        let Some(fuzzy) = fuzzy_locked.deref_mut() else { return; };
+        let results: Vec<StrRef> = fuzzy.search_with_new_input(query);
+        top.search_result = results;
     }
 }
 

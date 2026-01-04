@@ -1,10 +1,10 @@
 use crate::impls::apk_load::ApkAccessor;
+use crate::impls::fuzzy::FuzzyMatchModel;
 use enum_dispatch::enum_dispatch;
 use java_asm::smali::SmaliNode;
 use java_asm::{DescriptorRef, StrRef};
 use parking_lot::Mutex;
 use std::sync::Arc;
-use trie_rs::Trie;
 
 pub mod server;
 
@@ -18,7 +18,7 @@ pub struct AsmServer {
     // when in loading state, the accessor is None.
     pub accessor: AccessorMut,
     classes: ArcVarOpt<Vec<StrRef>>,
-    trie: ArcVarOpt<Trie<u8>>,
+    fuzzy: ArcVarOpt<FuzzyMatchModel>,
 }
 
 pub type ArcVarOpt<T> = Arc<Mutex<Option<T>>>;

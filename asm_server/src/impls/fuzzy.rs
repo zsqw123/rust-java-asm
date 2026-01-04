@@ -148,7 +148,7 @@ impl FuzzyMatchModel {
         let mut buf = Vec::new();
         let mut result: Vec<(&StrRef, u32)> = Vec::with_capacity(top_n);
 
-        let mut stop_idx = items_2_start_idx;
+        // search things in items 1
         for item in items_1 {
             if result.len() >= top_n {
                 break;
@@ -162,6 +162,8 @@ impl FuzzyMatchModel {
             result.push(single_result);
         }
 
+        // search things in items 2 which stored in `all_items` and starts from `items_2_start_idx`.
+        let mut stop_idx = items_2_start_idx;
         for (idx, item) in all_items.iter().enumerate().skip(stop_idx) {
             if result.len() >= top_n {
                 break;
