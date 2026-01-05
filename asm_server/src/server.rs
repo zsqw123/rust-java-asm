@@ -126,7 +126,8 @@ impl AsmServer {
         let query: StrRef = query.as_str().into();
         let mut fuzzy_locked = self.get_or_create_fuzzy(query.clone()).lock();
         let Some(fuzzy) = fuzzy_locked.deref_mut() else { return; };
-        let results: Vec<StrRef> = fuzzy.search_with_new_input(query);
+        let results: Vec<StrRef> = fuzzy.search_with_new_input(query).items
+            .into_iter().map(|item| item.item).collect();
         top.search_result = results;
     }
 }

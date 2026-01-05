@@ -12,6 +12,7 @@ readme.workspace = true
 
 [dependencies]
 java_asm = { workspace = true }
+bit-set = { workspace = true }
 
 nucleo-matcher = { workspace = true }
 rand = { workspace = true }
@@ -26,4 +27,4 @@ enum_dispatch = { workspace = true }
 
 tokio = { workspace = true }
 parking_lot = { workspace = true }
-trie-rs = { workspace = true }
+
