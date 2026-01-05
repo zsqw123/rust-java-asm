@@ -281,17 +281,17 @@ fn simple_text(
 }
 
 #[derive(Copy, Clone, Debug)]
-struct SmaliStyle {
-    op: Color32,
-    offset: Color32,
-    register: Color32,
-    desc: Color32,
-    literal: Color32,
-    highlight: Color32,
+pub(crate) struct SmaliStyle {
+    pub op: Color32,
+    pub offset: Color32,
+    pub register: Color32,
+    pub desc: Color32,
+    pub literal: Color32,
+    pub highlight: Color32,
 }
 
 impl SmaliStyle {
-    const LIGHT: SmaliStyle = SmaliStyle {
+    pub(crate) const LIGHT: SmaliStyle = SmaliStyle {
         op: Color32::from_rgb(235, 0, 0),
         offset: Color32::from_rgb(96, 96, 96),
         register: Color32::from_rgb(83, 141, 199),
@@ -300,7 +300,7 @@ impl SmaliStyle {
         highlight: Color32::from_rgb(255, 199, 133),
     };
 
-    const DARK: SmaliStyle = SmaliStyle {
+    pub(crate) const DARK: SmaliStyle = SmaliStyle {
         op: Color32::from_rgb(255, 100, 100),
         offset: SmaliStyle::LIGHT.offset,
         register: SmaliStyle::LIGHT.register,

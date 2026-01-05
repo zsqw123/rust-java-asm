@@ -15,19 +15,12 @@ use zip::ZipArchive;
 
 pub enum ServerMessage {
     Progress(ProgressMessage),
-    SearchResult(SearchResultMessage),
 }
 
 pub struct ProgressMessage {
     // 0.0 - 1.0
     pub progress: f32,
     pub in_loading: bool,
-}
-
-// search is too fast now, it's meaningless to use the message to dispatch.
-// so we didn't use this message currently.
-pub struct SearchResultMessage {
-    pub result: Vec<StrRef>,
 }
 
 pub struct FileOpenContext {
@@ -54,9 +47,6 @@ impl AsmServer {
                         server_ref.loading_state.loading_progress = progress.progress;
                         server_ref.loading_state.in_loading = progress.in_loading;
                         server_ref.on_progress_update(&render_target);
-                    }
-                    ServerMessage::SearchResult(result) => {
-                        Self::on_search_result(result, &render_target);
                     }
                 }
             }
@@ -92,13 +82,6 @@ impl AsmServer {
         let mut top = render_target.top().lock();
         let top_mut = top.deref_mut();
         (*top_mut).loading_state = current_loading_state.clone();
-    }
-
-    fn on_search_result(result: SearchResultMessage, render_target: &AppContainer) {
-        let result = result.result;
-        let mut top = render_target.top().lock();
-        let top_mut = top.deref_mut();
-        (*top_mut).search_result = result;
     }
 
     fn render_to_app(&self, app: AppContainer) {

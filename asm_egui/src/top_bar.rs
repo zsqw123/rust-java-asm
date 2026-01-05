@@ -1,6 +1,8 @@
 use crate::app::EguiApp;
+use bit_set::BitSet;
 use egui::containers::PopupCloseBehavior;
-use egui::{popup_below_widget, Context, Id, Response, TextEdit, Ui};
+use egui::text::LayoutJob;
+use egui::{popup_below_widget, Context, Id, Response, TextEdit, TextFormat, TextStyle, Ui};
 use java_asm_server::AsmServer;
 use std::ops::Deref;
 
@@ -58,7 +60,7 @@ impl EguiApp {
         let search_results = locked_top.search_result.clone();
         drop(locked_top);
 
-        if search_results.is_empty() { return; }
+        if search_results.items.is_empty() { return; }
         popup_below_widget(
             ui, popup_id, &edit_path_ui,
             PopupCloseBehavior::CloseOnClickOutside, |ui| {
@@ -88,13 +90,65 @@ impl EguiApp {
 
     fn popup_file_path_ui(&mut self, ui: &mut Ui) {
         let search_results = self.server_app.top().lock().search_result.clone();
-        for result in search_results {
-            let selectable_label = ui.selectable_label(false, result.to_string());
+        let style = ui.style();
+        let font = TextStyle::Monospace.resolve(&style);
+
+        let dark_mode = style.visuals.dark_mode;
+        let smali_style = if dark_mode { crate::smali::SmaliStyle::DARK } else { crate::smali::SmaliStyle::LIGHT };
+
+        let dft_color = style.visuals.text_color();
+        let dft_text_format = TextFormat::simple(font.clone(), dft_color);
+        let highlight_color = smali_style.desc;
+        let highlight_text_format = TextFormat::simple(font, highlight_color);
+
+
+        for result in search_results.items {
+            let path = result.item.to_string();
+            let sections = Self::get_highlight_sections(&path, result.indices);
+            let mut text_layout_job = LayoutJob::default();
+            for (section, highlighted) in sections {
+                if highlighted {
+                    text_layout_job.append(&section, 0.0, highlight_text_format.clone())
+                } else {
+                    text_layout_job.append(&section, 0.0, dft_text_format.clone())
+                }
+            }
+            let selectable_label = ui.selectable_label(false, text_layout_job);
             if selectable_label.clicked() {
                 let server_locked = self.server.lock();
                 let Some(server) = server_locked.deref() else { return; };
-                server.switch_or_open(&result, &self.server_app);
+                server.switch_or_open(&result.item, &self.server_app);
+                ui.memory_mut(|m| m.close_popup());
             }
         }
+    }
+
+    fn get_highlight_sections(path: &str, bits: BitSet) -> Vec<(String, bool)> {
+        let mut current_section = String::new();
+        let mut cur_highlighted = false;
+
+        let mut sections = vec![];
+        for (index, ch) in path.chars().enumerate() {
+            let target_highlighted = bits.contains(index);
+            if current_section.is_empty() {
+                // first char in this section, init
+                current_section.push(ch);
+                cur_highlighted = target_highlighted;
+            } else if cur_highlighted == target_highlighted {
+                // same highlight
+                current_section.push(ch);
+            } else {
+                // different color, start new section
+                sections.push((current_section, cur_highlighted));
+                current_section = ch.to_string();
+                cur_highlighted = target_highlighted;
+            }
+        }
+
+        // last section
+        if !current_section.is_empty() {
+            sections.push((current_section, cur_highlighted));
+        }
+        sections
     }
 }

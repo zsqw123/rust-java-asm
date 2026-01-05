@@ -198,7 +198,7 @@ pub struct SearchResultItem {
     pub indices: BitSet,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SearchResult {
     pub stop_idx: usize,
     pub items: Vec<SearchResultItem>,
@@ -299,12 +299,12 @@ mod tests {
         let start = std::time::Instant::now();
         let mut model = FuzzyMatchModel::new(input, &items, 10000);
         let result = model.full_search();
-        println!("Cost time: {:?}ms for take 1000 items", start.elapsed().as_millis());
+        println!("Cost time: {:?}ms for take 10000 items", start.elapsed().as_millis());
         assert_eq!(result.items.len(), 10000);
 
         let start = std::time::Instant::now();
         let result = model.search_with_new_input("im21z".into());
-        println!("Cost time: {:?}ms for take 1000 items next time", start.elapsed().as_millis());
+        println!("Cost time: {:?}ms for take 10000 items next time", start.elapsed().as_millis());
         assert_eq!(result.items.len(), 10000);
     }
 }

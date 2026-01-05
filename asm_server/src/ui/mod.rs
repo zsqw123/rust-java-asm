@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 use std::iter::{Enumerate, Peekable};
 use std::str::Split;
 use std::sync::Arc;
+use crate::impls::fuzzy::SearchResult;
 
 /// contains all states of the app.
 /// It's not like the [crate::AsmServer] which only contains the information of a file.
@@ -41,7 +42,7 @@ impl AppContainer {
 pub struct Top {
     pub loading_state: LoadingState,
     pub file_path: Option<String>,
-    pub search_result: Vec<StrRef>,
+    pub search_result: SearchResult,
 }
 
 #[derive(Default, Clone, Debug)]

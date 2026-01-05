@@ -22,7 +22,7 @@ egui_extras = { workspace = true }
 egui_flex = { workspace = true }
 
 fontdb = { workspace = true }
-rfd = { workspace = true }
+bit-set = { workspace = true }
 
 [profile.release]
 strip = true

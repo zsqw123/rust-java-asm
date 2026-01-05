@@ -3128,6 +3128,7 @@ dependencies = [
 name = "java_asm_egui"
 version = "0.1.2"
 dependencies = [
+ "bit-set",
  "eframe",
  "egui",
  "egui_extras",
@@ -3137,7 +3138,6 @@ dependencies = [
  "java_asm",
  "java_asm_server",
  "log",
- "rfd",
 ]
 
 [[package]]
