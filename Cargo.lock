@@ -256,7 +256,7 @@ checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
 
 [[package]]
 name = "app"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "log",
  "serde",
@@ -3119,14 +3119,14 @@ checksum = "92ecc6618181def0457392ccd0ee51198e065e016d1d527a7ac1b6dc7c1f09d2"
 
 [[package]]
 name = "java_asm"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "java_asm_macro",
 ]
 
 [[package]]
 name = "java_asm_egui"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "bit-set",
  "eframe",
@@ -3142,7 +3142,7 @@ dependencies = [
 
 [[package]]
 name = "java_asm_macro"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "quote",
  "syn 1.0.109",
@@ -3150,7 +3150,7 @@ dependencies = [
 
 [[package]]
 name = "java_asm_server"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "bit-set",
  "enum_dispatch",
