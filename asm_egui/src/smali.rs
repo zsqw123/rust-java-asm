@@ -3,12 +3,13 @@ use egui::text::LayoutJob;
 use egui::{CursorIcon, FontId, Response, ScrollArea, TextStyle, Ui, Vec2};
 use java_asm::smali::SmaliToken;
 use java_asm::StrRef;
-use java_asm_server::ui::{AppContainer, Content, Top};
+use java_asm_server::ui::{AppContainer, Content, Left, Top};
 use java_asm_server::AsmServer;
 use std::ops::{Deref, DerefMut};
 
 pub fn smali_layout(ui: &mut Ui, server: &AsmServer, app: &AppContainer) {
     let mut content_locked = app.content().lock();
+    let mut left_locked = app.left().lock();
     let selected_tab_index = content_locked.selected;
     let Some(selected_tab_index) = selected_tab_index else { return; };
 
@@ -36,6 +37,7 @@ pub fn smali_layout(ui: &mut Ui, server: &AsmServer, app: &AppContainer) {
         font: &font,
         content: content_mut,
         top: &mut top_locked,
+        left: &mut left_locked,
         lines: &lines,
         smali_style: &smali_style,
         dft_color,
@@ -51,6 +53,7 @@ pub fn smali_layout(ui: &mut Ui, server: &AsmServer, app: &AppContainer) {
 
 struct RenderContext<'a> {
     pub server: &'a AsmServer,
+    pub left: &'a mut Left,
     pub top: &'a mut Top,
     pub content: &'a mut Content,
     pub lines: &'a Vec<Vec<SmaliToken>>,
@@ -256,7 +259,7 @@ impl<'a> RenderContext<'a> {
         &mut self, ui: &mut Ui, descriptor: &str,
     ) {
         let RenderContext {
-            server, content, top, ..
+            server, content, top, left, ..
         } = self;
         let existed = server.find_class(descriptor);
         if !existed {
@@ -266,7 +269,7 @@ impl<'a> RenderContext<'a> {
             let Some(accessor) = accessor_locked.deref() else { return };
             let link = ui.link(descriptor);
             if link.clicked() {
-                server.switch_or_open_lock_free(descriptor, accessor, content, top)
+                server.switch_or_open_lock_free(descriptor, accessor, left, content, top)
             }
         }
     }

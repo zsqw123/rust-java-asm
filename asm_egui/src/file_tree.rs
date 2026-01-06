@@ -1,37 +1,33 @@
 use crate::app::EguiApp;
 use egui::text::LayoutJob;
 use egui::{ScrollArea, TextStyle};
-use java_asm_server::ui::{AppContainer, FileEntry, FileInfo, RawDirInfo};
-use java_asm_server::AsmServer;
-use std::ops::Deref;
+use java_asm_server::ui::{AppContainer, FileEntry, FileInfo, OpenFileMessage, RawDirInfo, UIMessage};
 
 pub fn render_dir(ui: &mut egui::Ui, app: &mut EguiApp) {
-    let server_app = &app.server_app;
-    let mut server_app_left = server_app.left().lock();
-    let entries = &mut server_app_left.root_node.visible_items();
+    let server_app = &app.ui_app;
+    let mut left = server_app.left().lock();
+    let entries = &mut left.root_node.visible_items();
     let server = app.server.lock();
-    if let Some(server) = server.deref() {
-        let row_height = ui.spacing().interact_size.y;
-        ScrollArea::vertical().auto_shrink(false)
-            .show_rows(ui, row_height, entries.len(), |ui, range| {
-                for i in range {
-                    let entry = &mut entries[i];
-                    match entry {
-                        FileEntry::Dir(raw_dir) => {
-                            render_dir_raw(ui, raw_dir);
-                        }
-                        FileEntry::File(file_info) => {
-                            render_file(ui, file_info, server, server_app);
-                        }
+    if server.is_none() { return; }
+    let row_height = ui.spacing().interact_size.y;
+    ScrollArea::vertical().auto_shrink(false)
+        .show_rows(ui, row_height, entries.len(), |ui, range| {
+            for i in range {
+                let entry = &mut entries[i];
+                match entry {
+                    FileEntry::Dir(raw_dir) => {
+                        render_dir_raw(ui, raw_dir);
+                    }
+                    FileEntry::File(file_info) => {
+                        render_file(ui, file_info, server_app);
                     }
                 }
-            });
-    }
+            }
+        });
 }
 
 fn render_file(
-    ui: &mut egui::Ui, file_info: &mut FileInfo,
-    server: &AsmServer, app: &AppContainer,
+    ui: &mut egui::Ui, file_info: &mut FileInfo, app: &AppContainer,
 ) {
     let FileInfo { title, file_key, level } = file_info;
     ui.horizontal(|ui| {
@@ -39,7 +35,12 @@ fn render_file(
         let layout_job = layout_string(ui, title.to_string());
         let label = ui.selectable_label(false, layout_job);
         if label.clicked() {
-            server.switch_or_open(file_key, app);
+            let message = UIMessage::OpenFile(
+                OpenFileMessage {
+                    path: file_key.clone(),
+                }
+            );
+            app.send_message(message);
         }
     });
 }

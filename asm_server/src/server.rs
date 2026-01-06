@@ -1,7 +1,7 @@
 use crate::impls::fuzzy::FuzzyMatchModel;
 use crate::impls::server::FileOpenContext;
 use crate::impls::util::new_tokio_thread;
-use crate::ui::{AppContainer, Content, Tab, Top};
+use crate::ui::{AppContainer, Content, DirInfo, Left, Tab, Top};
 use crate::{Accessor, AccessorEnum, ArcVarOpt, AsmServer, ExportableSource, LoadingState, ServerMut};
 use java_asm::smali::SmaliNode;
 use java_asm::{AsmErr, StrRef};
@@ -89,14 +89,17 @@ impl AsmServer {
     pub fn switch_or_open(&self, file_key: &str, render_target: &AppContainer) {
         let accessor_locked = self.accessor.lock();
         let Some(accessor) = accessor_locked.deref() else { return; };
+        let mut left = render_target.left().lock();
         let mut content = render_target.content().lock();
         let mut top = render_target.top().lock();
-        self.switch_or_open_lock_free(file_key, accessor, &mut content, &mut top);
+        self.switch_or_open_lock_free(file_key, accessor, &mut left, &mut content, &mut top);
     }
 
     pub fn switch_or_open_lock_free(
-        &self, file_key: &str, accessor: &AccessorEnum, content: &mut Content, top: &mut Top,
+        &self, file_key: &str, accessor: &AccessorEnum,
+        left: &mut Left, content: &mut Content, top: &mut Top,
     ) {
+        self.switch_file_tree(left, file_key);
         let existed_tab = content.opened_tabs.iter().position(|tab| *tab.file_key == *file_key);
         if let Some(existed_tab) = existed_tab {
             content.selected = Some(existed_tab);
@@ -119,6 +122,22 @@ impl AsmServer {
         content.selected = Some(current);
 
         top.file_path = Some(file_key.to_string());
+    }
+
+    fn switch_file_tree(&self, left: &mut Left, file_key: &str) {
+        let root_node = &mut left.root_node;
+        let parts: Vec<&str> = file_key.split('/').collect();
+        if parts.is_empty() { return; }
+
+        let mut current_node = root_node;
+        for part in parts {
+            current_node.raw.opened = true;
+            if let Some(child) = current_node.dirs.get_mut(part) {
+                current_node = child;
+            } else {
+                break;
+            }
+        }
     }
 
     pub fn search(&self, top: &mut Top) {

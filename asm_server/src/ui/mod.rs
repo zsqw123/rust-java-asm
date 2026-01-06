@@ -2,9 +2,10 @@ pub mod log;
 pub mod msg;
 pub mod font;
 
+use crate::impls::fuzzy::SearchResult;
 use crate::ui::log::LogHolder;
 use crate::ui::AbsFile::{Dir, File};
-use crate::LoadingState;
+use crate::{AsmServer, LoadingState};
 use java_asm::smali::SmaliNode;
 use java_asm::StrRef;
 use ::log::Level;
@@ -13,7 +14,6 @@ use std::collections::BTreeMap;
 use std::iter::{Enumerate, Peekable};
 use std::str::Split;
 use std::sync::Arc;
-use crate::impls::fuzzy::SearchResult;
 
 /// contains all states of the app.
 /// It's not like the [crate::AsmServer] which only contains the information of a file.
@@ -23,7 +23,19 @@ pub struct App {
     pub top: Arc<Mutex<Top>>,
     pub left: Arc<Mutex<Left>>,
     pub content: Arc<Mutex<Content>>,
+    pub messages: Arc<Mutex<Vec<UIMessage>>>,
 }
+
+#[derive(Clone, Debug)]
+pub enum UIMessage {
+    OpenFile(OpenFileMessage),
+}
+
+#[derive(Clone, Debug)]
+pub struct OpenFileMessage {
+    pub path: StrRef,
+}
+
 
 #[derive(Default, Clone, Debug)]
 pub struct AppContainer(Arc<App>);
@@ -36,6 +48,22 @@ impl AppContainer {
     pub fn set_left(&self, left: Left) { *self.0.left.lock() = left; }
 
     pub fn content(&self) -> &Arc<Mutex<Content>> { &self.0.content }
+
+    pub fn send_message(&self, message: UIMessage) {
+        self.0.messages.lock().push(message);
+    }
+}
+
+impl AppContainer {
+    pub fn process_messages(&mut self, server: &mut AsmServer) {
+        for message in self.0.messages.lock().drain(..) {
+            match message {
+                UIMessage::OpenFile(message) => {
+                    server.switch_or_open(&message.path, self);
+                }
+            }
+        }
+    }
 }
 
 #[derive(Default, Clone, Debug)]

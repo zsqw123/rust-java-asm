@@ -13,7 +13,7 @@ use std::sync::Arc;
 pub struct EguiApp {
     pub server: ServerMut,
     pub log_holder: Arc<LogHolder>,
-    pub server_app: AppContainer,
+    pub ui_app: AppContainer,
 }
 
 impl EguiApp {
@@ -22,9 +22,9 @@ impl EguiApp {
         inject_log(Arc::clone(&log_holder));
         inject_sys_font(context);
         Self {
-            server: Default::default(),
             log_holder,
-            server_app: Default::default(),
+            server: Default::default(),
+            ui_app: Default::default(),
         }
     }
 }
@@ -69,13 +69,13 @@ impl EguiApp {
             let Some(server) = server_locked.as_ref() else {
                 return;
             };
-            let server_app = &self.server_app;
+            let server_app = &self.ui_app;
 
             render_tabs(ui, server_app);
 
             ui.separator();
 
-            smali_layout(ui, server, &self.server_app);
+            smali_layout(ui, server, &self.ui_app);
         });
     }
 }
@@ -87,7 +87,7 @@ impl EguiApp {
             if let Some(DroppedFile { path, .. }) = input.raw.dropped_files.get(0) {
                 if let Some(path) = path {
                     let path = path.display().to_string();
-                    AsmServer::smart_open(self.server.clone(), &path, self.server_app.clone());
+                    AsmServer::smart_open(self.server.clone(), &path, self.ui_app.clone());
                 }
             }
         })
@@ -96,6 +96,11 @@ impl EguiApp {
 
 impl eframe::App for EguiApp {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        let mut mutex = self.server.lock();
+        if let Some(server) = mutex.as_mut() {
+            self.ui_app.process_messages(server);
+        }
+        drop(mutex);
         self.top_bar(ctx);
         self.bottom_log_panel(ctx);
         self.left_bar(ctx);

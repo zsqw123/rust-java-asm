@@ -3,6 +3,7 @@ use bit_set::BitSet;
 use egui::containers::PopupCloseBehavior;
 use egui::text::LayoutJob;
 use egui::{popup_below_widget, Context, Id, Response, TextEdit, TextFormat, TextStyle, Ui};
+use java_asm_server::ui::{OpenFileMessage, UIMessage};
 use java_asm_server::AsmServer;
 use std::ops::Deref;
 
@@ -10,7 +11,7 @@ impl EguiApp {
     pub(crate) fn top_bar(&mut self, ctx: &Context) {
         egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
             ui.vertical(|ui| {
-                let server_app = &mut self.server_app;
+                let server_app = &mut self.ui_app;
                 // loading state
                 let locked_top = server_app.top().lock();
                 let loading_state = &locked_top.loading_state;
@@ -30,7 +31,7 @@ impl EguiApp {
         ui.horizontal(|ui| {
             if ui.button("📂 Open...").clicked() {
                 AsmServer::dialog_to_open_file(
-                    self.server.clone(), self.server_app.clone(),
+                    self.server.clone(), self.ui_app.clone(),
                 );
             }
             self.file_path_input(ui);
@@ -38,7 +39,7 @@ impl EguiApp {
     }
 
     fn file_path_input(&mut self, ui: &mut Ui) {
-        let mut locked_top = self.server_app.top().lock();
+        let mut locked_top = self.ui_app.top().lock();
         let Some(file_path) = &mut locked_top.file_path else { return; };
 
         let edit_path_ui = Self::file_path_input_area(ui, file_path);
@@ -89,7 +90,7 @@ impl EguiApp {
     }
 
     fn popup_file_path_ui(&mut self, ui: &mut Ui) {
-        let search_results = self.server_app.top().lock().search_result.clone();
+        let search_results = self.ui_app.top().lock().search_result.clone();
         let style = ui.style();
         let font = TextStyle::Monospace.resolve(&style);
 
@@ -115,9 +116,10 @@ impl EguiApp {
             }
             let selectable_label = ui.selectable_label(false, text_layout_job);
             if selectable_label.clicked() {
-                let server_locked = self.server.lock();
-                let Some(server) = server_locked.deref() else { return; };
-                server.switch_or_open(&result.item, &self.server_app);
+                let message = UIMessage::OpenFile(
+                    OpenFileMessage { path: result.item }
+                );
+                self.ui_app.send_message(message);
                 ui.memory_mut(|m| m.close_popup());
             }
         }
