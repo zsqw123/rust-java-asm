@@ -34,7 +34,9 @@ impl EguiApp {
                     self.server.clone(), self.ui_app.clone(),
                 );
             }
-            self.file_path_input(ui);
+            if self.server.lock().is_some() {
+                self.file_path_input(ui);
+            }
         });
     }
 

@@ -3,13 +3,11 @@ use egui::text::LayoutJob;
 use egui::{CursorIcon, FontId, Response, ScrollArea, TextStyle, Ui, Vec2};
 use java_asm::smali::SmaliToken;
 use java_asm::StrRef;
-use java_asm_server::ui::{AppContainer, Content, Left, Top};
+use java_asm_server::ui::{AppContainer, OpenFileMessage, UIMessage};
 use java_asm_server::AsmServer;
-use std::ops::{Deref, DerefMut};
 
 pub fn smali_layout(ui: &mut Ui, server: &AsmServer, app: &AppContainer) {
-    let mut content_locked = app.content().lock();
-    let mut left_locked = app.left().lock();
+    let content_locked = app.content().lock();
     let selected_tab_index = content_locked.selected;
     let Some(selected_tab_index) = selected_tab_index else { return; };
 
@@ -27,17 +25,13 @@ pub fn smali_layout(ui: &mut Ui, server: &AsmServer, app: &AppContainer) {
     let lines = smali_node.render_to_lines();
     let row_height = ui.text_style_height(&TextStyle::Monospace);
 
-    let content_mut = content_locked.deref_mut();
     let scroll_area = ScrollArea::vertical().auto_shrink(false);
     let spacing_y = ui.spacing().item_spacing.y;
 
-    let mut top_locked = app.top().lock();
     let mut render_context = RenderContext {
+        app: &app,
         server,
         font: &font,
-        content: content_mut,
-        top: &mut top_locked,
-        left: &mut left_locked,
         lines: &lines,
         smali_style: &smali_style,
         dft_color,
@@ -52,10 +46,8 @@ pub fn smali_layout(ui: &mut Ui, server: &AsmServer, app: &AppContainer) {
 }
 
 struct RenderContext<'a> {
+    pub app: &'a AppContainer,
     pub server: &'a AsmServer,
-    pub left: &'a mut Left,
-    pub top: &'a mut Top,
-    pub content: &'a mut Content,
     pub lines: &'a Vec<Vec<SmaliToken>>,
 
     pub font: &'a FontId,
@@ -255,18 +247,18 @@ impl<'a> RenderContext<'a> {
     fn render_single_descriptor(
         &mut self, ui: &mut Ui, descriptor: &str,
     ) {
-        let RenderContext {
-            server, content, top, left, ..
-        } = self;
-        let existed = server.find_class(descriptor);
+        let existed = self.server.find_class(descriptor);
         if !existed {
             ui.label(format!("{descriptor}"));
         } else {
-            let accessor_locked = server.accessor.lock();
-            let Some(accessor) = accessor_locked.deref() else { return };
             let link = ui.link(descriptor);
             if link.clicked() {
-                server.switch_or_open_lock_free(descriptor, accessor, left, content, top)
+                let file_open_message = UIMessage::OpenFile(
+                    OpenFileMessage {
+                        path: descriptor.into(),
+                    }
+                );
+                self.app.send_message(file_open_message);
             }
         }
     }
