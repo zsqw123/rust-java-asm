@@ -87,7 +87,7 @@ impl AsmServer {
     fn render_to_app(&self, app: AppContainer) {
         let classes = self.read_classes();
         let start = Instant::now();
-        let dir_info = DirInfo::from_classes(Arc::from("Root"), &classes);
+        let dir_info = DirInfo::from_classes(&classes);
         info!("resolve dir info cost: {:?}", start.elapsed());
         app.set_left(Left { root_node: dir_info });
     }

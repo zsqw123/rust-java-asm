@@ -95,6 +95,30 @@ impl AsmServer {
         self.switch_or_open_lock_free(file_key, accessor, &mut left, &mut content, &mut top);
     }
 
+    pub fn close_dir(&self, file_key: &str, render_target: &AppContainer) {
+        let mut left = render_target.left().lock();
+        let mut current_node = &mut left.root_node;
+        let path_parts: Vec<&str> = file_key.split('/').collect();
+        for part in path_parts {
+            let Some(dir) = current_node.dirs.get_mut(part) else {
+                return;
+            };
+            if !dir.raw.opened {
+                return;
+            }
+            current_node = dir;
+        }
+        current_node.raw.opened = false;
+        let mut child_nodes: Vec<&mut DirInfo> = vec![current_node];
+        while let Some(child_node) = child_nodes.pop() {
+            for child in child_node.dirs.values_mut() {
+                if !child.raw.opened { continue; }
+                child.raw.opened = false;
+                child_nodes.push(child);
+            }
+        }
+    }
+
     pub fn switch_or_open_lock_free(
         &self, file_key: &str, accessor: &AccessorEnum,
         left: &mut Left, content: &mut Content, top: &mut Top,
@@ -124,6 +148,7 @@ impl AsmServer {
         top.file_path = Some(file_key.to_string());
     }
 
+    // switch left side file tree to correct place.
     fn switch_file_tree(&self, left: &mut Left, file_key: &str) {
         let root_node = &mut left.root_node;
         let parts: Vec<&str> = file_key.split('/').collect();

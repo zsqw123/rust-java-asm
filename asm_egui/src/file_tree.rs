@@ -10,20 +10,21 @@ pub fn render_dir(ui: &mut egui::Ui, app: &mut EguiApp) {
     let server = app.server.lock();
     if server.is_none() { return; }
     let row_height = ui.spacing().interact_size.y;
-    ScrollArea::vertical().auto_shrink(false)
-        .show_rows(ui, row_height, entries.len(), |ui, range| {
-            for i in range {
-                let entry = &mut entries[i];
-                match entry {
-                    FileEntry::Dir(raw_dir) => {
-                        render_dir_raw(ui, raw_dir);
-                    }
-                    FileEntry::File(file_info) => {
-                        render_file(ui, file_info, server_app);
-                    }
+    let scroll_area = ScrollArea::vertical().auto_shrink(false);
+    // scroll_area.vertical_scroll_offset();
+    scroll_area.show_rows(ui, row_height, entries.len(), |ui, range| {
+        for i in range {
+            let entry = &mut entries[i];
+            match entry {
+                FileEntry::Dir(raw_dir) => {
+                    render_dir_raw(ui, raw_dir, server_app);
+                }
+                FileEntry::File(file_info) => {
+                    render_file(ui, file_info, server_app);
                 }
             }
-        });
+        }
+    });
 }
 
 fn render_file(
@@ -46,9 +47,9 @@ fn render_file(
 }
 
 fn render_dir_raw(
-    ui: &mut egui::Ui, dir_info: &mut RawDirInfo,
+    ui: &mut egui::Ui, dir_info: &mut RawDirInfo, app_container: &AppContainer,
 ) {
-    let RawDirInfo { opened, level, title } = dir_info;
+    let RawDirInfo { opened, level, title, dir_key } = dir_info;
     ui.horizontal(|ui| {
         ui.add_space((*level as f32) * 12.0);
         let font = TextStyle::Body.resolve(ui.style());
@@ -61,7 +62,13 @@ fn render_dir_raw(
         let layout_job = LayoutJob::simple_singleline(title, font.clone(), color);
         let label = ui.selectable_label(false, layout_job);
         if label.clicked() {
-            *opened = !*opened;
+            let new_opened = !*opened;
+            if new_opened {
+                *opened = true;
+            } else {
+                // closed, close all child dir
+                app_container.send_message(UIMessage::CloseDir(dir_info.dir_key.clone()))
+            }
         }
     });
 }

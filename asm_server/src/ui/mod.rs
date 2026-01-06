@@ -16,8 +16,8 @@ use std::str::Split;
 use std::sync::Arc;
 
 /// contains all states of the app.
-/// It's not like the [crate::AsmServer] which only contains the information of a file.
-/// App will exists even no file opened. (no [crate::AsmServer] exists)
+/// It's not like the [AsmServer] which only contains the information of a file.
+/// App will exists even no file opened. (no [AsmServer] exists)
 #[derive(Default, Clone, Debug)]
 pub struct App {
     pub top: Arc<Mutex<Top>>,
@@ -29,6 +29,7 @@ pub struct App {
 #[derive(Clone, Debug)]
 pub enum UIMessage {
     OpenFile(OpenFileMessage),
+    CloseDir(StrRef),
 }
 
 #[derive(Clone, Debug)]
@@ -60,6 +61,9 @@ impl AppContainer {
             match message {
                 UIMessage::OpenFile(message) => {
                     server.switch_or_open(&message.path, self);
+                }
+                UIMessage::CloseDir(path) => {
+                    server.close_dir(&path, self);
                 }
             }
         }
@@ -99,6 +103,7 @@ pub struct RawDirInfo {
     pub opened: bool,
     pub level: u16,
     pub title: StrRef,
+    pub dir_key: StrRef,
 }
 
 pub type DirMap = BTreeMap<StrRef, DirInfo>;
@@ -124,8 +129,14 @@ fn visible_items<'a, 'b>(dir_info: &'b mut DirInfo, container: &'a mut Vec<FileE
 }
 
 impl DirInfo {
-    pub fn from_classes(title: StrRef, class_names: &[StrRef]) -> Self {
-        let mut root_node = DirInfo { raw: RawDirInfo { title, ..Default::default() }, ..Default::default() };
+    pub fn from_classes(class_names: &[StrRef]) -> Self {
+        let root_raw_dir = RawDirInfo {
+            title: Arc::from("Root"),
+            dir_key: Arc::from(""),
+            level: 0,
+            opened: true,
+        };
+        let mut root_node = DirInfo { raw: root_raw_dir, ..Default::default() };
         for class_name in class_names {
             root_node.put_entry_if_absent(class_name.clone());
         }
@@ -170,7 +181,7 @@ impl DirInfo {
     }
 
     fn entry_parts(path: &str) -> Peekable<Enumerate<Split<char>>> {
-        path[1..(path.len() - 1)].split('/').enumerate().peekable()
+        path.split('/').enumerate().peekable()
     }
 
     fn put_file_if_absent(&mut self, level: u16, file_key: StrRef, file_name: StrRef) -> &mut FileInfo {
@@ -182,8 +193,16 @@ impl DirInfo {
 
     fn put_dir_if_absent(&mut self, level: u16, folder_name: StrRef) -> &mut DirInfo {
         let title = folder_name.clone();
-        self.dirs.entry(folder_name).or_insert_with(|| {
-            let raw = RawDirInfo { title, level, ..Default::default() };
+        let parent_dir_key = &self.raw.dir_key;
+        let dir_key: StrRef;
+        if parent_dir_key.is_empty() {
+            // direct n
+            dir_key = folder_name.into();
+        } else {
+            dir_key = format!("{}/{}", parent_dir_key, folder_name).into();
+        }
+        self.dirs.entry(title.clone()).or_insert_with(|| {
+            let raw = RawDirInfo { title, level, dir_key, ..Default::default() };
             DirInfo { raw, ..Default::default() }
         })
     }

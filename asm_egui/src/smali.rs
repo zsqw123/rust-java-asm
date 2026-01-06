@@ -194,9 +194,6 @@ impl<'a> RenderContext<'a> {
     fn descriptor_menu_for_fn(
         &mut self, ui: &mut Ui, descriptor: &str,
     ) -> Option<()> {
-        let RenderContext {
-            server, content, ..
-        } = self;
         let descriptor = descriptor.strip_prefix('(')?;
         let mut split = descriptor.split(')');
 

@@ -5,4 +5,4 @@ pub(crate) mod node;
 pub(crate) mod smali;
 pub(crate) mod dex;
 
-mod util;
+pub(crate) mod util;
