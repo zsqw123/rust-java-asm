@@ -54,7 +54,7 @@ fn file_title(
         }
     } else if response.raw.clicked() {
         *selected_tab_index = Some(index);
-        top.file_path = Some(title_cloned.to_string());
+        top.file_path = title_cloned.to_string();
     }
 }
 

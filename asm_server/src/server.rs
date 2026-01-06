@@ -90,6 +90,8 @@ impl AsmServer {
         let accessor_locked = self.accessor.lock();
         let Some(accessor) = accessor_locked.deref() else { return; };
         let mut left = render_target.left().lock();
+        left.offset_key = Some(file_key.into());
+        left.hint_key = Some(file_key.into());
         let mut content = render_target.content().lock();
         let mut top = render_target.top().lock();
         self.switch_or_open_lock_free(file_key, accessor, &mut left, &mut content, &mut top);
@@ -145,7 +147,7 @@ impl AsmServer {
         content.opened_tabs.push(current_tab);
         content.selected = Some(current);
 
-        top.file_path = Some(file_key.to_string());
+        top.file_path = file_key.to_string();
     }
 
     // switch left side file tree to correct place.
@@ -166,7 +168,7 @@ impl AsmServer {
     }
 
     pub fn search(&self, top: &mut Top) {
-        let Some(query) = &top.file_path else { return; };
+        let query = &top.file_path;
         let query: StrRef = query.as_str().into();
         let mut fuzzy_locked = self.get_or_create_fuzzy(query.clone()).lock();
         let Some(fuzzy) = fuzzy_locked.deref_mut() else { return; };

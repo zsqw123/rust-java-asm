@@ -73,13 +73,15 @@ impl AppContainer {
 #[derive(Default, Clone, Debug)]
 pub struct Top {
     pub loading_state: LoadingState,
-    pub file_path: Option<String>,
+    pub file_path: String,
     pub search_result: SearchResult,
 }
 
 #[derive(Default, Clone, Debug)]
 pub struct Left {
     pub root_node: DirInfo,
+    pub offset_key: Option<StrRef>,
+    pub hint_key: Option<StrRef>,
 }
 
 #[derive(Clone, Debug)]
@@ -116,14 +118,24 @@ pub struct DirInfo {
     pub files: FileMap,
 }
 
-fn visible_items<'a, 'b>(dir_info: &'b mut DirInfo, container: &'a mut Vec<FileEntry<'b>>) {
+fn visible_items<'a, 'b>(
+    // input
+    dir_info: &'b mut DirInfo, offset_key: &Option<StrRef>,
+    // output
+    container: &'a mut Vec<FileEntry<'b>>, offset: &mut usize,
+) {
     let opened = dir_info.raw.opened;
     container.push(Dir(&mut dir_info.raw));
     if !opened { return; }
     for (_, dir) in dir_info.dirs.iter_mut() {
-        visible_items(dir, container);
+        visible_items(dir, offset_key, container, offset);
     }
     for (_, file) in dir_info.files.iter_mut() {
+        if let Some(file_key) = offset_key {
+            if *file_key == file.file_key {
+                *offset = container.len();
+            }
+        }
         container.push(File(file));
     }
 }
@@ -174,10 +186,14 @@ impl DirInfo {
         }
     }
 
-    pub fn visible_items(&mut self) -> Vec<FileEntry> {
+    pub fn visible_items(&'_ mut self, offset_key: Option<StrRef>) -> FileTreeBuildResult<'_> {
         let mut container = Vec::new();
-        visible_items(self, &mut container);
-        container
+        let mut index_of_offset = 0usize;
+        visible_items(self, &offset_key, &mut container, &mut index_of_offset);
+        FileTreeBuildResult {
+            entries: container,
+            required_file_index: index_of_offset,
+        }
     }
 
     fn entry_parts(path: &str) -> Peekable<Enumerate<Split<char>>> {
@@ -206,6 +222,12 @@ impl DirInfo {
             DirInfo { raw, ..Default::default() }
         })
     }
+}
+
+pub struct FileTreeBuildResult<'a> {
+    pub entries: Vec<FileEntry<'a>>,
+    // the index of required file which used for initial scrolling offset.
+    pub required_file_index: usize,
 }
 
 #[derive(Clone, Debug, Default)]

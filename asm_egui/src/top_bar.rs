@@ -40,9 +40,9 @@ impl EguiApp {
 
     fn file_path_input(&mut self, ui: &mut Ui) {
         let mut locked_top = self.ui_app.top().lock();
-        let Some(file_path) = &mut locked_top.file_path else { return; };
+        let mut file_path = &mut locked_top.file_path;
 
-        let edit_path_ui = Self::file_path_input_area(ui, file_path);
+        let edit_path_ui = Self::file_path_input_area(ui, &mut file_path);
 
         let popup_id = Id::new("file_path_popup");
         if edit_path_ui.gained_focus() {
@@ -80,6 +80,7 @@ impl EguiApp {
         let target_width_for_content = max_width - last_time_remaining;
 
         let edit_path_ui = TextEdit::singleline(file_path)
+            .hint_text("Enter class name to search...")
             .desired_width(target_width_for_content).show(ui).response;
 
         let remaining_width = ui.min_rect().width() - target_width_for_content;

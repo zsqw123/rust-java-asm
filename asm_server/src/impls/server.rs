@@ -2,11 +2,10 @@ use crate::impls::apk_load::read_apk;
 use crate::server::OpenFileError;
 use crate::ui::{AppContainer, DirInfo, Left};
 use crate::{AccessorEnum, AccessorMut, AsmServer, ServerMut};
-use java_asm::StrRef;
 use log::info;
+use rfd::MessageDialogResult::No;
 use std::io::{Read, Seek};
 use std::ops::DerefMut;
-use std::sync::Arc;
 use std::time::Instant;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
@@ -89,6 +88,6 @@ impl AsmServer {
         let start = Instant::now();
         let dir_info = DirInfo::from_classes(&classes);
         info!("resolve dir info cost: {:?}", start.elapsed());
-        app.set_left(Left { root_node: dir_info });
+        app.set_left(Left { root_node: dir_info, offset_key: None, hint_key: None });
     }
 }
