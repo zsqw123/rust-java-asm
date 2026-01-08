@@ -3,9 +3,10 @@ use bit_set::BitSet;
 use egui::containers::PopupCloseBehavior;
 use egui::text::LayoutJob;
 use egui::{popup_below_widget, Context, Id, Response, TextEdit, TextFormat, TextStyle, Ui};
-use java_asm_server::ui::{OpenFileMessage, UIMessage};
+use java_asm_server::ui::{Content, OpenFileMessage, Tab, UIMessage};
 use java_asm_server::AsmServer;
 use std::ops::Deref;
+use std::time::Duration;
 
 impl EguiApp {
     pub(crate) fn top_bar(&mut self, ctx: &Context) {
@@ -35,6 +36,9 @@ impl EguiApp {
                 );
             }
             if self.server.lock().is_some() {
+                self.locate_button(ui);
+                self.export_button(ui);
+                // searchable file path
                 self.file_path_input(ui);
             }
         });
@@ -71,6 +75,41 @@ impl EguiApp {
                     Self::popup_file_path_ui(self, ui);
                 })
             });
+    }
+
+    fn locate_button(&mut self, ui: &mut Ui) {
+        let Some(current_tab) = self.get_current_tab() else { return };
+        if !ui.button("Locate").clicked() { return }
+        let current_path = current_tab.file_key;
+        let message = UIMessage::OpenFile(
+            OpenFileMessage { path: current_path }
+        );
+        self.ui_app.send_message(message);
+    }
+
+    fn export_button(&mut self, ui: &mut Ui) {
+        ui.menu_button("Export", |ui| {
+            let current_tab = self.get_current_tab();
+            let label_text = "Copy current content";
+            let Some(current_tab) = current_tab else {
+                ui.weak(label_text);
+                return;
+            };
+            if ui.selectable_label(false, label_text).clicked() {
+                let smali_content = current_tab.content.render(0);
+                ui.ctx().copy_text(smali_content);
+                self.toasts.success(
+                    format!("{} content copied!", current_tab.file_key)
+                ).duration(Duration::from_secs(3).into());
+            }
+        });
+    }
+
+    fn get_current_tab(&self) -> Option<Tab> {
+        let locked_content = self.ui_app.content().lock();
+        let Content { opened_tabs, selected } = locked_content.deref();
+        let Some(selected) = selected else { return None; };
+        opened_tabs.get(*selected).map(|tab| tab.clone())
     }
 
     fn file_path_input_area(ui: &mut Ui, file_path: &mut String) -> Response {

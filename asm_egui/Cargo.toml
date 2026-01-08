@@ -20,6 +20,7 @@ egui = { workspace = true }
 eframe = { workspace = true }
 egui_extras = { workspace = true }
 egui_flex = { workspace = true }
+egui-notify = { workspace = true }
 
 fontdb = { workspace = true }
 bit-set = { workspace = true }

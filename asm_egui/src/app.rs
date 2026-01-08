@@ -9,11 +9,13 @@ use java_asm_server::ui::log::{inject_log, LogHolder};
 use java_asm_server::ui::AppContainer;
 use java_asm_server::{AsmServer, ServerMut};
 use std::sync::Arc;
+use egui_notify::Toasts;
 
 pub struct EguiApp {
     pub server: ServerMut,
     pub log_holder: Arc<LogHolder>,
     pub ui_app: AppContainer,
+    pub toasts: Toasts,
 }
 
 impl EguiApp {
@@ -25,6 +27,7 @@ impl EguiApp {
             log_holder,
             server: Default::default(),
             ui_app: Default::default(),
+            toasts: Toasts::default(),
         }
     }
 }
@@ -106,6 +109,7 @@ impl eframe::App for EguiApp {
         self.left_bar(ctx);
         self.central_panel(ctx);
         self.process_dropped_file(ctx);
+        self.toasts.show(ctx);
     }
 }
 

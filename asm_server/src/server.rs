@@ -141,7 +141,7 @@ impl AsmServer {
             selected: false,
             file_key: Arc::from(file_key),
             title: Arc::from(file_key),
-            content: smali,
+            content: Arc::new(smali),
         };
         let current = content.opened_tabs.len();
         content.opened_tabs.push(current_tab);
@@ -170,6 +170,7 @@ impl AsmServer {
     pub fn search(&self, top: &mut Top) {
         let query = &top.file_path;
         let query: StrRef = query.as_str().into();
+        if query.len() > 255 { return; }
         let mut fuzzy_locked = self.get_or_create_fuzzy(query.clone()).lock();
         let Some(fuzzy) = fuzzy_locked.deref_mut() else { return; };
         let search_result = fuzzy.search_with_new_input(query);

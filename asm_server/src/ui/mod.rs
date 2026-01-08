@@ -243,7 +243,7 @@ pub struct Tab {
     pub selected: bool,
     pub file_key: StrRef,
     pub title: StrRef,
-    pub content: SmaliNode,
+    pub content: Arc<SmaliNode>,
 }
 
 pub struct LogDialog {
