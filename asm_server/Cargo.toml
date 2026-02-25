@@ -21,10 +21,17 @@ log = { workspace = true }
 
 fontdb = { workspace = true }
 rfd = { workspace = true }
-open = { workspace = true }
 
 enum_dispatch = { workspace = true }
 
-tokio = { workspace = true }
 parking_lot = { workspace = true }
+futures = { workspace = true }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+tokio = { workspace = true, features = ["full"] }
+open = { workspace = true }
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+tokio = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
 

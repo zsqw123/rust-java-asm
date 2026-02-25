@@ -1,4 +1,5 @@
 use crate::impls::apk_load::read_apk;
+use crate::impls::util::schedule_task;
 use crate::server::OpenFileError;
 use crate::ui::{AppContainer, DirInfo, Left};
 use crate::{AccessorEnum, AccessorMut, AsmServer, ServerMut};
@@ -23,20 +24,20 @@ pub struct ProgressMessage {
 }
 
 pub struct FileOpenContext {
-    pub path: String,
+    pub file_name: String,
     pub start_time: Instant,
 }
 
 
 impl AsmServer {
     pub(crate) fn create_message_handler(
-        server: &ServerMut, runtime: &Runtime, render_target: &AppContainer,
+        server: &ServerMut, render_target: &AppContainer,
     ) -> Sender<ServerMessage> {
         let server = server.clone();
         let render_target = render_target.clone();
         let (sender, receiver) = mpsc::channel::<ServerMessage>(5);
-        runtime.spawn(async move {
-            let mut receiver = receiver;
+        let mut receiver = receiver;
+        schedule_task(async move {
             while let Some(msg) = receiver.recv().await {
                 let mut server = server.lock();
                 let server_ref = server.deref_mut();
@@ -71,7 +72,7 @@ impl AsmServer {
         context: &FileOpenContext,
         render_target: AppContainer,
     ) {
-        let FileOpenContext { path, start_time } = context;
+        let FileOpenContext { file_name: path, start_time } = context;
         info!("open file {path} cost: {:?}", start_time.elapsed());
         self.render_to_app(render_target);
     }

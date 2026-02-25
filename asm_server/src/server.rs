@@ -1,6 +1,7 @@
 use crate::impls::fuzzy::FuzzyMatchModel;
 use crate::impls::server::FileOpenContext;
-use crate::impls::util::new_tokio_thread;
+use crate::impls::util::schedule_task;
+use crate::rw_access::{ReadAccess, ReadError, WriteAccess};
 use crate::ui::{AppContainer, Content, DirInfo, Left, Tab, Top};
 use crate::{Accessor, AccessorEnum, ArcVarOpt, AsmServer, ExportableSource, LoadingState, ServerMut};
 use java_asm::smali::SmaliNode;
@@ -8,9 +9,11 @@ use java_asm::{AsmErr, StrRef};
 use log::{error, info};
 use std::fs;
 use std::fs::File;
+use std::io::Cursor;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use std::time::Instant;
+use tokio::runtime::Runtime;
 use zip::result::ZipError;
 
 impl AsmServer {
@@ -53,34 +56,36 @@ impl AsmServer {
         &self.fuzzy
     }
 
-    pub fn smart_open(server: ServerMut, path: &str, render_target: AppContainer) {
-        let context = FileOpenContext { path: path.to_string(), start_time: Instant::now() };
-        new_tokio_thread(|runtime| async move {
+    pub fn smart_open(server: ServerMut, read_access: ReadAccess, render_target: AppContainer) {
+        let file_name = read_access.name();
+        let context = FileOpenContext { file_name, start_time: Instant::now() };
+        schedule_task(async move {
             let new_server = AsmServer::new();
             *server.lock() = Some(new_server.clone());
 
             let sender = Self::create_message_handler(
-                &server, &runtime, &render_target,
+                &server, &render_target,
             );
 
-            let path = &context.path;
+            let file_name = &context.file_name;
             let accessor = new_server.accessor.clone();
-            if path.ends_with(".apk") {
-                let opened_file = File::open(path);
-                match opened_file {
-                    Ok(opened_file) => {
-                        let read_result = Self::read_apk(opened_file, sender, accessor).await;
+            if file_name.ends_with(".apk") {
+                let reader = read_access.read().await;
+                match reader {
+                    Ok(content) => {
+                        let cursor = Cursor::new(content);
+                        let read_result = Self::read_apk(cursor, sender, accessor).await;
                         if let Err(e) = read_result {
                             error!("resolve file meets an error. {e:?}");
                         }
                     }
                     Err(e) => {
-                        let error = OpenFileError::Io(e);
-                        error!("read {path} meet an io error. {error:?}");
+                        let error = OpenFileError::ReadError(e);
+                        error!("read {file_name} meet an io error. {error:?}");
                     }
                 }
             } else {
-                error!("unsupported file type: {:?}", path);
+                error!("unsupported file type: {:?}", file_name);
             };
             new_server.on_file_opened(&context, render_target);
         });
@@ -182,37 +187,47 @@ impl AsmServer {
 /// I/O operation processing
 impl AsmServer {
     pub fn dialog_to_open_file(server: ServerMut, render_target: AppContainer) {
-        rfd::FileDialog::new()
-            .add_filter("APK", &["apk"])
-            .pick_file()
-            .map(|path| {
-                if let Some(path) = path.to_str() {
-                    Self::smart_open(server, path, render_target);
-                }
-            });
+        schedule_task(async {
+            let dialog = rfd::AsyncFileDialog::new()
+                .add_filter("APK", &["apk"]);
+            let read_access = ReadAccess::new(dialog).await;
+            let Some(read_access) = read_access else { return; };
+            Self::smart_open(server, read_access, render_target);
+        });
     }
 
     pub fn dialog_to_save_file(&self, source_key: &str) {
         let accessor_locked = self.accessor.lock();
         let Some(accessor) = accessor_locked.deref() else { return; };
         let Some(ExportableSource { exportable_name, source }) = accessor.peek_source(source_key) else { return; };
-        let Some(saved_path) = rfd::FileDialog::new()
-            .set_file_name(exportable_name.to_string())
-            .save_file() else { return; };
-        let result = fs::write(&saved_path, source);
-        if let Err(e) = result {
-            error!("save file {source_key} meets an error. {e:?}");
-        };
-        let parent_path = saved_path.parent();
-        let Some(parent_path) = parent_path else { return; };
-        if !parent_path.exists() { return; };
-        open::that_in_background(&parent_path);
+        let file_save_dialog = rfd::AsyncFileDialog::new()
+            .set_file_name(exportable_name.to_string());
+        // clone source key for async move
+        let source_key = source_key.to_string();
+        schedule_task(async move {
+            let write_access = WriteAccess::new(file_save_dialog).await;
+            let Some(write_access) = write_access else {
+                error!("create write access of {source_key} failed when saving files.");
+                return;
+            };
+            let write_result = write_access.write(&source).await;
+            if let Err(e) = write_result {
+                error!("save file {source_key} meets an error. {e:?}");
+            };
+            #[cfg(not(target_arch = "wasm32"))] {
+                let saved_path = write_access.guess_path();
+                let parent_path = saved_path.parent().unwrap_or(saved_path.as_path());
+                if !parent_path.exists() { return; };
+                open::that_in_background(&parent_path);
+            }
+        });
     }
 }
 
 #[derive(Debug)]
 pub enum OpenFileError {
     Io(std::io::Error),
+    ReadError(ReadError),
     LoadZip(ZipError),
     ResolveError(AsmErr),
     Custom(String),

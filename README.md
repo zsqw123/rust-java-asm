@@ -66,8 +66,12 @@ see some examples.
     - [x] jump to offset or type descriptor
     - [ ] Settings (e.g. custom fonts, theme, etc.)
     - [ ] decompiling by using mapping file.
-  - [ ] Tauri frontend. (`ta` folder)
-    > Recent days, I think using tauri will bring us a better UX, so I decided to use tauri for 
+  - [ ] WASM Support  
+    As we know, Apple is a shit, it must let us to use a mac machine to develop, and cost 100 USD per year for a developer account, 
+    otherwise your app will be reported as broken. Deploy it on web will bring a good user experience for user who wants to
+    use it as fast as possible.
+  - [ ] **\[Experimental\]** Tauri frontend. (`ta` folder)  
+    Recent days, I found using tauri will bring us a better UX, so I decided to use tauri later for 
 flexible interactions and share web technologies to boost the development. Using pure rust for frontend (egui or iced solution) 
 is complex for handle so many things (like font fallbacks, search bars, code highlighting and copy & paste, etc.)
 

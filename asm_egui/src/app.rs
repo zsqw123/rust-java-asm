@@ -5,11 +5,12 @@ use crate::smali::smali_layout;
 use eframe::{CreationContext, Frame};
 use egui::{Context, DroppedFile, ScrollArea};
 use egui_extras::{Size, StripBuilder};
+use egui_notify::Toasts;
+use java_asm_server::rw_access::ReadAccess;
 use java_asm_server::ui::log::{inject_log, LogHolder};
 use java_asm_server::ui::AppContainer;
 use java_asm_server::{AsmServer, ServerMut};
 use std::sync::Arc;
-use egui_notify::Toasts;
 
 pub struct EguiApp {
     pub server: ServerMut,
@@ -87,14 +88,24 @@ impl EguiApp {
 impl EguiApp {
     fn process_dropped_file(&mut self, ctx: &Context) {
         ctx.input(|input| {
-            if let Some(DroppedFile { path, .. }) = input.raw.dropped_files.get(0) {
-                if let Some(path) = path {
-                    let path = path.display().to_string();
-                    AsmServer::smart_open(self.server.clone(), &path, self.ui_app.clone());
-                }
-            }
+            let Some(dropped_file) = input.raw.dropped_files.get(0) else {
+                return;
+            };
+            let Some(read_access) = create_read_access(dropped_file.clone()) else {
+                return;
+            };
+            AsmServer::smart_open(self.server.clone(), read_access, self.ui_app.clone());
         })
     }
+}
+fn create_read_access(dropped_file: DroppedFile) -> Option<ReadAccess> {
+    if let Some(bytes) = dropped_file.bytes {
+        return Some(ReadAccess::from_raw(dropped_file.name, bytes));
+    };
+    if let Some(path) = dropped_file.path {
+        return Some(ReadAccess::from_path(&path));
+    };
+    None
 }
 
 impl eframe::App for EguiApp {

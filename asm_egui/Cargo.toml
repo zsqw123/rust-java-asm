@@ -25,6 +25,9 @@ egui-notify = { workspace = true }
 fontdb = { workspace = true }
 bit-set = { workspace = true }
 
-[profile.release]
-strip = true
-lto = true
+[target.wasm32-unknown-unknown.dependencies]
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+getrandom = { workspace = true, features = ["wasm_js"] }
+getrandom_v2 = { workspace = true, features = ["js"] }
+
