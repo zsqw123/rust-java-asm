@@ -4,9 +4,7 @@ resolver = "2"
 members = [
     "asm", "asm_macro", "asm_server",
     "asm_egui",
-    # iced seems quite not mature to use and font fallback didn't works well.
-    # "asm_iced",
-    #    "ta/src-tauri"
+    # "ta/src-tauri"
 ]
 
 [workspace.package]
