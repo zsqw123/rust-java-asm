@@ -214,7 +214,7 @@ impl AsmServer {
             if let Err(e) = write_result {
                 error!("save file {source_key} meets an error. {e:?}");
             };
-            #[cfg(not(target_arch = "wasm32"))] {
+            #[cfg(not(target_family = "wasm"))] {
                 let saved_path = write_access.guess_path();
                 let parent_path = saved_path.parent().unwrap_or(saved_path.as_path());
                 if !parent_path.exists() { return; };

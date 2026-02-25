@@ -8,10 +8,10 @@ mod top_bar;
 mod targets;
 
 fn main() {
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(target_family = "wasm")]
     targets::wasm::main();
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(target_family = "wasm"))]
     targets::native::main().ok();
 }
 
