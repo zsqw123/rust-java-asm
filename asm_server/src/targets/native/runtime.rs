@@ -2,6 +2,7 @@ use std::future::Future;
 use std::path::Path;
 
 pub(crate) type Instant = std::time::Instant;
+pub(crate) type SystemTime = std::time::SystemTime;
 
 pub(crate) fn schedule_task<F: Future<Output = ()> + Send + 'static>(f: F) {
     std::thread::spawn(move || futures::executor::block_on(f));

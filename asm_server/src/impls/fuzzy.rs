@@ -22,10 +22,22 @@ pub struct FuzzyMatchModel {
 // in other cases, which means totally different, clear all incremental info.
 type IncrementalInfos = Vec<Option<SearchResult>>;
 
+// Java references copied from IDEs use dots, while internal class paths use slashes.
+// Whitespace is only a separator in copied references, not part of a class path.
+fn normalize_search_input(input: &str) -> StrRef {
+    input
+        .chars()
+        .filter(|ch| !ch.is_whitespace())
+        .map(|ch| if ch == '.' { '/' } else { ch })
+        .collect::<String>()
+        .into()
+}
+
 impl FuzzyMatchModel {
     pub fn new(
         input: StrRef, items: &[StrRef], top_n: usize,
     ) -> Self {
+        let input = normalize_search_input(&input);
         let config = Config::DEFAULT.match_paths();
         let matcher = Matcher::new(config);
         let pattern = Pattern::parse(&input, CaseMatching::Ignore, Normalization::Never);
@@ -42,6 +54,7 @@ impl FuzzyMatchModel {
     }
 
     pub fn search_with_new_input(&mut self, new_input: StrRef) -> SearchResult {
+        let new_input = normalize_search_input(&new_input);
         let old_input = self.input.clone();
         let old_len = old_input.len();
         let new_len = new_input.len();
@@ -288,6 +301,18 @@ mod tests {
             .map(|item| item.item.as_ref())
             .collect();
         assert_eq!(result_items, vec!["Foo", "pkg/Foo", "a/very/long/Foo"]);
+    }
+
+    #[test]
+    fn test_dot_separated_input() {
+        let items = vec_str_ref![
+            "core/models/SafeListAdapter",
+            "core/models/OtherAdapter",
+        ];
+        let mut model = FuzzyMatchModel::new("".into(), &items, 10);
+
+        let result = model.search_with_new_input(" core. models. SafeListAdapter\t".into());
+        assert_eq!(result.items[0].item, "core/models/SafeListAdapter".into());
     }
 
     #[test]

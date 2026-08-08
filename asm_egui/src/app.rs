@@ -1,6 +1,7 @@
 use crate::file_tab::render_tabs;
 use crate::file_tree::render_dir;
 use crate::smali::smali_layout;
+use chrono::{DateTime, Local, Utc};
 use eframe::{CreationContext, Frame};
 use egui::{Context, DroppedFile, ScrollArea};
 use egui_extras::{Size, StripBuilder};
@@ -11,6 +12,19 @@ use java_asm_server::ui::AppContainer;
 use java_asm_server::{AsmServer, ServerMut};
 use std::sync::Arc;
 use std::time::Duration;
+
+fn format_log_timestamp(timestamp_millis: u128) -> String {
+    let Ok(timestamp_millis) = i64::try_from(timestamp_millis) else {
+        return "invalid timestamp".to_owned();
+    };
+    DateTime::<Utc>::from_timestamp_millis(timestamp_millis)
+        .map(|time| {
+            time.with_timezone(&Local)
+                .format("%Y-%m-%d %H:%M:%S%.3f")
+                .to_string()
+        })
+        .unwrap_or_else(|| "invalid timestamp".to_owned())
+}
 
 pub struct EguiApp {
     pub server: ServerMut,
@@ -60,7 +74,12 @@ impl EguiApp {
                     let current_records = self.log_holder.records.lock();
                     let current_records = current_records.iter();
                     for log in current_records {
-                        ui.label(format!("{}: {}", log.level, log.message));
+                        ui.label(format!(
+                            "[{}] {}: {}",
+                            format_log_timestamp(log.timestamp_millis),
+                            log.level,
+                            log.message,
+                        ));
                     }
                 });
             });

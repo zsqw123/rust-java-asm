@@ -1,3 +1,4 @@
+use crate::targets::SystemTime;
 use log::{Level, Metadata, Record};
 use parking_lot::Mutex;
 use std::collections::VecDeque;
@@ -21,6 +22,7 @@ impl Default for LogHolder {
 
 pub struct SimpleRecord {
     pub level: Level,
+    pub timestamp_millis: u128,
     pub message: Arc<str>,
 }
 
@@ -39,6 +41,10 @@ impl log::Log for LogHolder {
         }
         deque.push_back(SimpleRecord {
             level: record.level(),
+            timestamp_millis: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis(),
             message: Arc::from(record.args().to_string()),
         });
     }

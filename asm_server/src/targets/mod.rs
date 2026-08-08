@@ -6,6 +6,6 @@ mod wasm;
 mod native;
 
 #[cfg(target_family = "wasm")]
-pub(crate) use wasm::{file_handle_path, read_apk, reveal_parent, schedule_task, Instant};
+pub(crate) use wasm::{file_handle_path, read_apk, reveal_parent, schedule_task, spawn_process_dex, Instant, SystemTime};
 #[cfg(not(target_family = "wasm"))]
-pub(crate) use native::{file_handle_path, read_apk, reveal_parent, schedule_task, Instant};
+pub(crate) use native::{file_handle_path, read_apk, reveal_parent, schedule_task, spawn_process_dex, Instant, SystemTime};

@@ -125,9 +125,11 @@ Trunk/Rust output because the generated WASM uses bulk-memory and nontrapping fl
 is local to the page; the current server/accessor boundary supports APK input, not every format listed in the long-term
 README goals. Because egui renders into a WebGL canvas, CSS `font-family` cannot provide glyph fallback there; the WASM
 font path fetches a pinned Noto Sans SC subset from a CDN at runtime and native builds continue to load host system
-fonts. Keep the font outside the WASM binary so it can be cached independently. APK imports report
-scan/read/parse/index phases through `LoadingState`; the WASM loader yields between CPU-heavy phases so the browser can
-repaint the progress bar.
+fonts. Keep the font outside the WASM binary so it can be cached independently. APK imports use one throttled loading
+stream through `LoadingState`, reporting at most once per completed percentage point. Up to 16 DEX parse/index
+pipelines run concurrently; native indexing uses a fixed Rayon worker pool, and parallel progress is based on completed
+DEX pipelines. The final ordered merge only sends its completion notification. The WASM loader yields between
+CPU-heavy indexing batches so the browser can repaint the progress bar.
 
 Final Rust workspace verification (matches CI's effective build/test scope):
 

@@ -49,6 +49,8 @@ egui-notify = "0.19.0"
 
 tokio = { version = "1.44.2", features = ["sync", "macros", "io-util", "rt", "time"] }
 futures = "0.3"
+rayon = "1.10.0"
+chrono = "0.4.45"
 parking_lot = { version = "0.12", features = [] }
 
 #iced = "0.13.1"
