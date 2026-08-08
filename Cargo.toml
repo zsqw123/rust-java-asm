@@ -11,7 +11,6 @@ members = [
 version = "0.1.4" # JAVA_ASM_VERSION
 authors = ["zsqw123"]
 edition = "2024"
-rust-version = "1.97"
 license = "Apache-2.0"
 description = "Java bytecode reader & writer in rust"
 documentation = "https://github.com/zsqw123/rust-java-asm"
