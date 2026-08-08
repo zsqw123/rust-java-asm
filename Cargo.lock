@@ -2105,9 +2105,11 @@ dependencies = [
  "image",
  "java_asm",
  "java_asm_server",
+ "js-sys",
  "log",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]
@@ -2127,6 +2129,7 @@ dependencies = [
  "fontdb",
  "futures",
  "java_asm",
+ "js-sys",
  "log",
  "nucleo-matcher",
  "open",
@@ -2134,7 +2137,10 @@ dependencies = [
  "rand 0.9.2",
  "rfd",
  "tokio",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
+ "web-time",
  "zip",
 ]
 

@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 pub mod server;
 
+pub(crate) mod compat;
 pub(crate) mod impls;
 pub mod ui;
 pub mod rw_access;
@@ -32,6 +33,8 @@ pub struct LoadingState {
     pub in_loading: bool,
     // file loading progress, 0.0 ~ 1.0
     pub loading_progress: f32,
+    // human-readable phase shown beside the progress bar.
+    pub loading_message: String,
     // when loading failed, the error will be set.
     pub err: Option<String>,
 }

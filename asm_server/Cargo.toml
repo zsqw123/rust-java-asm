@@ -32,6 +32,9 @@ tokio = { workspace = true, features = ["full"] }
 open = { workspace = true }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
+js-sys = { workspace = true }
 tokio = { workspace = true }
+wasm-bindgen = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
-
+web-sys = { workspace = true, features = ["Window"] }
+web-time = { workspace = true }

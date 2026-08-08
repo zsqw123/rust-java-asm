@@ -20,10 +20,10 @@ pub struct EguiApp {
 }
 
 impl EguiApp {
-    pub fn new(context: &CreationContext) -> Self {
+    pub fn new(context: &CreationContext, cjk_font: Option<Vec<u8>>) -> Self {
         let log_holder = Default::default();
         inject_log(Arc::clone(&log_holder));
-        inject_sys_font(context);
+        inject_sys_font(context, cjk_font);
         Self {
             log_holder,
             server: Default::default(),

@@ -2,7 +2,7 @@ use crate::app::EguiApp;
 use bit_set::BitSet;
 use egui::containers::PopupCloseBehavior;
 use egui::text::LayoutJob;
-use egui::{popup_below_widget, Context, Id, Response, TextEdit, TextFormat, TextStyle, Ui};
+use egui::{popup_below_widget, Context, Id, ProgressBar, Response, TextEdit, TextFormat, TextStyle, Ui};
 use java_asm_server::ui::{Content, OpenFileMessage, Tab, UIMessage};
 use java_asm_server::AsmServer;
 use std::ops::Deref;
@@ -18,7 +18,12 @@ impl EguiApp {
                 let loading_state = &locked_top.loading_state;
                 if loading_state.in_loading {
                     ui.horizontal(|ui| {
-                        ui.label(format!("Loading... {:.2}%", loading_state.loading_progress * 100.0));
+                        ui.label(&loading_state.loading_message);
+                        ui.add(
+                            ProgressBar::new(loading_state.loading_progress.clamp(0.0, 1.0))
+                                .desired_width(220.0)
+                                .show_percentage(),
+                        );
                     });
                 }
                 drop(locked_top);

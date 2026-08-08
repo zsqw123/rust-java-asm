@@ -28,16 +28,6 @@ pub struct WriteAccess {
     handle: FileHandle,
 }
 
-#[cfg(target_family = "wasm")]
-fn guess_path_for_handle(file_handle: &FileHandle) -> String {
-    file_handle.file_name()
-}
-
-#[cfg(not(target_family = "wasm"))]
-fn guess_path_for_handle(file_handle: &FileHandle) -> String {
-    file_handle.path().display().to_string()
-}
-
 impl ReadAccess {
     pub fn name(&self) -> String {
         match self {
@@ -55,7 +45,7 @@ impl ReadAccess {
     // in wasm, it will returns name directly rather than path because it's not available.
     pub fn guess_path(&self) -> String {
         match self {
-            Self::FileHandleBased { handle } => guess_path_for_handle(handle),
+            Self::FileHandleBased { handle } => crate::compat::file_handle_path(handle),
             Self::PathBased { path } => path.display().to_string(),
             _ => self.name(),
         }
@@ -107,7 +97,7 @@ impl WriteAccess {
 
     // in wasm, it will returns name directly rather than path because it's not available.
     pub fn guess_path(&self) -> PathBuf {
-        let path_str = guess_path_for_handle(&self.handle);
+        let path_str = crate::compat::file_handle_path(&self.handle);
         PathBuf::from(path_str)
     }
 

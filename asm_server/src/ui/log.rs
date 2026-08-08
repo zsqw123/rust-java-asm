@@ -47,6 +47,10 @@ impl log::Log for LogHolder {
 }
 
 pub fn inject_log(log_holder: Arc<LogHolder>) {
-    log::set_boxed_logger(Box::new(log_holder)).unwrap();
-    log::set_max_level(Level::Trace.to_level_filter());
+    // The browser frontend may already have installed a global logger before
+    // `EguiApp` is created. Installing a second logger is a normal startup
+    // condition, not a fatal application error.
+    if log::set_boxed_logger(Box::new(log_holder)).is_ok() {
+        log::set_max_level(Level::Trace.to_level_filter());
+    }
 }

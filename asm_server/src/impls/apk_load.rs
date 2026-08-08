@@ -1,4 +1,5 @@
 use crate::impls::server::{ProgressMessage, ServerMessage};
+use crate::compat::yield_to_browser;
 use crate::server::OpenFileError;
 use crate::{Accessor, ExportableSource};
 use java_asm::dex::{ClassDef, DexFile, DexFileAccessor};
@@ -22,6 +23,9 @@ pub async fn read_apk(
     zip_archive: ZipArchive<impl Read + Seek>, sender: Sender<ServerMessage>,
 ) -> Result<ApkAccessor, OpenFileError> {
     let mut zip_archive = zip_archive;
+    send_progress(&sender, 0.0, "Scanning APK...").await;
+    yield_to_browser().await;
+
     // read dex files
     let mut dex_files = zip_archive
         .file_names()
@@ -32,36 +36,70 @@ pub async fn read_apk(
     dex_files.sort_by(|a, b| dex_index(a).cmp(&dex_index(b)));
     
     // read zip entry indices
-    let dex_files: Vec<_> = dex_files.iter().map(|s| {
-        zip_archive.index_for_name(s)
-    }).filter_map(|v|v).collect();
-    
-    // put dex files
+    let dex_files: Vec<_> = dex_files.into_iter().filter_map(|name| {
+        zip_archive.index_for_name(name).map(|index| (index, name.to_owned()))
+    }).collect();
+
     let dex_file_count = dex_files.len();
     let mut dex_sources = HashMap::new();
-    let dex_files = dex_files.iter().map(|entry_index| {
-        let mut file = zip_archive.by_index(*entry_index).map_err(OpenFileError::LoadZip)?;
-        let file_name = StrRef::from(file.name());
-        let file_name_for_dex_sources = file_name.clone();
-        let mut bytes = Vec::new();
-        file.read_to_end(&mut bytes).map_err(OpenFileError::Io)?;
-        let dex_file = DexFile::resolve_from_bytes(&bytes).map_err(OpenFileError::ResolveError)?;
-        let dex_file_accessor = Arc::new(DexFileAccessor::new(dex_file, bytes, file_name));
-
-        dex_sources.insert(file_name_for_dex_sources, dex_file_accessor.clone());
-        Ok(dex_file_accessor)
-    }).map(|res: Result<Arc<DexFileAccessor>, OpenFileError>| {
-        match res {
-            Ok(dex_file) => Some(dex_file),
-            Err(err) => {
-                error!("Error when reading dex file: {:?}", err);
-                None
-            }
-        }
-    }).filter_map(|v| v);
     let mut map = HashMap::new();
-    for (index, dex_file) in dex_files.enumerate() {
-        for class_def in dex_file.file.class_defs.iter() {
+
+    for (index, (entry_index, display_name)) in dex_files.into_iter().enumerate() {
+        let dex_start = index as f32 / dex_file_count.max(1) as f32;
+        let dex_span = 1.0 / dex_file_count.max(1) as f32;
+
+        send_progress(
+            &sender,
+            dex_start + dex_span * 0.05,
+            format!("Reading {display_name}..."),
+        ).await;
+        yield_to_browser().await;
+
+        let (file_name, bytes) = {
+            let mut file = match zip_archive.by_index(entry_index) {
+                Ok(file) => file,
+                Err(err) => {
+                    error!("Error when reading dex entry: {err:?}");
+                    continue;
+                }
+            };
+            let file_name = StrRef::from(file.name());
+            let mut bytes = Vec::new();
+            if let Err(err) = file.read_to_end(&mut bytes) {
+                error!("Error when reading {file_name}: {err:?}");
+                continue;
+            }
+            (file_name, bytes)
+        };
+        let file_name_for_dex_sources = file_name.clone();
+
+        send_progress(
+            &sender,
+            dex_start + dex_span * 0.25,
+            format!("Parsing {display_name}..."),
+        ).await;
+        yield_to_browser().await;
+
+        let dex_file = match DexFile::resolve_from_bytes(&bytes) {
+            Ok(dex_file) => dex_file,
+            Err(err) => {
+                error!("Error when resolving {display_name}: {err:?}");
+                continue;
+            }
+        };
+        let dex_file = Arc::new(DexFileAccessor::new(dex_file, bytes, file_name));
+        dex_sources.insert(file_name_for_dex_sources, dex_file.clone());
+
+        send_progress(
+            &sender,
+            dex_start + dex_span * 0.60,
+            format!("Indexing {display_name}..."),
+        ).await;
+        yield_to_browser().await;
+
+        let class_count = dex_file.file.class_defs.len().max(1);
+        let report_step = (class_count / 16).max(64);
+        for (class_index, class_def) in dex_file.file.class_defs.iter().enumerate() {
             let class_idx = class_def.class_idx;
             let class_name = dex_file.get_type(class_idx);
             if let Ok(class_name) = class_name {
@@ -75,31 +113,42 @@ pub async fn read_apk(
             } else {
                 error!("Error when reading class name {}: {:?}", class_idx, class_name);
             }
+
+            let is_last_class = class_index + 1 == class_count;
+            if is_last_class || class_index % report_step == 0 {
+                let class_progress = (class_index + 1) as f32 / class_count as f32;
+                send_progress(
+                    &sender,
+                    dex_start + dex_span * (0.60 + class_progress * 0.35),
+                    format!("Indexing {display_name}..."),
+                ).await;
+                yield_to_browser().await;
+            }
         }
-        send_progress(&sender, index + 1, dex_file_count).await;
     };
     map.shrink_to_fit();
-    send_loaded(&sender).await;
+    send_loaded(&sender, "APK loaded").await;
     Ok(ApkAccessor { map, dex_sources })
 }
 
 async fn send_progress(
-    sender: &Sender<ServerMessage>, current: usize, total: usize,
+    sender: &Sender<ServerMessage>, progress: f32, message: impl Into<String>,
 ) {
-    let progress = current as f32 / total as f32;
     let message = ServerMessage::Progress(ProgressMessage {
         progress,
         in_loading: true,
+        message: message.into(),
     });
     sender.send(message).await.unwrap();
 }
 
 async fn send_loaded(
-    sender: &Sender<ServerMessage>,
+    sender: &Sender<ServerMessage>, message: impl Into<String>,
 ) {
     let message = ServerMessage::Progress(ProgressMessage {
         progress: 1.0,
         in_loading: false,
+        message: message.into(),
     });
     sender.send(message).await.unwrap();
 }

@@ -1,6 +1,6 @@
 use crate::impls::fuzzy::FuzzyMatchModel;
 use crate::impls::server::FileOpenContext;
-use crate::impls::util::schedule_task;
+use crate::compat::{schedule_task, yield_to_browser, Instant};
 use crate::rw_access::{ReadAccess, ReadError, WriteAccess};
 use crate::ui::{AppContainer, Content, DirInfo, Left, Tab, Top};
 use crate::{Accessor, AccessorEnum, ArcVarOpt, AsmServer, ExportableSource, LoadingState, ServerMut};
@@ -12,7 +12,6 @@ use std::fs::File;
 use std::io::Cursor;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
-use std::time::Instant;
 use tokio::runtime::Runtime;
 use zip::result::ZipError;
 
@@ -22,6 +21,7 @@ impl AsmServer {
             loading_state: LoadingState {
                 in_loading: true,
                 loading_progress: 0.0,
+                loading_message: "Preparing to load...".into(),
                 err: None,
             },
             accessor: Default::default(),
@@ -62,6 +62,8 @@ impl AsmServer {
         schedule_task(async move {
             let new_server = AsmServer::new();
             *server.lock() = Some(new_server.clone());
+            new_server.on_progress_update(&render_target);
+            yield_to_browser().await;
 
             let sender = Self::create_message_handler(
                 &server, &render_target,
@@ -214,12 +216,8 @@ impl AsmServer {
             if let Err(e) = write_result {
                 error!("save file {source_key} meets an error. {e:?}");
             };
-            #[cfg(not(target_family = "wasm"))] {
-                let saved_path = write_access.guess_path();
-                let parent_path = saved_path.parent().unwrap_or(saved_path.as_path());
-                if !parent_path.exists() { return; };
-                open::that_in_background(&parent_path);
-            }
+            let saved_path = write_access.guess_path();
+            crate::compat::reveal_parent(&saved_path);
         });
     }
 }

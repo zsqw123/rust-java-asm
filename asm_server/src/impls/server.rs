@@ -1,5 +1,5 @@
 use crate::impls::apk_load::read_apk;
-use crate::impls::util::schedule_task;
+use crate::compat::{schedule_task, Instant};
 use crate::server::OpenFileError;
 use crate::ui::{AppContainer, DirInfo, Left};
 use crate::{AccessorEnum, AccessorMut, AsmServer, ServerMut};
@@ -7,7 +7,6 @@ use log::info;
 use rfd::MessageDialogResult::No;
 use std::io::{Read, Seek};
 use std::ops::DerefMut;
-use std::time::Instant;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
@@ -21,6 +20,7 @@ pub struct ProgressMessage {
     // 0.0 - 1.0
     pub progress: f32,
     pub in_loading: bool,
+    pub message: String,
 }
 
 pub struct FileOpenContext {
@@ -46,6 +46,7 @@ impl AsmServer {
                     ServerMessage::Progress(progress) => {
                         server_ref.loading_state.loading_progress = progress.progress;
                         server_ref.loading_state.in_loading = progress.in_loading;
+                        server_ref.loading_state.loading_message = progress.message;
                         server_ref.on_progress_update(&render_target);
                     }
                 }
@@ -77,7 +78,7 @@ impl AsmServer {
         self.render_to_app(render_target);
     }
 
-    fn on_progress_update(&self, render_target: &AppContainer) {
+    pub(crate) fn on_progress_update(&self, render_target: &AppContainer) {
         let current_loading_state = &self.loading_state;
         let mut top = render_target.top().lock();
         let top_mut = top.deref_mut();

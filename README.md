@@ -18,6 +18,16 @@ working on it.
 
 ![GUI](docs/egui.png)
 
+### Web / WASM
+
+Online demo: [GitHub Pages](https://zsqw123.github.io/rust-java-asm/)
+
+The browser version lets you select or drop an APK for inspection. Parsing and APK inspection stay local to the browser;
+the selected file is not uploaded to a server. It also avoids the macOS Gatekeeper or "Privacy & Security" exception
+needed by an unsigned desktop application.
+
+The browser version currently supports APK input; DEX/JAR/class-file accessors will be exposed once they are ready.
+
 ## Current Stage
 
 After version 0.0.6, you can try to use `ClassNode::from_jvms` to read a class file into a `ClassNode`, 
@@ -66,7 +76,7 @@ see some examples.
     - [x] jump to offset or type descriptor
     - [ ] Settings (e.g. custom fonts, theme, etc.)
     - [ ] decompiling by using mapping file.
-  - [ ] WASM Support  
+  - [x] WASM Support (egui web build and static deployment)
     As we know, Apple is a shit, it must let us to use a mac machine to develop, and cost 100 USD per year for a developer account, 
     otherwise your app will be reported as broken. Deploy it on web will bring a good user experience for user who wants to
     use it as fast as possible.

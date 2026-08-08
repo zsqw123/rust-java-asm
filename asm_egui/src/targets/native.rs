@@ -28,7 +28,7 @@ pub fn main() -> eframe::Result {
         "asm-gui",
         eframe_options,
         Box::new(|context| Ok(
-            Box::new(EguiApp::new(context))
+            Box::new(EguiApp::new(context, None))
         )),
     )
 }

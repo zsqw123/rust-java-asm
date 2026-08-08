@@ -59,9 +59,12 @@ rfd = "0.15.0"
 open = "5.3.2"
 
 log = { version = "0.4", features = ["std"] }
+web-time = "1.1"
 
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = "0.3"
 
 [profile.release]
 strip = true
