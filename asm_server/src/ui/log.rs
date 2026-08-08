@@ -1,3 +1,4 @@
+use chrono::{DateTime, Local, Utc};
 use crate::targets::SystemTime;
 use log::{Level, Metadata, Record};
 use parking_lot::Mutex;
@@ -22,8 +23,22 @@ impl Default for LogHolder {
 
 pub struct SimpleRecord {
     pub level: Level,
-    pub timestamp_millis: u128,
+    pub timestamp: Arc<str>,
     pub message: Arc<str>,
+}
+
+fn format_timestamp(timestamp_millis: u128) -> Arc<str> {
+    let Ok(timestamp_millis) = i64::try_from(timestamp_millis) else {
+        return Arc::from("invalid timestamp");
+    };
+    DateTime::<Utc>::from_timestamp_millis(timestamp_millis)
+        .map(|time| {
+            time.with_timezone(&Local)
+                .format("%Y-%m-%d %H:%M:%S%.3f")
+                .to_string()
+        })
+        .map(Arc::<str>::from)
+        .unwrap_or_else(|| Arc::from("invalid timestamp"))
 }
 
 impl log::Log for LogHolder {
@@ -39,12 +54,13 @@ impl log::Log for LogHolder {
         if deque.len() >= self.max_len {
             deque.pop_front();
         }
-        deque.push_back(SimpleRecord {
-            level: record.level(),
-            timestamp_millis: SystemTime::now()
+        let timestamp_millis = SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap_or_default()
-                .as_millis(),
+                .as_millis();
+        deque.push_back(SimpleRecord {
+            level: record.level(),
+            timestamp: format_timestamp(timestamp_millis),
             message: Arc::from(record.args().to_string()),
         });
     }

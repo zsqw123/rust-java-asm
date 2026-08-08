@@ -196,7 +196,7 @@ impl DirInfo {
         }
     }
 
-    fn entry_parts(path: &str) -> Peekable<Enumerate<Split<char>>> {
+    fn entry_parts(path: &str) -> Peekable<Enumerate<Split<'_, char>>> {
         path.split('/').enumerate().peekable()
     }
 

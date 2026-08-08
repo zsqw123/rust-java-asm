@@ -4,11 +4,11 @@ use eframe::CreationContext;
 use egui::{IconData, ViewportBuilder};
 use image::{ImageFormat, ImageReader};
 use java_asm_server::ui::font::FontFallbacks;
+use java_asm_server::Instant;
 use log::info;
 use std::collections::{BTreeMap, HashSet};
 use std::io::Cursor;
 use std::sync::Arc;
-use std::time::Instant;
 
 fn insert_font_into_definitions(
     font_map: &mut BTreeMap<String, Arc<FontData>>,

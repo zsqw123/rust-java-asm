@@ -16,7 +16,7 @@ pub fn smali_layout(ui: &mut Ui, server: &AsmServer, app: &AppContainer) {
     let Some(selected_tab) = selected_tab else { return; };
     let smali_node = &selected_tab.content;
 
-    let style = ui.ctx().style();
+    let style = ui.style();
     let font = TextStyle::Monospace.resolve(&style);
     let dft_color = style.visuals.text_color();
     let dark_mode = style.visuals.dark_mode;

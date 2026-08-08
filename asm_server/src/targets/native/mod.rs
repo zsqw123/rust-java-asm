@@ -1,6 +1,7 @@
 mod runtime;
 
-pub(crate) use runtime::{file_handle_path, reveal_parent, schedule_task, Instant, SystemTime};
+pub(crate) use runtime::{file_handle_path, reveal_parent, schedule_task};
+pub use runtime::{Instant, SystemTime};
 
 use crate::impls::apk_load::{
     resolve_dex, ApkAccessor, IndexedDex,

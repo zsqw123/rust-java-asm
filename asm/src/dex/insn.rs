@@ -1,5 +1,5 @@
 use crate::dex::insn_syntax::*;
-use crate::dex::raw::{DUInt, DUShort};
+use crate::dex::raw::DUShort;
 use crate::impls::jvms::r::U32BasedSize;
 use java_asm_macro::ReadFrom;
 use crate::dex::DInt;

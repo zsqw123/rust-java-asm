@@ -1,8 +1,8 @@
 pub use raw::*;
 pub mod element;
 
-use crate::dex::element::{AsElement, ClassContentElement};
-use crate::impls::jvms::r::{ReadContext, ReadFrom, U32BasedSize};
+use crate::dex::element::ClassContentElement;
+use crate::impls::jvms::r::{ReadContext, U32BasedSize};
 use crate::impls::ToArc;
 use crate::smali::SmaliNode;
 use crate::{AsmErr, AsmResult, StrRef};

@@ -285,6 +285,22 @@ mod tests {
     }
 
     #[test]
+    fn test_single_character_after_initial_path_search() {
+        let items: Vec<StrRef> = vec_str_ref![
+            "Lfoo/Alpha;",
+            "Lfoo/Beta;",
+            "Lfoo/Gamma;",
+        ];
+        let mut model = FuzzyMatchModel::new("Lfoo/Alpha;".into(), &items, 30);
+
+        let initial_result = model.search_with_new_input("Lfoo/Alpha;".into());
+        assert_eq!(initial_result.items.len(), 1);
+
+        let result = model.search_with_new_input("a".into());
+        assert!(result.items.iter().any(|item| item.item.as_ref() == "Lfoo/Alpha;"));
+    }
+
+    #[test]
     fn test_shorter_results_first() {
         let input: StrRef = "Foo".into();
         let items = vec_str_ref![

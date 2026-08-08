@@ -13,10 +13,10 @@ readme.workspace = true
 [dependencies]
 java_asm = { workspace = true }
 bit-set = { workspace = true }
+chrono = { workspace = true }
 
 nucleo-matcher = { workspace = true }
 rand = { workspace = true }
-zip = { workspace = true }
 log = { workspace = true }
 
 fontdb = { workspace = true }
@@ -28,11 +28,16 @@ parking_lot = { workspace = true }
 futures = { workspace = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
+zip = { workspace = true, features = ["default"] }
 tokio = { workspace = true, features = ["full"] }
 open = { workspace = true }
 rayon = { workspace = true }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
+zip = {
+    workspace = true,
+    features = ["deflate64", "deflate", "lzma", "time", "zstd"],
+}
 js-sys = { workspace = true }
 getrandom = { workspace = true, features = ["wasm_js"] }
 getrandom_v2 = { workspace = true, features = ["js"] }

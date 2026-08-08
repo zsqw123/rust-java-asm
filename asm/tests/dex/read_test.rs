@@ -17,7 +17,10 @@ fn read_dex_test() {
         let code_item = dex_accessor.get_code_item(m.code_off).unwrap();
         (Arc::clone(&m.name), code_item)
     }).collect::<Vec<_>>();
-    println!("Methods instructions resolved in {:?}", resolve_start.elapsed());
+    println!(
+        "{} methods instructions resolved in {:?}",
+        demo_methods.len(), resolve_start.elapsed(),
+    );
 
     let resolve_start = Instant::now();
     let class_smali = dex_accessor.get_class_smali(sample_class_def).unwrap();

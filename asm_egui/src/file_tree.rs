@@ -23,7 +23,7 @@ pub fn render_dir(ui: &mut egui::Ui, app: &mut EguiApp) {
         let required_file_index = required_file_index as f32;
         let row_height_with_spacing = row_height + ui.spacing().item_spacing.y;
         let scroll_offset = row_height_with_spacing * required_file_index;
-        let window_rect = ui.input(|i: &egui::InputState| i.screen_rect());
+        let window_rect = ui.input(|i: &egui::InputState| i.content_rect());
         let window_height: f32 = window_rect.max[1] - window_rect.min[1];
         scroll_area = scroll_area.vertical_scroll_offset(scroll_offset - window_height * 0.2);
     }
@@ -71,7 +71,7 @@ fn render_file(
 fn render_dir_raw(
     ui: &mut egui::Ui, dir_info: &mut RawDirInfo, app_container: &AppContainer,
 ) {
-    let RawDirInfo { opened, level, title, dir_key } = dir_info;
+    let RawDirInfo { opened, level, title, dir_key: _ } = dir_info;
     ui.horizontal(|ui| {
         ui.add_space((*level as f32) * 12.0);
         let font = TextStyle::Body.resolve(ui.style());

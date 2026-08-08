@@ -11,6 +11,7 @@ members = [
 version = "0.1.4" # JAVA_ASM_VERSION
 authors = ["zsqw123"]
 edition = "2024"
+rust-version = "1.97"
 license = "Apache-2.0"
 description = "Java bytecode reader & writer in rust"
 documentation = "https://github.com/zsqw123/rust-java-asm"
@@ -39,13 +40,12 @@ getrandom_v2 = { version = "0.2", package = "getrandom" }
 image = "0.25.6"
 trie-rs = "0.4.2"
 enum_dispatch = "0.3.13"
-zip = { version = "2.2.0", default-features = false, features = ["deflate", "deflate64"] }
+zip = { version = "8.6.0", default-features = false }
 
-egui = { version = "0.31.1", features = ["persistence"] }
-eframe = { version = "0.31.1", features = ["persistence"] }
-egui_extras = "0.31.1"
-egui_flex = "0.3.0"
-egui-notify = "0.19.0"
+egui = { version = "0.36.1", features = ["persistence"] }
+eframe = { version = "0.36.1", features = ["persistence"] }
+egui_extras = "0.36.1"
+egui_flex = "0.8.0"
 
 tokio = { version = "1.44.2", features = ["sync", "macros", "io-util", "rt", "time"] }
 futures = "0.3"

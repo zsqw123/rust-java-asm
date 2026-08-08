@@ -1,7 +1,6 @@
-pub use ex::*;
-pub use mutf8::*;
+pub(crate) use ex::*;
+pub(crate) use mutf8::*;
 pub use once_vec::*;
-pub use computable::*;
 pub use refs::*;
 
 mod ex;

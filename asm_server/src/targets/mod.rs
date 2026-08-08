@@ -6,6 +6,12 @@ mod wasm;
 mod native;
 
 #[cfg(target_family = "wasm")]
-pub(crate) use wasm::{file_handle_path, read_apk, reveal_parent, schedule_task, spawn_process_dex, Instant, SystemTime};
+pub(crate) use wasm::{file_handle_path, read_apk, reveal_parent, schedule_task, spawn_process_dex};
 #[cfg(not(target_family = "wasm"))]
-pub(crate) use native::{file_handle_path, read_apk, reveal_parent, schedule_task, spawn_process_dex, Instant, SystemTime};
+pub(crate) use native::{file_handle_path, read_apk, reveal_parent, schedule_task, spawn_process_dex};
+
+#[cfg(target_family = "wasm")]
+pub use wasm::{Instant, SystemTime};
+#[cfg(not(target_family = "wasm"))]
+pub use native::{Instant, SystemTime};
+pub use std::time::Duration;

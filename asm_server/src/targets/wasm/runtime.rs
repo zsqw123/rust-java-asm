@@ -3,8 +3,8 @@ use std::future::Future;
 use std::path::Path;
 use wasm_bindgen_futures::JsFuture;
 
-pub(crate) type Instant = web_time::Instant;
-pub(crate) type SystemTime = web_time::SystemTime;
+pub type Instant = web_time::Instant;
+pub type SystemTime = web_time::SystemTime;
 
 pub(crate) fn schedule_task<F: Future<Output = ()> + 'static>(f: F) {
     wasm_bindgen_futures::spawn_local(f);

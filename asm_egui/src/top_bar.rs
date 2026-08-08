@@ -1,16 +1,15 @@
 use crate::app::EguiApp;
 use bit_set::BitSet;
-use egui::containers::PopupCloseBehavior;
+use egui::containers::{Popup, PopupCloseBehavior};
 use egui::text::LayoutJob;
-use egui::{popup_below_widget, Context, Id, ProgressBar, Response, TextEdit, TextFormat, TextStyle, Ui};
+use egui::{Align, Id, Layout, ProgressBar, RectAlign, Response, SetOpenCommand, TextEdit, TextFormat, TextStyle, Ui};
 use java_asm_server::ui::{Content, OpenFileMessage, Tab, UIMessage};
 use java_asm_server::AsmServer;
 use std::ops::Deref;
-use std::time::Duration;
 
 impl EguiApp {
-    pub(crate) fn top_bar(&mut self, ctx: &Context) {
-        egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
+    pub(crate) fn top_bar(&mut self, ui: &mut Ui) {
+        egui::Panel::top("top_bar").show(ui, |ui| {
             ui.vertical(|ui| {
                 let server_app = &mut self.ui_app;
                 // loading state
@@ -56,14 +55,10 @@ impl EguiApp {
         let edit_path_ui = Self::file_path_input_area(ui, &mut file_path);
 
         let popup_id = Id::new("file_path_popup");
-        if edit_path_ui.gained_focus() {
-            let server_locked = self.server.lock();
-            let Some(server) = server_locked.deref() else { return; };
-            server.search(&mut locked_top);
-            ui.memory_mut(|m| m.open_popup(popup_id));
-        }
-
-        if edit_path_ui.changed() {
+        let search_input_triggered = edit_path_ui.clicked()
+            || edit_path_ui.gained_focus()
+            || edit_path_ui.changed();
+        if search_input_triggered {
             let server_locked = self.server.lock();
             let Some(server) = server_locked.deref() else { return; };
             server.search(&mut locked_top);
@@ -73,11 +68,21 @@ impl EguiApp {
         drop(locked_top);
 
         if search_results.items.is_empty() { return; }
-        popup_below_widget(
-            ui, popup_id, &edit_path_ui,
-            PopupCloseBehavior::CloseOnClickOutside, |ui| {
+        Popup::from_response(&edit_path_ui)
+            .id(popup_id)
+            .layout(Layout::top_down_justified(Align::LEFT))
+            .open_memory(search_input_triggered.then_some(SetOpenCommand::Bool(true)))
+            .close_behavior(if search_input_triggered {
+                PopupCloseBehavior::IgnoreClicks
+            } else {
+                PopupCloseBehavior::CloseOnClickOutside
+            })
+            .align(RectAlign::BOTTOM_START)
+            .width(edit_path_ui.rect.width())
+            .show(|ui| {
+                ui.set_min_width(ui.available_width());
                 ui.vertical(|ui| {
-                    Self::popup_file_path_ui(self, ui);
+                    Self::popup_file_path_ui(self, ui, popup_id);
                 })
             });
     }
@@ -103,9 +108,7 @@ impl EguiApp {
             if ui.selectable_label(false, label_text).clicked() {
                 let smali_content = current_tab.content.render(0);
                 ui.ctx().copy_text(smali_content);
-                self.toasts.success(
-                    format!("{} content copied!", current_tab.file_key)
-                ).duration(Duration::from_secs(3).into());
+                self.notify_success(format!("{} content copied!", current_tab.file_key));
             }
         });
     }
@@ -133,10 +136,10 @@ impl EguiApp {
         ui.data_mut(|data| {
             data.insert_temp(id_for_input_remaining, remaining_width);
         });
-        edit_path_ui
+        edit_path_ui.response
     }
 
-    fn popup_file_path_ui(&mut self, ui: &mut Ui) {
+    fn popup_file_path_ui(&mut self, ui: &mut Ui, popup_id: Id) {
         let search_results = self.ui_app.top().lock().search_result.clone();
         let style = ui.style();
         let font = TextStyle::Monospace.resolve(&style);
@@ -167,7 +170,7 @@ impl EguiApp {
                     OpenFileMessage { path: result.item }
                 );
                 self.ui_app.send_message(message);
-                ui.memory_mut(|m| m.close_popup());
+                Popup::close_id(ui.ctx(), popup_id);
             }
         }
     }

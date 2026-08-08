@@ -46,6 +46,8 @@ The parser core deliberately avoids runtime parsing dependencies. Repetitive bin
 5. Preserve lazy DEX access. Offsets and indexes are often intentionally retained until the caller asks for class data, code, or Smali.
 6. Keep frontend-independent behavior in `asm_server`. Native/WASM differences belong behind `cfg`-selected helpers such as scheduling and read/write access.
 7. Put cross-platform runtime choices behind the `asm_server::targets` facade; implement native/WASM differences in `asm_server/src/targets/native/` and `asm_server/src/targets/wasm/`. Keep shared APK parsing/indexing in `impls/apk_load.rs`, and use the re-exported `Instant` and scheduling helpers instead of adding target checks to parsing or state code.
+8. Treat all workspace code compiled for `wasm32-unknown-unknown`, including `asm_egui`, as browser code: use the public `java_asm_server` target-facade re-exports for `Instant`, `SystemTime`, and `Duration`, and route async yielding/scheduling through the existing target helpers. Frontends must not add a direct `web-time` dependency or call `std::time::Instant::now()`/`std::time::SystemTime::now()` in browser paths.
+9. Keep data preparation in `asm_server`: timestamp conversion, log formatting, and other presentation-ready state belong in the server/UI-state layer. `asm_egui` should consume ready-to-display values and contain egui layout/interaction code only.
 
 ## Coding style observed in this repository
 

@@ -1,6 +1,9 @@
 use egui::{Id, Ui};
 
 // content: (ui, target_width_for_content)
+// These helpers are retained for layouts that need to coordinate widths across
+// multiple widgets, even though the current layout path does not call them.
+#[allow(dead_code)]
 pub fn fill_width_in_parent(
     ui: &mut Ui, content_id_for_fill: Id, content: impl FnOnce(&mut Ui, f32),
 ) {
@@ -18,6 +21,7 @@ pub fn fill_width_in_parent(
     })
 }
 
+#[allow(dead_code)]
 pub fn available_width_to_fill(ui: &mut Ui, content_id_for_fill: Id) -> f32 {
     let before_ui_available = ui.available_width();
     let last_time_allocated = ui
@@ -26,6 +30,7 @@ pub fn available_width_to_fill(ui: &mut Ui, content_id_for_fill: Id) -> f32 {
     before_ui_available - last_time_allocated
 }
 
+#[allow(dead_code)]
 pub fn record_remain_width_after_rendered(ui: &mut Ui, content_id_for_fill: Id) {
     let before_ui_available = ui.available_width();
     let after_ui_available = ui.available_width();

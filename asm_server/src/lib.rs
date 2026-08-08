@@ -10,6 +10,7 @@ pub mod server;
 
 pub(crate) mod impls;
 pub(crate) mod targets;
+pub use targets::{Duration, Instant, SystemTime};
 pub mod ui;
 pub mod rw_access;
 

@@ -112,9 +112,9 @@ fn all_field_names(data: &DataStruct) -> TokenStream2 {
 /// find the index field name in `attrs`
 fn find_index_field_name(attrs: &Vec<Attribute>) -> Option<Ident> {
     for attr in attrs {
-        if !attr.path.is_ident("index") { continue }
+        if !attr.path().is_ident("index") { continue }
         let Ok(ident) = attr.parse_args::<Ident>() else {
-            panic!("`index_for` attribute must have a field name as argument. Current attribute tokens: {}", attr.tokens)
+            panic!("`index` attribute must have a field name as argument")
         };
         return Some(ident);
     }

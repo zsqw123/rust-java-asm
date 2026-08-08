@@ -228,7 +228,7 @@ pub trait Dex2Smali {
 impl<T: ToString> ToSmali for T {
     #[inline]
     fn to_smali(&self) -> SmaliNode {
-        SmaliNode::new(self.to_string())
+        stb().other(self.to_string().to_ref()).s()
     }
 }
 

@@ -141,8 +141,12 @@ macro_rules! impl_read_from {
 
 
 pub struct U24(pub u32);
+// Retained for DEX encoded values that use five to seven unsigned bytes.
+#[allow(dead_code)]
 pub struct U40(pub u64);
+#[allow(dead_code)]
 pub struct U48(pub u64);
+#[allow(dead_code)]
 pub struct U56(pub u64);
 
 pub struct I24(pub i32);

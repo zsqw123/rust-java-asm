@@ -1,19 +1,18 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::__private::TokenStream2;
-use syn::{parse_macro_input, AttributeArgs, Expr, Ident, ImplItem, ItemImpl, Meta, NestedMeta, Path, Type};
+use syn::{parse_macro_input, Expr, Ident, ImplItem, ItemImpl, Path, Type};
 
 pub fn const_container_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
     // read generic argument C from attr
     // #[const_container(DUShort)]
-    let attr_input = parse_macro_input!(attr as AttributeArgs);
-    let const_type_path_attr = get_type_path_from_attr(&attr_input);
+    let const_type_path_attr = parse_macro_input!(attr as Path);
 
     let item_impl = parse_macro_input!(item as ItemImpl);
     let impl_ident: &Type = &item_impl.self_ty;
-    let const_items = read_const_items_from_impl_body(&item_impl, const_type_path_attr);
+    let const_items = read_const_items_from_impl_body(&item_impl, &const_type_path_attr);
     let const_container_impl = generate_const_container_impl(
-        impl_ident, const_type_path_attr, const_items,
+        impl_ident, &const_type_path_attr, const_items,
     );
 
     let result = quote! {
@@ -21,17 +20,6 @@ pub fn const_container_impl(attr: TokenStream, item: TokenStream) -> TokenStream
         #const_container_impl
     };
     result.into()
-}
-
-// #[const_container(DUShort)] -> DUShort
-fn get_type_path_from_attr(attr: &AttributeArgs) -> &Path {
-    let const_type_path_attr = attr.get(0)
-        .expect("const_container attribute must have a type argument");
-    if let NestedMeta::Meta(Meta::Path(path)) = const_type_path_attr {
-        path
-    } else {
-        panic!("const_container attribute must have a type argument");
-    }
 }
 
 /// read const items from impl body
@@ -67,7 +55,7 @@ fn generate_const_container_impl(
     const_type_path: &Path,
     const_items: Vec<(Expr, Ident)>,
 ) -> TokenStream2 {
-    let const_name_match_arms = const_items.iter().map(|(expr, ident)| {
+    let const_name_match_arms = const_items.iter().map(|(_expr, ident)| {
         let ident_str = ident.to_string().to_ascii_lowercase();
         quote! { #struct_ident::#ident => Some(#ident_str), }
     });

@@ -39,7 +39,7 @@ impl ToSmali for InsnNode {
             InsnNode::TableSwitchInsnNode { default, min, max, labels } => {
                 let current = format!("tableswitch {default} {min} {max}");
                 let children = labels.iter().map(|label| label.to_smali()).collect();
-                SmaliNode::new_with_children(current, children)
+                stb().other(current.to_ref()).s_with_children(children)
             }
             InsnNode::LookupSwitchInsnNode { default, keys, labels } => {
                 let current = format!("lookupswitch {default}");
@@ -47,7 +47,7 @@ impl ToSmali for InsnNode {
                     .map(|(key, label)| {
                         raw_smali!("{} -> {}", key, label)
                     }).collect();
-                SmaliNode::new_with_children(current, children)
+                stb().other(current.to_ref()).s_with_children(children)
             }
             InsnNode::MethodInsnNode { opcode, owner, name, desc } => {
                 let opcode_name = insn_name(opcode);
@@ -96,7 +96,7 @@ impl ToSmali for ConstDynamic {
         let ConstDynamic { name, desc, bsm, bsm_args } = self;
         let prefix = format!("invoke-dynamic {name} {desc} {bsm}");
         let children = bsm_args.iter().map(|arg| arg.to_smali()).collect();
-        SmaliNode::new_with_children(prefix, children)
+        stb().other(prefix.to_ref()).s_with_children(children)
     }
 }
 

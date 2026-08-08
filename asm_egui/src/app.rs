@@ -1,36 +1,25 @@
 use crate::file_tab::render_tabs;
 use crate::file_tree::render_dir;
 use crate::smali::smali_layout;
-use chrono::{DateTime, Local, Utc};
 use eframe::{CreationContext, Frame};
-use egui::{Context, DroppedFile, ScrollArea};
+use egui::{Context, DroppedFileHandle, ScrollArea, Ui};
 use egui_extras::{Size, StripBuilder};
-use egui_notify::Toasts;
 use java_asm_server::rw_access::ReadAccess;
 use java_asm_server::ui::log::{inject_log, LogHolder};
 use java_asm_server::ui::AppContainer;
-use java_asm_server::{AsmServer, ServerMut};
+use java_asm_server::{AsmServer, Duration, Instant, ServerMut};
 use std::sync::Arc;
-use std::time::Duration;
 
-fn format_log_timestamp(timestamp_millis: u128) -> String {
-    let Ok(timestamp_millis) = i64::try_from(timestamp_millis) else {
-        return "invalid timestamp".to_owned();
-    };
-    DateTime::<Utc>::from_timestamp_millis(timestamp_millis)
-        .map(|time| {
-            time.with_timezone(&Local)
-                .format("%Y-%m-%d %H:%M:%S%.3f")
-                .to_string()
-        })
-        .unwrap_or_else(|| "invalid timestamp".to_owned())
+struct Toast {
+    message: String,
+    expires_at: Instant,
 }
 
 pub struct EguiApp {
     pub server: ServerMut,
     pub log_holder: Arc<LogHolder>,
     pub ui_app: AppContainer,
-    pub toasts: Toasts,
+    toast: Option<Toast>,
 }
 
 impl EguiApp {
@@ -42,19 +31,49 @@ impl EguiApp {
             log_holder,
             server: Default::default(),
             ui_app: Default::default(),
-            toasts: Toasts::default(),
+            toast: None,
         }
     }
 }
 
 impl EguiApp {
-    fn left_bar(&mut self, ctx: &Context) {
-        let available = ctx.available_rect().width();
-        egui::SidePanel::left("left_bar")
-            .resizable(true)
-            .max_width(available * 0.75)
-            .default_width(available * 0.25)
+    pub(crate) fn notify_success(&mut self, message: impl Into<String>) {
+        self.toast = Some(Toast {
+            message: message.into(),
+            expires_at: Instant::now() + Duration::from_secs(3),
+        });
+    }
+
+    fn show_toast(&mut self, ctx: &Context) {
+        let Some(toast) = self.toast.as_ref() else {
+            return;
+        };
+        let remaining = toast.expires_at.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            self.toast = None;
+            return;
+        }
+        let message = toast.message.clone();
+        ctx.request_repaint_after(remaining);
+        egui::Area::new(egui::Id::new("asm_toast"))
+            .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-16.0, 16.0))
+            .order(egui::Order::Foreground)
             .show(ctx, |ui| {
+                egui::Frame::popup(ui.style()).show(ui, |ui| {
+                    ui.label(message);
+                });
+            });
+    }
+}
+
+impl EguiApp {
+    fn left_bar(&mut self, ui: &mut Ui) {
+        let available = ui.available_width();
+        egui::Panel::left("left_bar")
+            .resizable(true)
+            .max_size(available * 0.75)
+            .default_size(available * 0.25)
+            .show(ui, |ui| {
                 StripBuilder::new(ui).size(Size::remainder()).horizontal(|mut strip| {
                     strip.cell(|ui| {
                         ScrollArea::horizontal().show(ui, |ui| {
@@ -66,9 +85,9 @@ impl EguiApp {
             });
     }
 
-    fn bottom_log_panel(&mut self, ctx: &Context) {
-        egui::TopBottomPanel::bottom("bottom_log_panel").resizable(true)
-            .show(ctx, |ui| {
+    fn bottom_log_panel(&mut self, ui: &mut Ui) {
+        egui::Panel::bottom("bottom_log_panel").resizable(true)
+            .show(ui, |ui| {
             ui.collapsing("Log / 日志", |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
                     let current_records = self.log_holder.records.lock();
@@ -76,7 +95,7 @@ impl EguiApp {
                     for log in current_records {
                         ui.label(format!(
                             "[{}] {}: {}",
-                            format_log_timestamp(log.timestamp_millis),
+                            log.timestamp,
                             log.level,
                             log.message,
                         ));
@@ -86,8 +105,8 @@ impl EguiApp {
         });
     }
 
-    fn central_panel(&mut self, ctx: &Context) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+    fn central_panel(&mut self, ui: &mut Ui) {
+        egui::CentralPanel::default().show(ui, |ui| {
             let server_locked = self.server.lock();
             let Some(server) = server_locked.as_ref() else {
                 return;
@@ -107,28 +126,47 @@ impl EguiApp {
 impl EguiApp {
     fn process_dropped_file(&mut self, ctx: &Context) {
         ctx.input(|input| {
-            let Some(dropped_file) = input.raw.dropped_files.get(0) else {
+            let Some(dropped_file) = input.raw.dropped_files.first().cloned() else {
                 return;
             };
-            let Some(read_access) = create_read_access(dropped_file.clone()) else {
-                return;
-            };
-            AsmServer::smart_open(self.server.clone(), read_access, self.ui_app.clone());
+            open_dropped_file(dropped_file, self.server.clone(), self.ui_app.clone());
         })
     }
 }
-fn create_read_access(dropped_file: DroppedFile) -> Option<ReadAccess> {
-    if let Some(bytes) = dropped_file.bytes {
-        return Some(ReadAccess::from_raw(dropped_file.name, bytes));
-    };
-    if let Some(path) = dropped_file.path {
-        return Some(ReadAccess::from_path(&path));
-    };
-    None
+
+fn open_dropped_file(
+    dropped_file: DroppedFileHandle,
+    server: ServerMut,
+    ui_app: AppContainer,
+) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let path = dropped_file.path().to_path_buf();
+        AsmServer::smart_open(server, ReadAccess::from_path(&path), ui_app);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        wasm_bindgen_futures::spawn_local(async move {
+            let name = dropped_file
+                .path()
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "dropped-file".to_owned());
+            match dropped_file.bytes_async().await {
+                Ok(bytes) => AsmServer::smart_open(
+                    server,
+                    ReadAccess::from_raw(name, Arc::from(bytes.into_boxed_slice())),
+                    ui_app,
+                ),
+                Err(error) => log::error!("failed to read dropped file: {error}"),
+            }
+        });
+    }
 }
 
 impl eframe::App for EguiApp {
-    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+    fn logic(&mut self, ctx: &Context, _frame: &mut Frame) {
         let mut mutex = self.server.lock();
         if let Some(server) = mutex.as_mut() {
             self.ui_app.process_messages(server);
@@ -139,13 +177,14 @@ impl eframe::App for EguiApp {
             }
         }
         drop(mutex);
-        self.top_bar(ctx);
-        self.bottom_log_panel(ctx);
-        self.left_bar(ctx);
-        self.central_panel(ctx);
-        self.process_dropped_file(ctx);
-        self.toasts.show(ctx);
+    }
+
+    fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
+        self.top_bar(ui);
+        self.bottom_log_panel(ui);
+        self.left_bar(ui);
+        self.central_panel(ui);
+        self.process_dropped_file(ui.ctx());
+        self.show_toast(ui.ctx());
     }
 }
-
-

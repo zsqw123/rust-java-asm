@@ -260,6 +260,9 @@ fn read_u32_based_size(context: &mut ReadContext, value_arg: u8) -> AsmResult<U3
     Ok(value)
 }
 
+// Retained for the unsigned encoded-value forms; the current reader paths use
+// the narrower helpers directly where the value type is known.
+#[allow(dead_code)]
 fn read_u64(context: &mut ReadContext, value_arg: u8) -> AsmResult<u64> {
     let value = if value_arg == 0 { // 1 byte
         u8::read_from(context)? as u64
