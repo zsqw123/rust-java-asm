@@ -2,8 +2,7 @@ use bit_set::BitSet;
 use java_asm::StrRef;
 use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
-use std::cmp::{min, Reverse};
-use std::ops::Deref;
+use std::cmp::min;
 use std::sync::Arc;
 
 pub struct FuzzyMatchModel {
@@ -186,7 +185,12 @@ impl FuzzyMatchModel {
             items.push((score, result_item));
         }
 
-        items.sort_by_key(|(score, _)| Reverse(*score));
+        items.sort_by(|(left_score, left), (right_score, right)| {
+            left.item.chars().count()
+                .cmp(&right.item.chars().count())
+                .then_with(|| right_score.cmp(left_score))
+                .then_with(|| left.item.cmp(&right.item))
+        });
         let items: Vec<_> = items.into_iter().map(|(_, item)| item).collect();
         SearchResult { stop_idx, items }
     }
@@ -265,6 +269,25 @@ mod tests {
             items: vec![],
         };
         assert_eq!(real_result, expected_result_3);
+    }
+
+    #[test]
+    fn test_shorter_results_first() {
+        let input: StrRef = "Foo".into();
+        let items = vec_str_ref![
+            "a/very/long/Foo",
+            "Foo",
+            "pkg/Foo",
+        ];
+        let mut model = FuzzyMatchModel::new(input, &items, 10);
+
+        let result = model.full_search();
+        let result_items: Vec<&str> = result
+            .items
+            .iter()
+            .map(|item| item.item.as_ref())
+            .collect();
+        assert_eq!(result_items, vec!["Foo", "pkg/Foo", "a/very/long/Foo"]);
     }
 
     #[test]

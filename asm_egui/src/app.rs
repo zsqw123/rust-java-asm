@@ -1,6 +1,5 @@
 use crate::file_tab::render_tabs;
 use crate::file_tree::render_dir;
-use crate::font::inject_sys_font;
 use crate::smali::smali_layout;
 use eframe::{CreationContext, Frame};
 use egui::{Context, DroppedFile, ScrollArea};
@@ -11,6 +10,7 @@ use java_asm_server::ui::log::{inject_log, LogHolder};
 use java_asm_server::ui::AppContainer;
 use java_asm_server::{AsmServer, ServerMut};
 use std::sync::Arc;
+use std::time::Duration;
 
 pub struct EguiApp {
     pub server: ServerMut,
@@ -20,10 +20,10 @@ pub struct EguiApp {
 }
 
 impl EguiApp {
-    pub fn new(context: &CreationContext, cjk_font: Option<Vec<u8>>) -> Self {
+    pub fn new(context: &CreationContext) -> Self {
         let log_holder = Default::default();
         inject_log(Arc::clone(&log_holder));
-        inject_sys_font(context, cjk_font);
+        crate::targets::configure_fonts(context);
         Self {
             log_holder,
             server: Default::default(),
@@ -113,6 +113,11 @@ impl eframe::App for EguiApp {
         let mut mutex = self.server.lock();
         if let Some(server) = mutex.as_mut() {
             self.ui_app.process_messages(server);
+            if server.loading_state.in_loading {
+                // Progress arrives from the APK loader's background task. Keep
+                // the progress bar responsive even when the window is idle.
+                ctx.request_repaint_after(Duration::from_millis(150));
+            }
         }
         drop(mutex);
         self.top_bar(ctx);

@@ -2128,6 +2128,8 @@ dependencies = [
  "enum_dispatch",
  "fontdb",
  "futures",
+ "getrandom 0.2.17",
+ "getrandom 0.3.4",
  "java_asm",
  "js-sys",
  "log",

@@ -1,12 +1,28 @@
 use crate::app::EguiApp;
-use crate::font::inject_cjk_font;
+use eframe::CreationContext;
+use eframe::epaint::text::{FontData, FontDefinitions};
+use egui::FontFamily;
 use js_sys::Uint8Array;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{self, Response};
+use std::sync::Arc;
 
 const CJK_FONT_URL: &str =
     "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf";
+
+pub(crate) fn configure_fonts(_context: &CreationContext) {}
+
+fn set_cjk_font(context: &egui::Context, cjk_font: Vec<u8>) {
+    let mut fonts = FontDefinitions::default();
+    let cjk_font_name = "NotoSansSC-Regular";
+    let cjk_font = FontData::from_owned(cjk_font);
+    fonts.font_data.insert(cjk_font_name.into(), Arc::new(cjk_font));
+    for family in [FontFamily::Proportional, FontFamily::Monospace] {
+        fonts.families.entry(family).or_default().push(cjk_font_name.into());
+    }
+    context.set_fonts(fonts);
+}
 
 async fn load_web_font() -> Result<Vec<u8>, JsValue> {
     let window = web_sys::window().ok_or_else(|| JsValue::from_str("No window"))?;
@@ -33,7 +49,7 @@ fn load_cjk_font_in_background(context: egui::Context) {
     wasm_bindgen_futures::spawn_local(async move {
         match load_web_font().await {
             Ok(font) => {
-                inject_cjk_font(&context, font);
+                set_cjk_font(&context, font);
                 context.request_repaint();
             }
             Err(error) => log::warn!("failed to load browser CJK font: {error:?}"),
@@ -62,7 +78,7 @@ pub fn main() {
                 web_options,
                 Box::new(move |cc| {
                     load_cjk_font_in_background(cc.egui_ctx.clone());
-                    Ok(Box::new(EguiApp::new(cc, None)))
+                    Ok(Box::new(EguiApp::new(cc)))
                 }),
             ).await;
         match start_result {

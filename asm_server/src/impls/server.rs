@@ -1,5 +1,4 @@
-use crate::impls::apk_load::read_apk;
-use crate::compat::{schedule_task, Instant};
+use crate::targets::{schedule_task, Instant};
 use crate::server::OpenFileError;
 use crate::ui::{AppContainer, DirInfo, Left};
 use crate::{AccessorEnum, AccessorMut, AsmServer, ServerMut};
@@ -62,7 +61,7 @@ impl AsmServer {
     ) -> Result<(), OpenFileError> {
         let zip = ZipArchive::new(apk_content)
             .map_err(OpenFileError::LoadZip)?;
-        let apk_accessor = read_apk(zip, sender).await?;
+        let apk_accessor = crate::targets::read_apk(zip, sender).await?;
         // safe unwrap, no other places in current thread will access it.
         *accessor.lock() = Some(AccessorEnum::Apk(apk_accessor));
         Ok(())

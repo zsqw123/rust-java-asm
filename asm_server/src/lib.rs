@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 pub mod server;
 
-pub(crate) mod compat;
 pub(crate) mod impls;
+pub(crate) mod targets;
 pub mod ui;
 pub mod rw_access;
 

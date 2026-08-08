@@ -27,7 +27,7 @@ The parser core deliberately avoids runtime parsing dependencies. Repetitive bin
   - `tests/`: sample-backed integration tests for JVMS, node conversion, and DEX.
 - `asm_macro/` (`java_asm_macro`): derives `ReadFrom`/`WriteInto` and constant-container helpers. Change this when binary-layout boilerplate should be generated consistently.
 - `asm_server/` (`java_asm_server`): APK loading, lazy content access, fuzzy search, async/native-WASM task abstraction, and frontend-independent UI state/messages.
-  - `src/compat.rs`: native/WASM adapters for clocks, task scheduling, file-handle paths, and native-only reveal actions.
+  - `src/targets/`: target-specific runtime adapters under the `native/` and `wasm/` directories. Keep target dispatch in `mod.rs`; shared APK indexing lives in `impls/apk_load.rs`.
 - `asm_egui/` (`java_asm_egui`): current desktop/experimental WASM egui frontend. UI code should consume `asm_server` state instead of reimplementing parsing.
   - `index.html` and `Trunk.toml`: browser shell and Trunk build configuration.
 - `ta/`: experimental Tauri/Preact frontend. It is currently excluded from Cargo workspace members; do not assume root Cargo commands build it.
@@ -45,10 +45,11 @@ The parser core deliberately avoids runtime parsing dependencies. Repetitive bin
 4. Reuse `AsmResult<T>` and add a specific `AsmErr` variant when an error category is meaningful. Propagate recoverable parse/I/O failures with `?`; avoid new `unwrap()` calls in library paths.
 5. Preserve lazy DEX access. Offsets and indexes are often intentionally retained until the caller asks for class data, code, or Smali.
 6. Keep frontend-independent behavior in `asm_server`. Native/WASM differences belong behind `cfg`-selected helpers such as scheduling and read/write access.
-7. Put cross-platform runtime choices in `asm_server/src/compat.rs`; use its `Instant` and scheduling helpers instead of adding target checks to parsing or state code.
+7. Put cross-platform runtime choices behind the `asm_server::targets` facade; implement native/WASM differences in `asm_server/src/targets/native/` and `asm_server/src/targets/wasm/`. Keep shared APK parsing/indexing in `impls/apk_load.rs`, and use the re-exported `Instant` and scheduling helpers instead of adding target checks to parsing or state code.
 
 ## Coding style observed in this repository
 
+- Write source code, comments, log messages, and repository documentation in English. Keep non-English text only when it is intentionally required for localization or CJK/font regression tests (for example, `Log / 日志`).
 - Prefer direct, explicit Rust over elaborate abstractions. Small traits, enums, type aliases, and focused macros are common.
 - Model external specifications literally. Names like `constant_pool_count`, `class_data_off`, `U32BasedSize`, and instruction-format types are preferred over renamed business terminology.
 - Use newtypes/type aliases to communicate binary meaning and shared ownership (`StrRef`, `DescriptorRef`, `InternalNameRef`, `DUInt`, `ArcVarOpt<T>`).
@@ -123,8 +124,8 @@ Pages. The HTML keeps `data-wasm-opt="z" data-wasm-opt-params="--all-features"`;
 Trunk/Rust output because the generated WASM uses bulk-memory and nontrapping float-to-int operations. Browser input
 is local to the page; the current server/accessor boundary supports APK input, not every format listed in the long-term
 README goals. Because egui renders into a WebGL canvas, CSS `font-family` cannot provide glyph fallback there; the WASM
-font path fetches `asm_egui/src/fonts/NotoSansSC-Regular.otf` as a separate static asset and native builds continue
-to load host system fonts. Keep the font outside the WASM binary so it can be cached independently. APK imports report
+font path fetches a pinned Noto Sans SC subset from a CDN at runtime and native builds continue to load host system
+fonts. Keep the font outside the WASM binary so it can be cached independently. APK imports report
 scan/read/parse/index phases through `LoadingState`; the WASM loader yields between CPU-heavy phases so the browser can
 repaint the progress bar.
 

@@ -1,6 +1,6 @@
 use crate::impls::fuzzy::FuzzyMatchModel;
 use crate::impls::server::FileOpenContext;
-use crate::compat::{schedule_task, yield_to_browser, Instant};
+use crate::targets::{schedule_task, Instant};
 use crate::rw_access::{ReadAccess, ReadError, WriteAccess};
 use crate::ui::{AppContainer, Content, DirInfo, Left, Tab, Top};
 use crate::{Accessor, AccessorEnum, ArcVarOpt, AsmServer, ExportableSource, LoadingState, ServerMut};
@@ -63,7 +63,6 @@ impl AsmServer {
             let new_server = AsmServer::new();
             *server.lock() = Some(new_server.clone());
             new_server.on_progress_update(&render_target);
-            yield_to_browser().await;
 
             let sender = Self::create_message_handler(
                 &server, &render_target,
@@ -217,7 +216,7 @@ impl AsmServer {
                 error!("save file {source_key} meets an error. {e:?}");
             };
             let saved_path = write_access.guess_path();
-            crate::compat::reveal_parent(&saved_path);
+            crate::targets::reveal_parent(&saved_path);
         });
     }
 }

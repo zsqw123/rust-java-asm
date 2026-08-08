@@ -45,7 +45,7 @@ impl ReadAccess {
     // in wasm, it will returns name directly rather than path because it's not available.
     pub fn guess_path(&self) -> String {
         match self {
-            Self::FileHandleBased { handle } => crate::compat::file_handle_path(handle),
+            Self::FileHandleBased { handle } => crate::targets::file_handle_path(handle),
             Self::PathBased { path } => path.display().to_string(),
             _ => self.name(),
         }
@@ -97,7 +97,7 @@ impl WriteAccess {
 
     // in wasm, it will returns name directly rather than path because it's not available.
     pub fn guess_path(&self) -> PathBuf {
-        let path_str = crate::compat::file_handle_path(&self.handle);
+        let path_str = crate::targets::file_handle_path(&self.handle);
         PathBuf::from(path_str)
     }
 
