@@ -6,7 +6,7 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::{self, Response};
 
 const CJK_FONT_URL: &str =
-    "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@523d033/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf";
+    "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf";
 
 async fn load_web_font() -> Result<Vec<u8>, JsValue> {
     let window = web_sys::window().ok_or_else(|| JsValue::from_str("No window"))?;
