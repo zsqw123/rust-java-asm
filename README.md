@@ -18,7 +18,7 @@ working on it.
 
 ![GUI](docs/egui.png)
 
-### Web / WASM
+### Web / WASM 🌐
 
 Online demo: [GitHub Pages](https://zsqw123.github.io/rust-java-asm/)
 
@@ -27,6 +27,20 @@ the selected file is not uploaded to a server. It also avoids the macOS Gatekeep
 needed by an unsigned desktop application.
 
 The browser version currently supports APK input; DEX/JAR/class-file accessors will be exposed once they are ready.
+
+The web/WASM and native builds share the same UI and parsing code, but their runtime environments have some user-visible
+differences:
+
+| Area                             | Web / WASM                                              | Native desktop                                                                                                               |
+|----------------------------------|---------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| 📦 Installation                  | 🌐 Open in a browser; no installation required.         | 📥 Download and run a desktop executable.                                                                                    |
+| ⚡ APK loading speed             | 🧵 Browser execution in single thread.                  | 🚀 Real OS multi-threads; generally faster for large or multi-DEX APKs.                                                      |
+| 🗜️ APK compression compatibility | 🧩 Browser-compatible ZIP codec set. (deflate, zstd...) | ✅ Broader ZIP/APK codec support. (additional supports for xz & bzip2)                                                       |
+| 🛡️ Security & Signing            | 🔒 Browser sandbox, no signing required                 | ⚠️ I can't afford a Apple developer seat. Unsigned binaries may be blocked by Gatekeeper, SmartScreen, or enterprise policy. |
+
+Both builds inspect the selected files locally; the file is not uploaded to a server. (BTW, I have no money to buy a
+server.) For a quick inspection, the web version is usually the easiest option. For large APKs, unusual compression
+formats, or the best loading performance, the native build is generally the better choice.
 
 ## Current Stage
 

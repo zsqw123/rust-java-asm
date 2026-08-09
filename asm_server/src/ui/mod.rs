@@ -1,12 +1,15 @@
 pub mod log;
 pub mod msg;
 pub mod font;
+pub mod find;
 
+pub use find::{FindMatch, FindState};
+pub use msg::FindMessage;
 use crate::impls::fuzzy::SearchResult;
 use crate::ui::log::LogHolder;
 use crate::ui::AbsFile::{Dir, File};
 use crate::{AsmServer, LoadingState};
-use java_asm::smali::SmaliNode;
+use java_asm::smali::{SmaliNode, SmaliToken};
 use java_asm::StrRef;
 use ::log::Level;
 use parking_lot::Mutex;
@@ -30,6 +33,7 @@ pub struct App {
 pub enum UIMessage {
     OpenFile(OpenFileMessage),
     CloseDir(StrRef),
+    Find(FindMessage),
 }
 
 #[derive(Clone, Debug)]
@@ -53,11 +57,20 @@ impl AppContainer {
     pub fn send_message(&self, message: UIMessage) {
         self.0.messages.lock().push(message);
     }
+
+    pub fn selected_file_key(&self) -> Option<StrRef> {
+        let content = self.content().lock();
+        let Some(selected) = content.selected else { return None; };
+        content.opened_tabs.get(selected).map(|tab| tab.file_key.clone())
+    }
+
 }
 
 impl AppContainer {
-    pub fn process_messages(&mut self, server: &mut AsmServer) {
-        for message in self.0.messages.lock().drain(..) {
+    pub fn process_messages(&mut self, server: &mut AsmServer) -> Option<(StrRef, usize)> {
+        let messages = self.0.messages.lock().drain(..).collect::<Vec<_>>();
+        let mut reveal_target = None;
+        for message in messages {
             match message {
                 UIMessage::OpenFile(message) => {
                     server.switch_or_open(&message.path, self);
@@ -65,9 +78,58 @@ impl AppContainer {
                 UIMessage::CloseDir(path) => {
                     server.close_dir(&path, self);
                 }
+                UIMessage::Find(message) => {
+                    reveal_target = self.process_find_message(message);
+                }
+            }
+        }
+        reveal_target
+    }
+
+    fn process_find_message(&self, message: FindMessage) -> Option<(StrRef, usize)> {
+        let mut content = self.content().lock();
+        match message {
+            FindMessage::Open { file_key } => {
+                let tab = find_tab_mut(&mut content, &file_key)?;
+                tab.find.open = true;
+                tab.find.update_matches(tab.rendered_lines.iter().map(|line| line.text.as_str()));
+                find_reveal_target(file_key, &tab.find)
+            }
+            FindMessage::Close { file_key } => {
+                let tab = find_tab_mut(&mut content, &file_key)?;
+                tab.find.open = false;
+                None
+            }
+            FindMessage::Update { file_key, query, case_sensitive } => {
+                let tab = find_tab_mut(&mut content, &file_key)?;
+                tab.find.query = query;
+                tab.find.case_sensitive = case_sensitive;
+                tab.find.update_matches(tab.rendered_lines.iter().map(|line| line.text.as_str()));
+                find_reveal_target(file_key, &tab.find)
+            }
+            FindMessage::Next { file_key } => {
+                let tab = find_tab_mut(&mut content, &file_key)?;
+                if !tab.find.open { return None; }
+                let line = tab.find.next()?;
+                Some((file_key, line))
+            }
+            FindMessage::Previous { file_key } => {
+                let tab = find_tab_mut(&mut content, &file_key)?;
+                if !tab.find.open { return None; }
+                let line = tab.find.previous()?;
+                Some((file_key, line))
             }
         }
     }
+}
+
+fn find_tab_mut<'a>(content: &'a mut Content, file_key: &str) -> Option<&'a mut Tab> {
+    content.opened_tabs.iter_mut()
+        .find(|tab| tab.file_key.as_ref() == file_key)
+}
+
+fn find_reveal_target(file_key: StrRef, find: &FindState) -> Option<(StrRef, usize)> {
+    find.current_match().map(|matched| (file_key, matched.line))
 }
 
 #[derive(Default, Clone, Debug)]
@@ -243,7 +305,68 @@ pub struct Tab {
     pub selected: bool,
     pub file_key: StrRef,
     pub title: StrRef,
-    pub content: Arc<SmaliNode>,
+    pub rendered_lines: Arc<Vec<SmaliLine>>,
+    pub exported_content: Arc<str>,
+    pub find: FindState,
+    pub scroll_offset: f32,
+}
+
+#[derive(Clone, Debug)]
+pub struct SmaliLine {
+    pub text: String,
+    pub tokens: Vec<SmaliLineToken>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SmaliLineToken {
+    pub token: SmaliToken,
+    pub text: String,
+    pub start_byte: usize,
+    pub end_byte: usize,
+}
+
+impl SmaliLine {
+    pub fn from_node(smali_node: &SmaliNode) -> Vec<Self> {
+        smali_node
+            .render_to_lines()
+            .into_iter()
+            .map(|tokens| {
+                let mut text = String::new();
+                let tokens = tokens
+                    .into_iter()
+                    .map(|token| {
+                        let token_text = display_token_text(&token);
+                        let start_byte = text.len();
+                        text.push_str(&token_text);
+                        let end_byte = text.len();
+                        SmaliLineToken {
+                            token,
+                            text: token_text,
+                            start_byte,
+                            end_byte,
+                        }
+                    })
+                    .collect();
+                Self { text, tokens }
+            })
+            .collect()
+    }
+}
+
+fn display_token_text(token: &SmaliToken) -> String {
+    match token {
+        SmaliToken::SourceInfo(source) => format!("#from: {source}"),
+        SmaliToken::Raw(raw) => raw.to_string(),
+        SmaliToken::Op(op) => op.to_string(),
+        SmaliToken::LineStartOffsetMarker { raw, .. } => raw.clone(),
+        SmaliToken::Offset { relative, absolute } => format!("@{absolute}({relative:+})"),
+        SmaliToken::Register(reg) => format!("v{reg}"),
+        SmaliToken::RegisterRange(start, end) => format!("v{start}..v{end}"),
+        SmaliToken::MemberName(name) => name.to_string(),
+        SmaliToken::Descriptor(descriptor) => descriptor.to_string(),
+        SmaliToken::Literal(literal) => literal.to_string(),
+        SmaliToken::Other(other) => other.to_string(),
+    }
 }
 
 pub struct LogDialog {

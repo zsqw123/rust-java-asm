@@ -2,7 +2,7 @@ use crate::impls::fuzzy::FuzzyMatchModel;
 use crate::impls::server::FileOpenContext;
 use crate::targets::{schedule_task, Instant};
 use crate::rw_access::{ReadAccess, ReadError, WriteAccess};
-use crate::ui::{AppContainer, Content, DirInfo, Left, Tab, Top};
+use crate::ui::{AppContainer, Content, DirInfo, Left, SmaliLine, Tab, Top};
 use crate::{Accessor, AccessorEnum, ArcVarOpt, AsmServer, ExportableSource, LoadingState, ServerMut};
 use java_asm::smali::SmaliNode;
 use java_asm::{AsmErr, StrRef};
@@ -140,11 +140,16 @@ impl AsmServer {
             error!("content with key: `{file_key}` not found.");
             return;
         };
+        let rendered_lines = Arc::new(SmaliLine::from_node(&smali));
+        let exported_content: Arc<str> = Arc::from(smali.render(0));
         let current_tab = Tab {
             selected: false,
             file_key: Arc::from(file_key),
             title: Arc::from(file_key),
-            content: Arc::new(smali),
+            rendered_lines,
+            exported_content,
+            find: Default::default(),
+            scroll_offset: 0.0,
         };
         let current = content.opened_tabs.len();
         content.opened_tabs.push(current_tab);

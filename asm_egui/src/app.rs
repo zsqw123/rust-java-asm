@@ -2,9 +2,9 @@ use crate::file_tab::render_tabs;
 use crate::file_tree::render_dir;
 use crate::smali::smali_layout;
 use eframe::{CreationContext, Frame};
-use egui::{Context, ScrollArea, Ui};
+use egui::{Context, Key, ScrollArea, Ui};
 use egui_extras::{Size, StripBuilder};
-use java_asm_server::ui::AppContainer;
+use java_asm_server::ui::{AppContainer, FindMessage, UIMessage};
 use java_asm_server::ui::log::{LogHolder, inject_log};
 use java_asm_server::{Duration, Instant, ServerMut};
 use std::sync::Arc;
@@ -104,7 +104,7 @@ impl EguiApp {
         });
     }
 
-    fn central_panel(&mut self, ui: &mut Ui) {
+    fn central_panel(&mut self, ui: &mut Ui, reveal_target: Option<&(Arc<str>, usize)>) {
         egui::CentralPanel::default().show(ui, |ui| {
             let server_locked = self.server.lock();
             let Some(server) = server_locked.as_ref() else {
@@ -116,23 +116,33 @@ impl EguiApp {
 
             ui.separator();
 
-            smali_layout(ui, server, &self.ui_app);
+            smali_layout(ui, server, &self.ui_app, reveal_target);
         });
     }
 
-    fn handle_events(&mut self, ctx: &Context) {
+    fn handle_events(&mut self, ctx: &Context) -> Option<(Arc<str>, usize)> {
+        let open_find = ctx.input(|input| {
+            input.key_pressed(Key::F) && input.modifiers.command
+        });
+        if open_find {
+            if let Some(file_key) = self.ui_app.selected_file_key() {
+                self.ui_app.send_message(UIMessage::Find(FindMessage::Open { file_key }));
+            }
+        }
+
         let mut mutex = self.server.lock();
         let Some(server) = mutex.as_mut() else {
-            return;
+            return None;
         };
 
         // 1. process server messages
-        self.ui_app.process_messages(server);
+        let reveal_target = self.ui_app.process_messages(server);
         // 2. process loading state
         let in_loading = server.loading_state.in_loading;
         if in_loading { // Keep the progress bar responsive.
             ctx.request_repaint_after(Duration::from_millis(150));
         }
+        reveal_target
     }
 }
 
@@ -149,15 +159,15 @@ impl EguiApp {
 }
 
 impl eframe::App for EguiApp {
-    fn logic(&mut self, ctx: &Context, _frame: &mut Frame) {
-        self.handle_events(ctx);
+    fn logic(&mut self, _ctx: &Context, _frame: &mut Frame) {
     }
 
     fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
+        let reveal_target = self.handle_events(ui.ctx());
         self.top_bar(ui);
         self.bottom_log_panel(ui);
         self.left_bar(ui);
-        self.central_panel(ui);
+        self.central_panel(ui, reveal_target.as_ref());
         self.process_dropped_file(ui.ctx());
         self.show_toast(ui.ctx());
     }

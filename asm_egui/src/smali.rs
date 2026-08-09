@@ -1,20 +1,21 @@
 use eframe::epaint::Color32;
-use egui::text::LayoutJob;
-use egui::{CursorIcon, FontId, Response, ScrollArea, TextStyle, Ui, Vec2};
+use egui::text::{LayoutJob, TextFormat};
+use egui::containers::{Popup, PopupCloseBehavior, PopupKind};
+use egui::{Align, Button, FontId, Id, Key, Modifiers, Response, ScrollArea, SetOpenCommand, TextEdit, TextStyle, Ui, Vec2};
 use java_asm::smali::SmaliToken;
 use java_asm::StrRef;
-use java_asm_server::ui::{AppContainer, OpenFileMessage, UIMessage};
+use java_asm_server::ui::{AppContainer, FindMessage, FindState, OpenFileMessage, SmaliLine, SmaliLineToken, UIMessage};
 use java_asm_server::AsmServer;
 
-pub fn smali_layout(ui: &mut Ui, server: &AsmServer, app: &AppContainer) {
-    let content_locked = app.content().lock();
+pub fn smali_layout(
+    ui: &mut Ui, server: &AsmServer, app: &AppContainer,
+    reveal_target: Option<&(StrRef, usize)>,
+) {
+    let mut content_locked = app.content().lock();
     let selected_tab_index = content_locked.selected;
     let Some(selected_tab_index) = selected_tab_index else { return; };
 
-    let opened_tabs = &content_locked.opened_tabs;
-    let selected_tab = opened_tabs.get(selected_tab_index);
-    let Some(selected_tab) = selected_tab else { return; };
-    let smali_node = &selected_tab.content;
+    let Some(selected_tab) = content_locked.opened_tabs.get_mut(selected_tab_index) else { return; };
 
     let style = ui.style();
     let font = TextStyle::Monospace.resolve(&style);
@@ -22,33 +23,127 @@ pub fn smali_layout(ui: &mut Ui, server: &AsmServer, app: &AppContainer) {
     let dark_mode = style.visuals.dark_mode;
     let smali_style = if dark_mode { SmaliStyle::DARK } else { SmaliStyle::LIGHT };
 
-    let lines = smali_node.render_to_lines();
+    let lines = selected_tab.rendered_lines.as_ref();
+    let reveal_line = reveal_target.and_then(|(file_key, line)| {
+        (file_key.as_ref() == selected_tab.file_key.as_ref()).then_some(*line)
+    });
+    find_toolbar(ui, app, &selected_tab.find, selected_tab.file_key.as_ref());
     let row_height = ui.text_style_height(&TextStyle::Monospace);
-
-    let scroll_area = ScrollArea::vertical().auto_shrink(false);
     let spacing_y = ui.spacing().item_spacing.y;
+
+    let mut scroll_area = ScrollArea::vertical()
+        .auto_shrink(false)
+        .id_salt(("asm_smali_scroll", selected_tab.file_key.as_ref()))
+        .vertical_scroll_offset(selected_tab.scroll_offset);
+    if let Some(reveal_line) = reveal_line {
+        let row_height_with_spacing = row_height + spacing_y;
+        let viewport_height = ui.available_height();
+        let content_height = (lines.len() as f32 * row_height_with_spacing - spacing_y).max(0.0);
+        let max_offset = (content_height - viewport_height).max(0.0);
+        let target_offset = reveal_line as f32 * row_height_with_spacing
+            - (viewport_height - row_height) / 2.0;
+        scroll_area = scroll_area.vertical_scroll_offset(target_offset.clamp(0.0, max_offset));
+    }
 
     let mut render_context = RenderContext {
         app: &app,
         server,
         font: &font,
         lines: &lines,
+        find: &selected_tab.find,
+        find_open: selected_tab.find.open,
+        reveal_line,
         smali_style: &smali_style,
         dft_color,
         row_height,
         spacing_y,
     };
-    scroll_area.show_rows(ui, row_height, lines.len(), |ui, range| {
+    let scroll_output = scroll_area.show_rows(ui, row_height, lines.len(), |ui, range| {
         for i in range {
             render_context.render_line(ui, i);
         }
+    });
+    selected_tab.scroll_offset = scroll_output.state.offset.y;
+}
+
+fn find_toolbar(
+    ui: &mut Ui, app: &AppContainer, find: &FindState, file_key: &str,
+) {
+    if !find.open {
+        return;
+    }
+
+    let find_id = Id::new(("asm_find_input", file_key));
+    let focus_requested = ui.input(|input| {
+        input.key_pressed(Key::F) && input.modifiers.command
+    });
+    let mut query = find.query.clone();
+    let mut case_sensitive = find.case_sensitive;
+    egui::Frame::popup(ui.style()).show(ui, |ui| {
+        ui.horizontal(|ui| {
+            ui.label("Find");
+            let edit_response = TextEdit::singleline(&mut query)
+                .id(find_id)
+                .hint_text("Search in current file...")
+                .desired_width(280.0)
+                .show(ui)
+                .response;
+
+            let case_response = ui.checkbox(&mut case_sensitive, "Aa");
+            let input_changed = edit_response.changed() || case_response.changed();
+            if input_changed {
+                app.send_message(UIMessage::Find(FindMessage::Update {
+                    file_key: file_key.into(),
+                    query,
+                    case_sensitive,
+                }));
+            }
+
+            let previous_pressed = ui.input_mut(|input| {
+                input.consume_key(Modifiers::SHIFT, Key::Enter)
+            });
+            let next_pressed = !previous_pressed && ui.input_mut(|input| {
+                input.consume_key(Modifiers::NONE, Key::Enter)
+            });
+            if previous_pressed || ui.button("↑").clicked() {
+                app.send_message(UIMessage::Find(FindMessage::Previous {
+                    file_key: file_key.into(),
+                }));
+            } else if next_pressed || ui.button("↓").clicked() {
+                app.send_message(UIMessage::Find(FindMessage::Next {
+                    file_key: file_key.into(),
+                }));
+            }
+
+            let count = if find.matches.is_empty() {
+                if find.query.is_empty() { "0/0".to_string() } else { "No results".to_string() }
+            } else {
+                format!("{}/{}", find.current + 1, find.matches.len())
+            };
+            ui.label(count);
+
+            if ui.add(Button::new("×")).clicked()
+                || ui.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape))
+            {
+                app.send_message(UIMessage::Find(FindMessage::Close {
+                    file_key: file_key.into(),
+                }));
+            }
+
+            if focus_requested {
+                edit_response.request_focus();
+            }
+        });
     });
 }
 
 struct RenderContext<'a> {
     pub app: &'a AppContainer,
     pub server: &'a AsmServer,
-    pub lines: &'a Vec<Vec<SmaliToken>>,
+    pub lines: &'a [SmaliLine],
+    pub find: &'a FindState,
+    pub find_open: bool,
+    pub reveal_line: Option<usize>,
 
     pub font: &'a FontId,
     pub smali_style: &'a SmaliStyle,
@@ -60,12 +155,15 @@ struct RenderContext<'a> {
 impl<'a> RenderContext<'a> {
     pub fn render_line(&mut self, ui: &mut Ui, line_index: usize) {
         let line = &self.lines[line_index];
-        ui.horizontal(|ui| {
+        let line_response = ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 0.0;
-            for token_item in line {
+            for token_item in &line.tokens {
                 self.token(ui, token_item, line_index);
             }
         });
+        if self.reveal_line == Some(line_index) {
+            line_response.response.scroll_to_me(Some(Align::Center));
+        }
     }
 
     fn scroll_lines(&self, ui: &mut Ui, line_delta: usize) {
@@ -82,8 +180,8 @@ impl<'a> RenderContext<'a> {
             let current = i;
             i += 1;
             let Some(current_line) = self.lines.get(current) else { continue; };
-            let Some(first_node) = current_line.first() else { continue; };
-            let SmaliToken::LineStartOffsetMarker { offset: Some(current_offset), .. } = first_node else { continue; };
+            let Some(first_node) = current_line.tokens.first() else { continue; };
+            let SmaliToken::LineStartOffsetMarker { offset: Some(current_offset), .. } = &first_node.token else { continue; };
             if *current_offset >= target_offset {
                 self.scroll_lines(ui, current - start);
                 break;
@@ -93,19 +191,29 @@ impl<'a> RenderContext<'a> {
 
 
     fn token(
-        &mut self, ui: &mut Ui, token: &SmaliToken, line_index: usize,
+        &mut self, ui: &mut Ui, rendered_token: &SmaliLineToken, line_index: usize,
     ) -> Response {
-        let RenderContext {
-            font, smali_style, dft_color, ..
-        } = self;
-        let dft_color = *dft_color;
+        let token = &rendered_token.token;
+        let dft_color = self.dft_color;
         match token {
             SmaliToken::SourceInfo(source_info) => {
-                let text = format!("#from: {source_info}");
-                let text_ui = simple_text(ui, text, font, smali_style.literal)
-                    .on_hover_cursor(CursorIcon::PointingHand);
-                let text_ui = text_ui
-                    .on_hover_ui(|ui| {
+                let mut text_ui = self.styled_text(
+                    ui, line_index, rendered_token, self.smali_style.literal,
+                );
+                let popup_id = text_ui.id.with("source_info_click_popup");
+                let click_popup_open = Popup::is_id_open(&text_ui.ctx, popup_id);
+                if !click_popup_open && !text_ui.clicked() {
+                    text_ui = text_ui.on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        self.source_file_info_menu(ui, source_info);
+                    });
+                }
+                Popup::from_response(&text_ui)
+                    .id(popup_id)
+                    .kind(PopupKind::Tooltip)
+                    .open_memory(text_ui.clicked().then_some(SetOpenCommand::Toggle))
+                    .close_behavior(PopupCloseBehavior::CloseOnClickOutside)
+                    .show(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
                         self.source_file_info_menu(ui, source_info);
                     });
@@ -114,31 +222,47 @@ impl<'a> RenderContext<'a> {
                 });
                 text_ui
             },
-            SmaliToken::Raw(s) => simple_text(ui, s.to_string(), font, dft_color),
-            SmaliToken::Op(s) => simple_text(ui, s.to_string(), font, smali_style.op),
-            SmaliToken::LineStartOffsetMarker { raw, .. } => {
-                simple_text(ui, raw.to_string(), font, dft_color)
+            SmaliToken::Raw(_) => self.styled_text(ui, line_index, rendered_token, dft_color),
+            SmaliToken::Op(_) => self.styled_text(ui, line_index, rendered_token, self.smali_style.op),
+            SmaliToken::LineStartOffsetMarker { .. } => {
+                self.styled_text(ui, line_index, rendered_token, dft_color)
             },
-            SmaliToken::Offset { relative, absolute } => {
-                let text = format!("@{absolute}({relative:+})");
-                let text_ui = simple_text(ui, text, font, smali_style.offset)
-                    .on_hover_cursor(CursorIcon::PointingHand);
+            SmaliToken::Offset { relative: _, absolute } => {
+                let text_ui = self.styled_text(
+                    ui, line_index, rendered_token, self.smali_style.offset,
+                );
                 if text_ui.clicked() {
                     self.scroll_to_offset(ui, line_index, *absolute);
                 }
                 text_ui
             },
-            SmaliToken::Register(s) => simple_text(ui, format!("v{s}"), font, smali_style.register),
-            SmaliToken::RegisterRange(start, end) => {
-                let text = format!("v{start}..v{end}");
-                simple_text(ui, text, font, smali_style.register)
+            SmaliToken::Register(_) => {
+                self.styled_text(ui, line_index, rendered_token, self.smali_style.register)
             },
-            SmaliToken::MemberName(name) => {
-                simple_text(ui, name.to_string(), font, dft_color)
+            SmaliToken::RegisterRange(_, _) => {
+                self.styled_text(ui, line_index, rendered_token, self.smali_style.register)
+            },
+            SmaliToken::MemberName(_) => {
+                self.styled_text(ui, line_index, rendered_token, dft_color)
             },
             SmaliToken::Descriptor(s) => {
-                let text_ui = simple_text(ui, s.to_string(), font, smali_style.desc)
-                    .on_hover_ui(|ui| {
+                let mut text_ui = self.styled_text(
+                    ui, line_index, rendered_token, self.smali_style.desc,
+                );
+                let popup_id = text_ui.id.with("descriptor_click_popup");
+                let click_popup_open = Popup::is_id_open(&text_ui.ctx, popup_id);
+                if !click_popup_open && !text_ui.clicked() {
+                    text_ui = text_ui.on_hover_ui(|ui| {
+                        ui.style_mut().interaction.selectable_labels = true;
+                        self.descriptor_menu(ui, s);
+                    });
+                }
+                Popup::from_response(&text_ui)
+                    .id(popup_id)
+                    .kind(PopupKind::Tooltip)
+                    .open_memory(text_ui.clicked().then_some(SetOpenCommand::Toggle))
+                    .close_behavior(PopupCloseBehavior::CloseOnClickOutside)
+                    .show(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
                         self.descriptor_menu(ui, s);
                     });
@@ -147,9 +271,55 @@ impl<'a> RenderContext<'a> {
                 });
                 text_ui
             },
-            SmaliToken::Literal(s) => simple_text(ui, s.to_string(), font, smali_style.literal),
-            SmaliToken::Other(s) => simple_text(ui, s.to_string(), font, dft_color),
+            SmaliToken::Literal(_) => {
+                self.styled_text(ui, line_index, rendered_token, self.smali_style.literal)
+            },
+            SmaliToken::Other(_) => self.styled_text(ui, line_index, rendered_token, dft_color),
         }
+    }
+
+    fn styled_text(
+        &self, ui: &mut Ui, line_index: usize, token: &SmaliLineToken, color: Color32,
+    ) -> Response {
+        ui.label(self.token_layout(line_index, token, color))
+    }
+
+    fn token_layout(
+        &self, line_index: usize, token: &SmaliLineToken, color: Color32,
+    ) -> LayoutJob {
+        let mut job = LayoutJob::default();
+        if !self.find_open {
+            append_text(&mut job, &token.text, self.font, color, None);
+            return job;
+        }
+
+        let mut cursor = 0usize;
+        for (match_index, matched) in self.find.matches.iter().enumerate() {
+            if matched.line != line_index
+                || matched.end_byte <= token.start_byte
+                || matched.start_byte >= token.end_byte
+            {
+                continue;
+            }
+
+            let start = matched.start_byte.max(token.start_byte) - token.start_byte;
+            let end = matched.end_byte.min(token.end_byte) - token.start_byte;
+            if start > cursor {
+                append_text(&mut job, &token.text[cursor..start], self.font, color, None);
+            }
+            let background = if self.find.current == match_index {
+                Some(self.smali_style.search_current)
+            } else {
+                Some(self.smali_style.search)
+            };
+            append_text(&mut job, &token.text[start..end], self.font, color, background);
+            cursor = end;
+        }
+
+        if cursor < token.text.len() {
+            append_text(&mut job, &token.text[cursor..], self.font, color, None);
+        }
+        job
     }
 
     fn source_file_info_menu(
@@ -264,12 +434,15 @@ impl<'a> RenderContext<'a> {
     }
 }
 
-
-
-fn simple_text(
-    ui: &mut Ui, text: String, font: &FontId, color: Color32,
-) -> Response {
-    ui.label(LayoutJob::simple_singleline(text, font.clone(), color))
+fn append_text(
+    job: &mut LayoutJob, text: &str, font: &FontId, color: Color32,
+    background: Option<Color32>,
+) {
+    let mut format = TextFormat::simple(font.clone(), color);
+    if let Some(background) = background {
+        format.background = background;
+    }
+    job.append(text, 0.0, format);
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -280,6 +453,8 @@ pub(crate) struct SmaliStyle {
     pub desc: Color32,
     pub literal: Color32,
     pub highlight: Color32,
+    pub search: Color32,
+    pub search_current: Color32,
 }
 
 impl SmaliStyle {
@@ -290,6 +465,8 @@ impl SmaliStyle {
         desc: Color32::from_rgb(153, 134, 255),
         literal: Color32::from_rgb(37, 203, 105),
         highlight: Color32::from_rgb(255, 199, 133),
+        search: Color32::from_rgba_unmultiplied_const(255, 220, 80, 85),
+        search_current: Color32::from_rgba_unmultiplied_const(255, 145, 45, 175),
     };
 
     pub(crate) const DARK: SmaliStyle = SmaliStyle {
@@ -299,5 +476,7 @@ impl SmaliStyle {
         desc: SmaliStyle::LIGHT.desc,
         literal: SmaliStyle::LIGHT.literal,
         highlight: SmaliStyle::LIGHT.highlight,
+        search: Color32::from_rgba_unmultiplied_const(180, 150, 0, 100),
+        search_current: Color32::from_rgba_unmultiplied_const(255, 160, 40, 190),
     };
 }

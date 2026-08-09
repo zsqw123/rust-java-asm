@@ -6,6 +6,7 @@ use java_asm_server::rw_access::ReadAccess;
 use java_asm_server::ui::AppContainer;
 use java_asm_server::{AsmServer, ServerMut};
 use js_sys::Uint8Array;
+use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{self, Response};
@@ -70,6 +71,29 @@ fn hide_startup_loading(document: &web_sys::Document) {
     let _ = loader.set_attribute("hidden", "");
 }
 
+fn disable_browser_find(window: &web_sys::Window) {
+    let callback = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::new(
+        |event: web_sys::KeyboardEvent| {
+            let is_find_shortcut = event.ctrl_key() || event.meta_key();
+            let is_f_key = event.key().eq_ignore_ascii_case("f") || event.code() == "KeyF";
+            if is_find_shortcut && is_f_key
+            {
+                event.prevent_default();
+            }
+        },
+    );
+    // Capture the event before the browser's default find action gets a chance
+    // to handle it. Do not stop propagation: egui still needs the shortcut.
+    for event_name in ["keydown", "keypress"] {
+        let _ = window.add_event_listener_with_callback_and_bool(
+            event_name,
+            callback.as_ref().unchecked_ref(),
+            true,
+        );
+    }
+    callback.forget();
+}
+
 fn load_cjk_font_in_background(context: egui::Context) {
     wasm_bindgen_futures::spawn_local(async move {
         match load_web_font().await {
@@ -86,10 +110,11 @@ pub fn main() {
     let web_options = eframe::WebOptions::default();
 
     wasm_bindgen_futures::spawn_local(async {
-        let document = web_sys::window()
-            .expect("No window")
+        let window = web_sys::window().expect("No window");
+        let document = window
             .document()
             .expect("No document");
+        disable_browser_find(&window);
 
         let canvas = document
             .get_element_by_id("canvas")

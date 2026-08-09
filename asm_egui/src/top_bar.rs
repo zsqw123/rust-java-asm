@@ -105,8 +105,7 @@ impl EguiApp {
                 return;
             };
             if ui.selectable_label(false, label_text).clicked() {
-                let smali_content = current_tab.content.render(0);
-                ui.ctx().copy_text(smali_content);
+                ui.ctx().copy_text(current_tab.exported_content.to_string());
                 self.notify_success(format!("{} content copied!", current_tab.file_key));
             }
         });
