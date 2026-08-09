@@ -28,6 +28,7 @@ The parser core deliberately avoids runtime parsing dependencies. Repetitive bin
 - `asm_macro/` (`java_asm_macro`): derives `ReadFrom`/`WriteInto` and constant-container helpers. Change this when binary-layout boilerplate should be generated consistently.
 - `asm_server/` (`java_asm_server`): APK loading, lazy content access, fuzzy search, async/native-WASM task abstraction, and frontend-independent UI state/messages.
   - `src/targets/`: target-specific runtime adapters under the `native/` and `wasm/` directories. Keep target dispatch in `mod.rs`; shared APK indexing lives in `impls/apk_load.rs`.
+- `asm_cli/` (`asm_cli`): native Agent-facing CLI for indexing APK/DEX/JAR/class inputs, finding classes and members, and writing targeted or full Smali-like output. It does not create an `AppContainer` or provide MCP transport.
 - `asm_egui/` (`java_asm_egui`): current desktop/experimental WASM egui frontend. UI code should consume `asm_server` state instead of reimplementing parsing.
   - `index.html` and `Trunk.toml`: browser shell and Trunk build configuration.
 - `ta/`: experimental Tauri/Preact frontend. It is currently excluded from Cargo workspace members; do not assume root Cargo commands build it.
@@ -40,21 +41,21 @@ The parser core deliberately avoids runtime parsing dependencies. Repetitive bin
    - JVMS/DEX raw structs should mirror specification field order, widths, counts, offsets, and terminology.
    - Resolve indexes/references and normalize data in transforms, accessors, or node conversion code.
    - Do not hide raw-format facts inside GUI code.
-2. Keep public modules thin. Public entry points such as `JvmsClassReader`, `JvmsClassWriter`, and `DexFile` collect bytes and delegate to `ReadContext`, `WriteContext`, or transforms.
-3. Put low-level machinery under `asm/src/impls/`. Expose only stable concepts from `lib.rs` and domain modules.
-4. Reuse `AsmResult<T>` and add a specific `AsmErr` variant when an error category is meaningful. Propagate recoverable parse/I/O failures with `?`; avoid new `unwrap()` calls in library paths.
-5. Preserve lazy DEX access. Offsets and indexes are often intentionally retained until the caller asks for class data, code, or Smali.
-6. Keep frontend-independent behavior in `asm_server`. Native/WASM differences belong behind `cfg`-selected helpers such as scheduling and read/write access.
-7. Put cross-platform runtime choices behind the `asm_server::targets` facade; implement native/WASM differences in `asm_server/src/targets/native/` and `asm_server/src/targets/wasm/`. Keep shared APK parsing/indexing in `impls/apk_load.rs`, and use the re-exported `Instant` and scheduling helpers instead of adding target checks to parsing or state code.
-8. Treat all workspace code compiled for `wasm32-unknown-unknown`, including `asm_egui`, as browser code: use the public `java_asm_server` target-facade re-exports for `Instant`, `SystemTime`, and `Duration`, and route async yielding/scheduling through the existing target helpers. Frontends must not add a direct `web-time` dependency or call `std::time::Instant::now()`/`std::time::SystemTime::now()` in browser paths.
-9. Keep data preparation in `asm_server`: timestamp conversion, log formatting, and other presentation-ready state belong in the server/UI-state layer. `asm_egui` should consume ready-to-display values and contain egui layout/interaction code only.
-10. Keep durable state separate from transient events. State should describe facts that remain valid between frames; one-shot actions such as focus, reveal, scroll, refresh, navigation, and notifications should use an explicit message/event/action or a return value. If an event must cross frontend phases, carry it in an explicit event queue rather than a state field or pending flag. Do not store egui-specific transient events in `asm_server` state; translate cross-layer events at the server/frontend boundary.
-11. Keep UI rendering separate from state-changing behavior. Frontends should read state, render controls, and enqueue `UIMessage` actions; `AppContainer::process_messages` applies those actions. When processing needs a one-shot frontend action, return a narrow result and pass it through the current-frame call stack; do not persist a transient event object or mutate server/UI state directly from a render function.
+2. Keep public modules thin. Public readers/writers collect inputs and delegate to `ReadContext`, `WriteContext`, transforms, or private machinery under `asm/src/impls/`. Expose only stable domain concepts.
+3. Reuse `AsmResult<T>` and add a specific `AsmErr` variant when an error category is meaningful. Propagate recoverable parse/I/O failures with `?`; avoid new `unwrap()` calls in library paths.
+4. Preserve lazy DEX access. Retain offsets and indexes until callers request resolved class data, code, or Smali.
+5. Keep frontend-independent state and data preparation in `asm_server`; keep egui layout and interaction in `asm_egui`. A UI interaction that only changes presentation state, such as find navigation or scrolling, should be handled directly in the UI layer during the current frame.
+6. Use `UIMessage` only when an action must cross into server-owned behavior. Do not introduce event queues, result containers, pending flags, synthetic IDs, or pass-through return values when the UI can derive the result from existing state.
+7. Keep durable facts as state and derive transient presentation from them. For example, render a toast from its stored kind, message, and creation time instead of mirroring it into separate frontend state.
+8. Put native/WASM differences behind `asm_server::targets`; keep shared APK indexing in `impls/apk_load.rs`. Browser code must use the public `java_asm_server` re-exports for `Instant`, `SystemTime`, and `Duration`, plus the existing scheduling helpers. Do not add direct `web-time` dependencies or target checks to parsing, state, or frontend code.
 
 ## Coding style observed in this repository
 
 - Write source code, comments, log messages, and repository documentation in English. Keep non-English text only when it is intentionally required for localization or CJK/font regression tests (for example, `Log / 日志`).
-- Prefer direct, explicit Rust over elaborate abstractions. Small traits, enums, type aliases, and focused macros are common.
+- Prefer the simplest design that gives each piece of data and behavior one clear owner. Remove redundant states, conversions, wrappers, branches, and forwarding layers instead of explaining them.
+- Prefer direct, explicit Rust over elaborate abstractions. Add a struct, enum, trait, queue, callback, or helper only when it represents a real domain concept or removes meaningful repetition.
+- Keep control and data flow short. Avoid returning a value only to pass it through several functions, cloning data to detect changes, or tracking information that can be derived cheaply from current state.
+- Be efficient by default: avoid unnecessary allocation, cloning, locking, rescanning, and repainting. Keep lock scopes narrow, but do not add coordination machinery whose complexity costs more than the work it saves.
 - Model external specifications literally. Names like `constant_pool_count`, `class_data_off`, `U32BasedSize`, and instruction-format types are preferred over renamed business terminology.
 - Use newtypes/type aliases to communicate binary meaning and shared ownership (`StrRef`, `DescriptorRef`, `InternalNameRef`, `DUInt`, `ArcVarOpt<T>`).
 - Use `pub use` at domain boundaries for the intended convenient API, while leaving implementation modules private or `pub(crate)`.
@@ -62,7 +63,7 @@ The parser core deliberately avoids runtime parsing dependencies. Repetitive bin
 - Add comments for specification rules, non-obvious invariants, index/offset semantics, endianness, ownership, and safe-unwrapping arguments. Avoid comments that merely restate an obvious expression.
 - Early returns and `let Some(value) = ... else { return; };` are favored for guard clauses. Compact one-line guards already occur frequently; match the surrounding file instead of reformatting unrelated code.
 - Prefer iterator pipelines for transformations and straightforward loops when parsing bytes or mutating state.
-- Use `Arc` for shared immutable names/data and `parking_lot::Mutex` for shared application state. Minimize lock scope and use the existing lock-free helper pattern when several UI sections must be updated together.
+- Use `Arc` for genuinely shared immutable names/data and `parking_lot::Mutex` for shared application state; do not introduce shared ownership by default.
 - Logging/timing is part of the debugging style: backend code uses `log::{info,error,...}` and integration tests use `println!` plus `Instant`.
 - Proc-macro failures may panic with actionable messages because they are compile-time author errors. Runtime parsers should return `AsmErr` instead.
 - Commit subjects are short, imperative, lower-case English phrases such as `add wasm support` or `support fuzzy search in egui`.
@@ -104,6 +105,13 @@ Server/backend changes:
 cargo test -p java_asm_server -- --nocapture
 ```
 
+Native CLI:
+
+```powershell
+cargo test -p asm_cli
+cargo build --release -p asm_cli
+```
+
 GUI compile/run:
 
 ```powershell
@@ -121,19 +129,13 @@ trunk serve
 trunk build --release
 ```
 
-`trunk serve` uses `asm_egui/index.html` and the `canvas` element expected by `targets/wasm.rs`. `Trunk.toml` uses
-fixed port `8080`; stop the previous Trunk run before starting another one so the port is released. The release output is
-`asm_egui/dist/` and is suitable for static hosting. `.github/workflows/web.yml` publishes the same output to GitHub
-Pages. The HTML keeps `data-wasm-opt="z" data-wasm-opt-params="--all-features"`; this is required by the current
-Trunk/Rust output because the generated WASM uses bulk-memory and nontrapping float-to-int operations. Browser input
-is local to the page; the current server/accessor boundary supports APK input, not every format listed in the long-term
-README goals. Because egui renders into a WebGL canvas, CSS `font-family` cannot provide glyph fallback there; the WASM
-font path fetches a pinned Noto Sans SC subset from a CDN at runtime and native builds continue to load host system
-fonts. Keep the font outside the WASM binary so it can be cached independently. APK imports use one throttled loading
-stream through `LoadingState`, reporting at most once per completed percentage point. Up to 16 DEX parse/index
-pipelines run concurrently; native indexing uses a fixed Rayon worker pool, and parallel progress is based on completed
-DEX pipelines. The final ordered merge only sends its completion notification. The WASM loader yields between
-CPU-heavy indexing batches so the browser can repaint the progress bar.
+Browser-specific constraints:
+
+- Trunk serves the canvas in `asm_egui/index.html` on fixed port `8080` and writes release output to `asm_egui/dist/`; `.github/workflows/web.yml` publishes the same output.
+- Keep `data-wasm-opt="z" data-wasm-opt-params="--all-features"`; current Rust output requires the enabled WASM operations.
+- Browser input currently supports APK, standalone DEX, multiple selections, and nested Android archives such as APKS.
+- WebGL canvas text cannot use CSS font fallback. WASM fetches a pinned Noto Sans SC subset, while native builds use host fonts; keep the web font outside the WASM binary.
+- Loading is throttled through `LoadingState`. DEX pipelines run concurrently, native indexing uses the fixed Rayon pool, and WASM indexing must yield often enough for repainting.
 
 Final Rust workspace verification (matches CI's effective build/test scope):
 
@@ -149,8 +151,7 @@ Root Cargo commands do not validate `ta/`. If intentionally changing the Tauri f
 - `asm/tests/main.rs` is the integration-test root; its child modules share helpers, so keep module paths intact when filtering tests.
 - Core fixtures are embedded with `include_bytes!`, making the tests independent of the process working directory.
 - Parser tests currently favor real `.class`/`.dex` samples and inspectability. When fixing a bug, add exact assertions for the affected field/instruction/error so regressions do not depend only on printed output.
-- On 2026-08-08, `cargo test --workspace` passed all 6 tests (3 `java_asm` integration tests and 3 `java_asm_server` fuzzy-search tests). The build emits existing unused/deprecated/dead-code warnings; do not treat those pre-existing warnings as failures, but do not add new warnings in touched code.
-- On the same baseline, `cargo fmt --all -- --check` failed with broad existing formatting differences. Avoid claiming format-clean status unless a dedicated formatting cleanup has been agreed.
+- The build emits existing unused/deprecated/dead-code warnings. Do not treat pre-existing warnings as failures, but do not add new warnings in touched code.
 
 ## Scope and safety for agents
 

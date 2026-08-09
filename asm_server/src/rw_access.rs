@@ -1,4 +1,5 @@
 use rfd::{AsyncFileDialog, FileHandle};
+use std::fmt::{Display, Formatter};
 use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -22,6 +23,15 @@ pub enum ReadError {
         err: std::io::Error,
     },
     None,
+}
+
+impl Display for ReadError {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::IOError { err } => write!(formatter, "{err}"),
+            Self::None => formatter.write_str("file read was cancelled"),
+        }
+    }
 }
 
 pub struct WriteAccess {
@@ -54,6 +64,13 @@ impl ReadAccess {
     pub async fn new(dialog: AsyncFileDialog) -> Option<Self> {
         let handle = dialog.pick_file().await?;
         Some(Self::FileHandleBased { handle })
+    }
+
+    pub async fn new_multiple(dialog: AsyncFileDialog) -> Option<Vec<Self>> {
+        let handles = dialog.pick_files().await?;
+        Some(handles.into_iter()
+            .map(|handle| Self::FileHandleBased { handle })
+            .collect())
     }
 
     pub fn from_raw(name: String, data: Arc<[u8]>) -> Self {

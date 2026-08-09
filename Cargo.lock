@@ -326,6 +326,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "asm_cli"
+version = "0.1.4"
+dependencies = [
+ "java_asm",
+ "serde_json",
+ "zip",
+]
+
+[[package]]
 name = "async-broadcast"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

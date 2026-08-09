@@ -1,5 +1,5 @@
 use crate::impls::fuzzy::FuzzyMatchModel;
-use crate::impls::server::FileOpenContext;
+use crate::impls::server::{FileOpenContext, ServerMessage};
 use crate::targets::{schedule_task, Instant};
 use crate::rw_access::{ReadAccess, ReadError, WriteAccess};
 use crate::ui::{AppContainer, Content, DirInfo, Left, SmaliLine, Tab, Top};
@@ -7,7 +7,7 @@ use crate::{Accessor, AccessorEnum, ArcVarOpt, AsmServer, ExportableSource, Load
 use java_asm::smali::SmaliNode;
 use java_asm::{AsmErr, StrRef};
 use log::{error, info};
-use std::io::Cursor;
+use std::fmt::{Display, Formatter};
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use zip::result::ZipError;
@@ -54,7 +54,18 @@ impl AsmServer {
     }
 
     pub fn smart_open(server: ServerMut, read_access: ReadAccess, render_target: AppContainer) {
-        let file_name = read_access.name();
+        Self::smart_open_many(server, vec![read_access], render_target);
+    }
+
+    pub fn smart_open_many(
+        server: ServerMut, read_accesses: Vec<ReadAccess>, render_target: AppContainer,
+    ) {
+        let Some(first_access) = read_accesses.first() else { return; };
+        let file_name = if read_accesses.len() == 1 {
+            first_access.name()
+        } else {
+            format!("{} files", read_accesses.len())
+        };
         let context = FileOpenContext { file_name, start_time: Instant::now() };
         schedule_task(async move {
             let new_server = AsmServer::new();
@@ -65,26 +76,36 @@ impl AsmServer {
                 &server, &render_target,
             );
 
-            let file_name = &context.file_name;
             let accessor = new_server.accessor.clone();
-            if file_name.ends_with(".apk") {
-                let reader = read_access.read().await;
-                match reader {
+            crate::impls::apk_load::send_progress(
+                &sender, 0.0, "Reading input files...",
+            ).await;
+            let mut inputs = Vec::with_capacity(read_accesses.len());
+            for read_access in read_accesses {
+                let file_name = read_access.name();
+                match read_access.read().await {
                     Ok(content) => {
-                        let cursor = Cursor::new(content);
-                        let read_result = Self::read_apk(cursor, sender, accessor).await;
-                        if let Err(e) = read_result {
-                            error!("resolve file meets an error. {e:?}");
-                        }
+                        let content = content.to_vec();
+                        inputs.push((file_name, content));
                     }
-                    Err(e) => {
-                        let error = OpenFileError::ReadError(e);
-                        error!("read {file_name} meet an io error. {error:?}");
+                    Err(error) => {
+                        let message = format!(
+                            "Failed to read `{file_name}`: {}",
+                            OpenFileError::ReadError(error),
+                        );
+                        error!("{message}");
+                        let _ = sender.send(ServerMessage::Error(message)).await;
+                        new_server.on_file_opened(&context, render_target);
+                        return;
                     }
                 }
-            } else {
-                error!("unsupported file type: {:?}", file_name);
-            };
+            }
+            let read_result = Self::read_files(inputs, sender.clone(), accessor).await;
+            if let Err(e) = read_result {
+                let message = format!("Failed to load input: {e}");
+                error!("{message}");
+                let _ = sender.send(ServerMessage::Error(message)).await;
+            }
             new_server.on_file_opened(&context, render_target);
         });
     }
@@ -192,10 +213,13 @@ impl AsmServer {
     pub fn dialog_to_open_file(server: ServerMut, render_target: AppContainer) {
         schedule_task(async {
             let dialog = rfd::AsyncFileDialog::new()
-                .add_filter("APK", &["apk"]);
-            let read_access = ReadAccess::new(dialog).await;
-            let Some(read_access) = read_access else { return; };
-            Self::smart_open(server, read_access, render_target);
+                .add_filter(
+                    "Android packages / DEX",
+                    &["apk", "apks", "xapk", "aab", "zip", "dex"],
+                );
+            let read_accesses = ReadAccess::new_multiple(dialog).await;
+            let Some(read_accesses) = read_accesses else { return; };
+            Self::smart_open_many(server, read_accesses, render_target);
         });
     }
 
@@ -230,6 +254,18 @@ pub enum OpenFileError {
     LoadZip(ZipError),
     ResolveError(AsmErr),
     Custom(String),
+}
+
+impl Display for OpenFileError {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Io(error) => write!(formatter, "I/O error: {error}"),
+            Self::ReadError(error) => write!(formatter, "read error: {error}"),
+            Self::LoadZip(error) => write!(formatter, "invalid ZIP archive: {error}"),
+            Self::ResolveError(error) => write!(formatter, "resolve error: {error:?}"),
+            Self::Custom(message) => formatter.write_str(message),
+        }
+    }
 }
 
 

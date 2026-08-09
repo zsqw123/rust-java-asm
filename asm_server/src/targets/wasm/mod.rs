@@ -4,26 +4,27 @@ pub(crate) use runtime::{file_handle_path, reveal_parent, schedule_task};
 pub use runtime::{Instant, SystemTime};
 
 use crate::impls::apk_load::{
-    resolve_dex, ApkAccessor, IndexedDex,
+    report_dex_progress, resolve_dex, DexAccessor, IndexedDex, ProgressReporter,
 };
 use crate::impls::server::ServerMessage;
 use crate::server::OpenFileError;
 use futures::channel::oneshot::Receiver;
 use log::error;
 use std::future::Future;
-use std::io::{Read, Seek};
+use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc::Sender;
-use zip::ZipArchive;
 
-pub(crate) async fn read_apk(
-    zip_archive: ZipArchive<impl Read + Seek>, sender: Sender<ServerMessage>,
-) -> Result<ApkAccessor, OpenFileError> {
-    crate::impls::apk_load::read_apk(zip_archive, sender, runtime::yield_to_browser).await
+pub(crate) async fn read_dex_inputs(
+    inputs: Vec<(String, Vec<u8>)>, sender: Sender<ServerMessage>,
+) -> Result<DexAccessor, OpenFileError> {
+    crate::impls::apk_load::read_dex_inputs(
+        inputs, sender, runtime::yield_to_browser,
+    ).await
 }
 
 pub(crate) fn spawn_process_dex<F, Fut>(
     _task_index: usize, display_name: String, bytes: Vec<u8>,
-    yield_step: F,
+    yield_step: F, reporter: Arc<Mutex<ProgressReporter>>,
 ) -> Receiver<Option<IndexedDex>>
 where
     F: Fn() -> Fut + Clone + 'static,
@@ -32,7 +33,7 @@ where
     let (sender, receiver) = futures::channel::oneshot::channel();
     wasm_bindgen_futures::spawn_local(async move {
         let result = process_dex(
-            display_name, bytes, yield_step,
+            _task_index, display_name, bytes, yield_step, reporter,
         ).await;
         let _ = sender.send(result);
     });
@@ -40,8 +41,8 @@ where
 }
 
 async fn process_dex<F, Fut>(
-    display_name: String, bytes: Vec<u8>,
-    yield_step: F,
+    task_index: usize, display_name: String, bytes: Vec<u8>,
+    yield_step: F, reporter: Arc<Mutex<ProgressReporter>>,
 ) -> Option<IndexedDex>
 where
     F: Fn() -> Fut + Clone,
@@ -64,6 +65,11 @@ where
 
         let is_last_class = class_index + 1 == class_count;
         if is_last_class || (class_index + 1) % report_step == 0 {
+            let progress = (class_index + 1) as f32 / class_count.max(1) as f32;
+            report_dex_progress(
+                &reporter, task_index, progress,
+                || format!("Indexing {display_name}..."),
+            );
             yield_step().await;
         }
     }

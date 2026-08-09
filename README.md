@@ -13,8 +13,8 @@ This project supports much newer LTS Java version(Java 21 currently) than other 
 
 ## GUI
 
-We have a simple GUI build by egui to show decompiled files. but current support only for apk, and we are actively
-working on it.
+We have a simple GUI built with egui to show decompiled files. It currently supports APK, standalone DEX, and
+multi-selected DEX/package inputs.
 
 ![GUI](docs/egui.png)
 
@@ -22,14 +22,15 @@ working on it.
 
 Online demo: [GitHub Pages](https://zsqw123.github.io/rust-java-asm/)
 
-The browser version lets you select or drop an APK for inspection. Parsing and APK inspection stay local to the browser;
+The browser version lets you select or drop an APK, standalone DEX, or Android package archive such as APKS for
+inspection. Multiple DEX/package files can be selected together. Parsing and inspection stay local to the browser;
 the selected file is not uploaded to a server. It also avoids the macOS Gatekeeper or "Privacy & Security" exception
 needed by an unsigned desktop application.
 
-The browser version currently supports APK input; DEX/JAR/class-file accessors will be exposed once they are ready.
+The browser version currently supports APK, standalone DEX, and nested Android package archives such as APKS;
+JAR/class-file accessors will be exposed once they are ready.
 
-The web/WASM and native builds share the same UI and parsing code, but their runtime environments have some user-visible
-differences:
+The web/WASM and native builds share the same UI and parsing code, but have some differences:
 
 | Area                             | Web / WASM                                              | Native desktop                                                                                                               |
 |----------------------------------|---------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|

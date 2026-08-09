@@ -3,7 +3,7 @@ use bit_set::BitSet;
 use egui::containers::{Popup, PopupCloseBehavior};
 use egui::text::LayoutJob;
 use egui::{Align, Id, Layout, ProgressBar, RectAlign, Response, SetOpenCommand, TextEdit, TextFormat, TextStyle, Ui};
-use java_asm_server::ui::{Content, OpenFileMessage, Tab, UIMessage};
+use java_asm_server::ui::{Content, OpenFileMessage, Tab, ToastKind, UIMessage};
 use java_asm_server::AsmServer;
 use std::ops::Deref;
 
@@ -106,7 +106,10 @@ impl EguiApp {
             };
             if ui.selectable_label(false, label_text).clicked() {
                 ui.ctx().copy_text(current_tab.exported_content.to_string());
-                self.notify_success(format!("{} content copied!", current_tab.file_key));
+                self.ui_app.push_toast(
+                    ToastKind::Success,
+                    format!("{} content copied!", current_tab.file_key),
+                );
             }
         });
     }

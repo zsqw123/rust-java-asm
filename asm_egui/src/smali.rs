@@ -4,12 +4,11 @@ use egui::containers::{Popup, PopupCloseBehavior, PopupKind};
 use egui::{Align, Button, FontId, Id, Key, Modifiers, Response, ScrollArea, SetOpenCommand, TextEdit, TextStyle, Ui, Vec2};
 use java_asm::smali::SmaliToken;
 use java_asm::StrRef;
-use java_asm_server::ui::{AppContainer, FindMessage, FindState, OpenFileMessage, SmaliLine, SmaliLineToken, UIMessage};
+use java_asm_server::ui::{AppContainer, FindState, OpenFileMessage, SmaliLine, SmaliLineToken, UIMessage};
 use java_asm_server::AsmServer;
 
 pub fn smali_layout(
     ui: &mut Ui, server: &AsmServer, app: &AppContainer,
-    reveal_target: Option<&(StrRef, usize)>,
 ) {
     let mut content_locked = app.content().lock();
     let selected_tab_index = content_locked.selected;
@@ -23,11 +22,10 @@ pub fn smali_layout(
     let dark_mode = style.visuals.dark_mode;
     let smali_style = if dark_mode { SmaliStyle::DARK } else { SmaliStyle::LIGHT };
 
-    let lines = selected_tab.rendered_lines.as_ref();
-    let reveal_line = reveal_target.and_then(|(file_key, line)| {
-        (file_key.as_ref() == selected_tab.file_key.as_ref()).then_some(*line)
-    });
-    find_toolbar(ui, app, &selected_tab.find, selected_tab.file_key.as_ref());
+    let lines = selected_tab.rendered_lines.clone();
+    let reveal_line = find_toolbar(
+        ui, &mut selected_tab.find, selected_tab.file_key.as_ref(), &lines,
+    );
     let row_height = ui.text_style_height(&TextStyle::Monospace);
     let spacing_y = ui.spacing().item_spacing.y;
 
@@ -49,7 +47,7 @@ pub fn smali_layout(
         app: &app,
         server,
         font: &font,
-        lines: &lines,
+        lines: lines.as_ref(),
         find: &selected_tab.find,
         find_open: selected_tab.find.open,
         reveal_line,
@@ -67,16 +65,22 @@ pub fn smali_layout(
 }
 
 fn find_toolbar(
-    ui: &mut Ui, app: &AppContainer, find: &FindState, file_key: &str,
-) {
-    if !find.open {
-        return;
-    }
-
-    let find_id = Id::new(("asm_find_input", file_key));
+    ui: &mut Ui, find: &mut FindState, file_key: &str, lines: &[SmaliLine],
+) -> Option<usize> {
     let focus_requested = ui.input(|input| {
         input.key_pressed(Key::F) && input.modifiers.command
     });
+    let mut reveal_line = None;
+    if focus_requested {
+        find.open = true;
+        find.update_matches(lines.iter().map(|line| line.text.as_str()));
+        reveal_line = find.current_match().map(|matched| matched.line);
+    }
+    if !find.open {
+        return None;
+    }
+
+    let find_id = Id::new(("asm_find_input", file_key));
     let mut query = find.query.clone();
     let mut case_sensitive = find.case_sensitive;
     egui::Frame::popup(ui.style()).show(ui, |ui| {
@@ -92,11 +96,10 @@ fn find_toolbar(
             let case_response = ui.checkbox(&mut case_sensitive, "Aa");
             let input_changed = edit_response.changed() || case_response.changed();
             if input_changed {
-                app.send_message(UIMessage::Find(FindMessage::Update {
-                    file_key: file_key.into(),
-                    query,
-                    case_sensitive,
-                }));
+                find.query = query;
+                find.case_sensitive = case_sensitive;
+                find.update_matches(lines.iter().map(|line| line.text.as_str()));
+                reveal_line = find.current_match().map(|matched| matched.line);
             }
 
             let previous_pressed = ui.input_mut(|input| {
@@ -106,13 +109,9 @@ fn find_toolbar(
                 input.consume_key(Modifiers::NONE, Key::Enter)
             });
             if previous_pressed || ui.button("↑").clicked() {
-                app.send_message(UIMessage::Find(FindMessage::Previous {
-                    file_key: file_key.into(),
-                }));
+                reveal_line = find.previous();
             } else if next_pressed || ui.button("↓").clicked() {
-                app.send_message(UIMessage::Find(FindMessage::Next {
-                    file_key: file_key.into(),
-                }));
+                reveal_line = find.next();
             }
 
             let count = if find.matches.is_empty() {
@@ -125,9 +124,7 @@ fn find_toolbar(
             if ui.add(Button::new("×")).clicked()
                 || ui.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape))
             {
-                app.send_message(UIMessage::Find(FindMessage::Close {
-                    file_key: file_key.into(),
-                }));
+                find.open = false;
             }
 
             if focus_requested {
@@ -135,6 +132,7 @@ fn find_toolbar(
             }
         });
     });
+    reveal_line
 }
 
 struct RenderContext<'a> {

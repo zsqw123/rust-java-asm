@@ -1,4 +1,4 @@
-use crate::impls::apk_load::ApkAccessor;
+use crate::impls::apk_load::DexAccessor;
 use crate::impls::fuzzy::FuzzyMatchModel;
 use enum_dispatch::enum_dispatch;
 use java_asm::smali::SmaliNode;
@@ -42,7 +42,7 @@ pub struct LoadingState {
 
 #[enum_dispatch]
 pub enum AccessorEnum {
-    Apk(ApkAccessor),
+    Dex(DexAccessor),
 }
 
 #[enum_dispatch(AccessorEnum)]

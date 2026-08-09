@@ -8,12 +8,12 @@ use java_asm::{DescriptorRef, StrRef};
 use log::{error, warn};
 use std::collections::HashMap;
 use std::future::Future;
-use std::io::{Read, Seek};
-use std::sync::Arc;
-use tokio::sync::{Mutex as AsyncMutex, mpsc::Sender};
+use std::io::{Cursor, Read};
+use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc::Sender;
 use zip::ZipArchive;
 
-pub struct ApkAccessor {
+pub struct DexAccessor {
     pub map: HashMap<DescriptorRef, ClassPosition>,
     pub dex_sources: HashMap<StrRef, Arc<DexFileAccessor>>,
 }
@@ -30,10 +30,51 @@ pub(crate) struct ProgressReporter {
     sender: Sender<ServerMessage>,
     last_percent: i16,
     task_count: usize,
-    completed_tasks: usize,
+    task_progress: Vec<f32>,
 }
 
 const MAX_PARALLEL_DEX_TASKS: usize = 16;
+pub(crate) const DEX_COLLECT_PROGRESS_END: f32 = 0.9;
+
+struct DexCollectProgress {
+    sender: Sender<ServerMessage>,
+    total_entries: usize,
+    completed_entries: usize,
+    last_percent: i16,
+}
+
+impl DexCollectProgress {
+    fn new(sender: Sender<ServerMessage>, total_entries: usize) -> Self {
+        Self { sender, total_entries, completed_entries: 0, last_percent: -1 }
+    }
+
+    fn add_entry(&mut self) -> bool {
+        self.completed_entries = self.completed_entries.saturating_add(1);
+        let fraction = if self.total_entries == 0 {
+            1.0
+        } else {
+            (self.completed_entries as f32 / self.total_entries as f32).min(1.0)
+        };
+        let progress = fraction * DEX_COLLECT_PROGRESS_END;
+        let percent = (progress * 100.0).floor() as i16;
+        if percent <= self.last_percent
+            || percent > (DEX_COLLECT_PROGRESS_END * 100.0) as i16
+        {
+            return false;
+        }
+        if self.sender.capacity() <= 1
+            || !try_send_progress(
+            &self.sender,
+            progress,
+            format!("Collecting DEX files... {percent}%"),
+        )
+        {
+            return false;
+        }
+        self.last_percent = percent;
+        true
+    }
+}
 
 impl ProgressReporter {
     fn new(sender: Sender<ServerMessage>, task_count: usize) -> Self {
@@ -41,50 +82,102 @@ impl ProgressReporter {
             sender,
             last_percent: -1,
             task_count,
-            completed_tasks: 0,
+            task_progress: vec![0.0; task_count],
         }
     }
 
-    async fn report(&mut self, progress: f32, message: impl FnOnce() -> String) -> bool {
-        let progress = progress.clamp(0.0, 1.0);
+    fn report(&mut self, progress: f32, message: impl FnOnce() -> String) -> bool {
+        let progress = DEX_COLLECT_PROGRESS_END
+            + progress.clamp(0.0, 1.0) * (1.0 - DEX_COLLECT_PROGRESS_END);
         let percent = (progress * 100.0).floor() as i16;
         if percent <= self.last_percent || percent >= 100 {
             return false;
         }
-        self.last_percent = percent;
         let message = message();
-        send_progress(&self.sender, percent as f32 / 100.0, message).await;
+        // Progress is best-effort. A slow UI consumer must not block a native
+        // DEX worker, and a later percentage will retry after the queue drains.
+        // Keep one queue slot free for the reliable final completion message.
+        if self.sender.capacity() <= 1
+            || !try_send_progress(&self.sender, percent as f32 / 100.0, message)
+        {
+            return false;
+        }
+        self.last_percent = percent;
         true
     }
 
-    async fn report_task(&mut self, message: impl FnOnce() -> String) -> bool {
-        self.completed_tasks = self.completed_tasks.saturating_add(1);
+    fn report_task(
+        &mut self, task_index: usize, message: impl FnOnce() -> String,
+    ) -> bool {
+        if let Some(progress) = self.task_progress.get_mut(task_index) {
+            *progress = 1.0;
+        }
         let progress = if self.task_count == 0 {
             1.0
         } else {
-            self.completed_tasks.min(self.task_count) as f32 / self.task_count as f32
+            self.task_progress.iter().sum::<f32>() / self.task_count as f32
         };
-        self.report(progress, message).await
+        self.report(progress, message)
+    }
+
+    fn report_task_progress(
+        &mut self, task_index: usize, progress: f32, message: impl FnOnce() -> String,
+    ) -> bool {
+        if let Some(task_progress) = self.task_progress.get_mut(task_index) {
+            *task_progress = progress.clamp(0.0, 1.0);
+        }
+        let progress = if self.task_count == 0 {
+            1.0
+        } else {
+            self.task_progress.iter().sum::<f32>() / self.task_count as f32
+        };
+        self.report(progress, message)
     }
 }
 
-async fn report_progress(
-    reporter: &Arc<AsyncMutex<ProgressReporter>>,
+pub(crate) fn try_send_progress(
+    sender: &Sender<ServerMessage>, progress: f32, message: impl Into<String>,
+) -> bool {
+    sender.try_send(ServerMessage::Progress(ProgressMessage {
+        progress: progress.clamp(0.0, 1.0),
+        in_loading: true,
+        message: message.into(),
+    })).is_ok()
+}
+
+fn report_progress(
+    reporter: &Arc<Mutex<ProgressReporter>>,
     progress: f32,
     message: impl FnOnce() -> String,
 ) -> bool {
-    reporter.lock().await.report(progress, message).await
+    let Ok(mut reporter) = reporter.lock() else {
+        return false;
+    };
+    reporter.report(progress, message)
 }
 
-pub(crate) async fn report_task_progress(
-    reporter: &Arc<AsyncMutex<ProgressReporter>>,
+pub(crate) fn report_task_progress(
+    reporter: &Arc<Mutex<ProgressReporter>>, task_index: usize,
     message: impl FnOnce() -> String,
 ) -> bool {
-    reporter.lock().await.report_task(message).await
+    let Ok(mut reporter) = reporter.lock() else {
+        return false;
+    };
+    reporter.report_task(task_index, message)
+}
+
+pub(crate) fn report_dex_progress(
+    reporter: &Arc<Mutex<ProgressReporter>>, task_index: usize,
+    progress: f32, message: impl FnOnce() -> String,
+) -> bool {
+    let Ok(mut reporter) = reporter.try_lock() else {
+        return false;
+    };
+    reporter.report_task_progress(task_index, progress, message)
 }
 
 async fn finish_dex_task<E>(
-    reporter: &Arc<AsyncMutex<ProgressReporter>>,
+    reporter: &Arc<Mutex<ProgressReporter>>,
     indexed_dexes: &mut [Option<IndexedDex>],
     index: usize,
     display_name: String,
@@ -92,43 +185,245 @@ async fn finish_dex_task<E>(
 ) -> bool {
     indexed_dexes[index] = task_result.ok().flatten();
     report_task_progress(
-        reporter,
+        reporter, index,
         || format!("Loading {display_name}..."),
-    ).await
+    )
 }
 
-// Keep APK loading shared. Each target supplies only the scheduling checkpoint
-// used to let its runtime process pending UI work.
-pub async fn read_apk<F, Fut>(
-    zip_archive: ZipArchive<impl Read + Seek>, sender: Sender<ServerMessage>,
-    yield_step: F,
-) -> Result<ApkAccessor, OpenFileError>
+// package loading logic is shared for all clients.
+pub(crate) async fn read_dex_inputs<F, Fut>(
+    inputs: Vec<(String, Vec<u8>)>, sender: Sender<ServerMessage>, yield_step: F,
+) -> Result<DexAccessor, OpenFileError>
+where
+    F: Fn() -> Fut + Clone + 'static,
+    Fut: Future<Output=()> + 'static,
+    F: CollectYield,
+{
+    send_progress(&sender, 0.0, "Collecting DEX files...").await;
+    yield_step().await;
+    let total_entries = inputs.iter()
+        .map(|(input_name, bytes)| count_valid_entries(input_name, bytes))
+        .try_fold(0usize, |total, count| count.map(|count| total.saturating_add(count)))?;
+    let mut collect_progress = DexCollectProgress::new(sender.clone(), total_entries);
+    let mut dex_files = Vec::new();
+    for (display_name, bytes) in inputs {
+        let collected = collect_dex_files(
+            &display_name, bytes, Some(display_name.as_str()), 0,
+            &mut collect_progress, true, &yield_step,
+        ).await?;
+        dex_files.extend(collected);
+        yield_step().await;
+    }
+    make_source_names_unique(&mut dex_files);
+
+    // reports
+    if dex_files.is_empty() {
+        return Err(OpenFileError::Custom(
+            "selected inputs contain no DEX files".to_owned(),
+        ));
+    }
+    send_progress(
+        &sender, DEX_COLLECT_PROGRESS_END,
+        format!("Collected {} DEX file(s)...", dex_files.len()),
+    ).await;
+    yield_step().await;
+
+    read_dex_sources(dex_files, sender, yield_step).await
+}
+
+const MAX_ARCHIVE_DEPTH: usize = 16;
+
+#[cfg(not(target_family = "wasm"))]
+type CollectFuture<'a, T> = futures::future::BoxFuture<'a, T>;
+
+#[cfg(target_family = "wasm")]
+type CollectFuture<'a, T> = futures::future::LocalBoxFuture<'a, T>;
+
+#[cfg(not(target_family = "wasm"))]
+pub(crate) trait CollectYield: Send + Sync {
+    type Future: Future<Output=()> + Send;
+
+    fn collect_yield(&self) -> Self::Future;
+}
+
+#[cfg(target_family = "wasm")]
+pub(crate) trait CollectYield {
+    type Future: Future<Output=()>;
+
+    fn collect_yield(&self) -> Self::Future;
+}
+
+#[cfg(not(target_family = "wasm"))]
+impl<F, Fut> CollectYield for F
+where
+    F: Fn() -> Fut + Send + Sync,
+    Fut: Future<Output=()> + Send,
+{
+    type Future = Fut;
+
+    fn collect_yield(&self) -> Self::Future {
+        self()
+    }
+}
+
+#[cfg(target_family = "wasm")]
+impl<F, Fut> CollectYield for F
+where
+    F: Fn() -> Fut,
+    Fut: Future<Output=()>,
+{
+    type Future = Fut;
+
+    fn collect_yield(&self) -> Self::Future {
+        self()
+    }
+}
+
+fn collect_dex_files<'a, Y>(
+    input_name: &'a str, bytes: Vec<u8>, source_prefix: Option<&'a str>, depth: usize,
+    progress: &'a mut DexCollectProgress, report_current_archive: bool,
+    yield_step: &'a Y,
+) -> CollectFuture<'a, Result<Vec<(String, Vec<u8>)>, OpenFileError>>
+where
+    Y: CollectYield + 'a,
+{
+    Box::pin(async move {
+        if is_dex_bytes(&bytes) {
+            if report_current_archive && progress.add_entry() {
+                yield_step.collect_yield().await;
+            }
+            return Ok(vec![(
+                source_prefix.unwrap_or(input_name).to_owned(),
+                bytes,
+            )]);
+        }
+        if !is_zip_bytes(&bytes) {
+            return Err(OpenFileError::Custom(format!(
+                "unsupported input: {input_name}"
+            )));
+        }
+        if depth >= MAX_ARCHIVE_DEPTH {
+            return Err(OpenFileError::Custom(format!(
+                "archive nesting is too deep: {input_name}"
+            )));
+        }
+
+        let mut archive = ZipArchive::new(Cursor::new(bytes))
+            .map_err(OpenFileError::LoadZip)?;
+        let mut dex_files = Vec::new();
+        for index in 0..archive.len() {
+            let mut entry = archive.by_index(index).map_err(OpenFileError::LoadZip)?;
+            let entry_name = entry.name().to_owned();
+            let is_valid_entry = !entry.is_dir() && is_possible_input_entry(&entry_name);
+            if !is_valid_entry { continue; }
+            let mut nested_entry = None;
+            let capacity = entry.size().min(usize::MAX as u64) as usize;
+            // APKs contain a lot of unrelated resources. Read only a four-byte
+            // header first; fully decompress an entry only if it can be a DEX or
+            // another nested package archive.
+            if capacity < 4 { continue; }
+            let mut header = [0; 4];
+            entry.read_exact(&mut header).map_err(OpenFileError::Io)?;
+            if !is_dex_bytes(&header) && !is_zip_bytes(&header) { continue; }
+
+            // read entry start
+            let mut entry_bytes = Vec::with_capacity(capacity);
+            entry_bytes.extend_from_slice(&header);
+            entry.read_to_end(&mut entry_bytes).map_err(OpenFileError::Io)?;
+            let entry_source = match source_prefix {
+                Some(prefix) => format!("{prefix}!{entry_name}"),
+                None => entry_name.clone(),
+            };
+            if is_dex_bytes(&entry_bytes) {
+                dex_files.push((entry_source, entry_bytes));
+            } else if is_zip_bytes(&entry_bytes) {
+                nested_entry = Some((entry_name, entry_bytes, entry_source));
+            }
+            // read entry ends
+
+            // read nested entry
+            if let Some((entry_name, entry_bytes, entry_source)) = nested_entry {
+                dex_files.extend(collect_dex_files(
+                    &entry_name, entry_bytes, Some(&entry_source), depth + 1,
+                    progress, false, yield_step,
+                ).await?);
+            }
+            drop(entry);
+
+            if report_current_archive && progress.add_entry() {
+                yield_step.collect_yield().await;
+            } else if !report_current_archive {
+                yield_step.collect_yield().await;
+            }
+        }
+        Ok(dex_files)
+    })
+}
+
+fn count_valid_entries(input_name: &str, bytes: &[u8]) -> Result<usize, OpenFileError> {
+    if is_dex_bytes(bytes) {
+        return Ok(1);
+    }
+    if !is_zip_bytes(bytes) {
+        return Err(OpenFileError::Custom(format!(
+            "unsupported input: {input_name}"
+        )));
+    }
+    let mut archive = ZipArchive::new(Cursor::new(bytes))
+        .map_err(OpenFileError::LoadZip)?;
+    let mut total = 0usize;
+    for index in 0..archive.len() {
+        let entry = archive.by_index(index).map_err(OpenFileError::LoadZip)?;
+        if !entry.is_dir() && is_possible_input_entry(entry.name()) {
+            total = total.saturating_add(1);
+        }
+    }
+    Ok(total)
+}
+
+fn make_source_names_unique(dex_files: &mut [(String, Vec<u8>)]) {
+    let mut names = HashMap::<String, usize>::new();
+    for (name, _) in dex_files {
+        let count = names.entry(name.clone()).or_default();
+        *count += 1;
+        if *count > 1 {
+            name.push_str(&format!("#{count}"));
+        }
+    }
+}
+
+fn is_dex_bytes(bytes: &[u8]) -> bool {
+    bytes.get(..4) == Some(b"dex\n")
+}
+
+fn is_zip_bytes(bytes: &[u8]) -> bool {
+    matches!(bytes.get(..4), Some(b"PK\x03\x04" | b"PK\x05\x06" | b"PK\x07\x08"))
+}
+
+fn is_possible_input_entry(name: &str) -> bool {
+    let Some((_, extension)) = name.rsplit_once('.') else {
+        // Keep magic-based detection for entries without an extension.
+        return true;
+    };
+    ["dex", "apk", "apks", "xapk", "aab", "zip", "jar"]
+        .iter()
+        .any(|candidate| extension.eq_ignore_ascii_case(candidate))
+}
+
+async fn read_dex_sources<F, Fut>(
+    dex_files: Vec<(String, Vec<u8>)>, sender: Sender<ServerMessage>, yield_step: F,
+) -> Result<DexAccessor, OpenFileError>
 where
     F: Fn() -> Fut + Clone + 'static,
     Fut: Future<Output=()> + 'static,
 {
-    let mut zip_archive = zip_archive;
-    yield_step().await;
-
-    // read dex files
-    let mut dex_files = zip_archive
-        .file_names()
-        .filter(|name|
-            // classes dex should be classes.dex or classes*.dex, and not in the sub directory.
-            name.starts_with("classes") && name.ends_with(".dex") && !name.contains("/")
-        ).collect::<Vec<_>>();
-    dex_files.sort_by(|a, b| dex_index(a).cmp(&dex_index(b)));
-    
-    // read zip entry indices
-    let dex_files: Vec<_> = dex_files.into_iter().filter_map(|name| {
-        zip_archive.index_for_name(name).map(|index| (index, name.to_owned()))
-    }).collect();
-
     let dex_count = dex_files.len();
-    let reporter = Arc::new(AsyncMutex::new(ProgressReporter::new(
+    let reporter = Arc::new(Mutex::new(ProgressReporter::new(
         sender.clone(), dex_count,
     )));
-    if report_progress(&reporter, 0.0, || "Loading APK...".to_owned()).await {
+    if report_progress(&reporter, 0.0, || {
+        format!("Loading {dex_count} DEX file(s)...")
+    }) {
         yield_step().await;
     }
     let mut pending = FuturesUnordered::new();
@@ -137,7 +432,7 @@ where
         .collect();
     let mut active_tasks = 0usize;
 
-    for (index, (entry_index, display_name)) in dex_files.into_iter().enumerate() {
+    for (index, (display_name, bytes)) in dex_files.into_iter().enumerate() {
         while active_tasks >= MAX_PARALLEL_DEX_TASKS {
             let Some((completed_index, completed_name, task_result)) = pending.next().await else {
                 active_tasks = 0;
@@ -153,43 +448,12 @@ where
             ).await;
             yield_step().await;
         }
-        let bytes = match zip_archive.by_index(entry_index) {
-            Ok(mut file) => {
-                // DEX entries are retained by the accessor, so reserve their final
-                // uncompressed size once instead of repeatedly growing the buffer.
-                let capacity = file.size().min(usize::MAX as u64) as usize;
-                let mut bytes = Vec::with_capacity(capacity);
-                match file.read_to_end(&mut bytes) {
-                    Ok(_) => Some(bytes),
-                    Err(err) => {
-                        error!("Error when reading {display_name}: {err:?}");
-                        None
-                    }
-                }
-            }
-            Err(err) => {
-                error!("Error when reading dex entry: {err:?}");
-                None
-            }
-        };
-        if let Some(bytes) = bytes {
-            let task = crate::targets::spawn_process_dex(
-                index,
-                display_name.to_owned(),
-                bytes,
-                yield_step.clone(),
-            );
-            pending.push(async move { (index, display_name.to_owned(), task.await) });
-            active_tasks += 1;
-        } else {
-            finish_dex_task(
-                &reporter,
-                &mut indexed_dexes,
-                index,
-                display_name.to_owned(),
-                Ok::<Option<IndexedDex>, ()>(None),
-            ).await;
-        }
+        let task = crate::targets::spawn_process_dex(
+            index, display_name.clone(), bytes, yield_step.clone(),
+            Arc::clone(&reporter),
+        );
+        pending.push(async move { (index, display_name, task.await) });
+        active_tasks += 1;
         yield_step().await;
     }
 
@@ -203,24 +467,27 @@ where
         ).await;
         yield_step().await;
     }
+    let accessor = build_accessor(indexed_dexes.into_iter().flatten());
+    send_loaded(&sender, format!("Loaded {dex_count} DEX file(s)")).await;
+    Ok(accessor)
+}
+
+fn build_accessor(indexed_dexes: impl IntoIterator<Item=IndexedDex>) -> DexAccessor {
+    let indexed_dexes: Vec<_> = indexed_dexes.into_iter().collect();
     let class_capacity = indexed_dexes.iter()
-        .filter_map(Option::as_ref)
         .map(|dex| dex.classes.len())
         .sum();
     let mut dex_sources = HashMap::with_capacity(indexed_dexes.len());
     let mut map = HashMap::with_capacity(class_capacity);
-    for indexed_dex in indexed_dexes.into_iter().flatten() {
-        let IndexedDex { file_name, accessor, classes } = indexed_dex;
+    for IndexedDex { file_name, accessor, classes } in indexed_dexes {
         dex_sources.insert(file_name, Arc::clone(&accessor));
         for (class_name, class_def) in classes {
-            // dex index is the priority, the lower the index, the higher the priority.
-            // Results are merged in dex filename order, so the first definition wins.
+            // Results are merged in collected input/archive order, so the first definition wins.
             map.entry(class_name).or_insert((Arc::clone(&accessor), class_def));
         }
     }
     map.shrink_to_fit();
-    send_loaded(&sender, "APK loaded").await;
-    Ok(ApkAccessor { map, dex_sources })
+    DexAccessor { map, dex_sources }
 }
 
 pub(crate) fn resolve_dex(
@@ -260,17 +527,7 @@ async fn send_loaded(
     sender.send(message).await.unwrap();
 }
 
-// classes.dex -> 0
-// classes2.dex -> 2
-#[inline]
-fn dex_index(name: &str) -> usize {
-    let dex_index_end = name.rfind('.').unwrap_or_default();
-    let dex_index_start = 7usize;
-    name[dex_index_start..dex_index_end].parse::<usize>().unwrap_or_default()
-}
-
-
-impl Accessor for ApkAccessor {
+impl Accessor for DexAccessor {
     fn read_classes(&self) -> Vec<StrRef> {
         self.map.keys().cloned().collect()
     }
@@ -298,7 +555,7 @@ impl Accessor for ApkAccessor {
         }
     }
 
-    // source key is the dex file name.
+    // Source keys are DEX names, optionally containing `!`-separated nested archive paths.
     fn peek_source(&self, source_key: &str) -> Option<ExportableSource> {
         let dex_source = self.dex_sources.get(source_key);
         let Some(dex_source) = dex_source else {
@@ -306,9 +563,14 @@ impl Accessor for ApkAccessor {
             return None;
         };
         let file_name = dex_source.file_name.clone();
+        let exportable_name = file_name
+            .rsplit(['!', '/'])
+            .next()
+            .unwrap_or(&file_name)
+            .into();
         let source = dex_source.bytes.clone();
         Some(ExportableSource {
-            exportable_name: file_name,
+            exportable_name,
             source,
         })
     }
@@ -316,65 +578,75 @@ impl Accessor for ApkAccessor {
 
 #[cfg(test)]
 mod tests {
-    use super::{ProgressReporter, ServerMessage};
+    use super::{DexCollectProgress, ProgressReporter, ServerMessage};
     use std::cell::Cell;
     use tokio::sync::mpsc;
 
     #[test]
-    fn progress_reports_once_per_percent() {
+    fn collect_progress_counts_entries_equally() {
         let (sender, mut receiver) = mpsc::channel(8);
-        futures::executor::block_on(async {
-            let mut reporter = ProgressReporter::new(sender, 0);
-            let message_built = Cell::new(false);
-            assert!(reporter.report(0.0, || {
-                message_built.set(true);
-                "Loading APK...".to_owned()
-            }).await);
-            message_built.set(false);
-            assert!(!reporter.report(0.005, || {
-                message_built.set(true);
-                "Loading APK...".to_owned()
-            }).await);
-            assert!(!message_built.get());
-            assert!(reporter.report(0.011, || {
-                message_built.set(true);
-                "Loading APK...".to_owned()
-            }).await);
-            assert!(message_built.get());
-            message_built.set(false);
-            assert!(!reporter.report(0.019, || {
-                message_built.set(true);
-                "Loading APK...".to_owned()
-            }).await);
-            assert!(!message_built.get());
-            assert!(reporter.report(0.02, || {
-                message_built.set(true);
-                "Loading APK...".to_owned()
-            }).await);
-        });
+        let mut reporter = DexCollectProgress::new(sender, 3);
+        assert!(reporter.add_entry());
+        assert!(reporter.add_entry());
+        assert!(reporter.add_entry());
 
         let mut progress = Vec::new();
         while let Ok(ServerMessage::Progress(message)) = receiver.try_recv() {
             progress.push(message.progress);
         }
-        assert_eq!(progress, vec![0.0, 0.01, 0.02]);
+        assert_eq!(progress, vec![0.3, 0.6, 0.9]);
+    }
+
+    #[test]
+    fn progress_reports_once_per_percent() {
+        let (sender, mut receiver) = mpsc::channel(8);
+        let mut reporter = ProgressReporter::new(sender, 0);
+        let message_built = Cell::new(false);
+        assert!(reporter.report(0.0, || {
+            message_built.set(true);
+            "Loading APK...".to_owned()
+        }));
+        message_built.set(false);
+        assert!(!reporter.report(0.005, || {
+            message_built.set(true);
+            "Loading APK...".to_owned()
+        }));
+        assert!(!message_built.get());
+        assert!(reporter.report(0.11, || {
+            message_built.set(true);
+            "Loading APK...".to_owned()
+        }));
+        assert!(message_built.get());
+        message_built.set(false);
+        assert!(!reporter.report(0.19, || {
+            message_built.set(true);
+            "Loading APK...".to_owned()
+        }));
+        assert!(!message_built.get());
+        assert!(reporter.report(0.21, || {
+            message_built.set(true);
+            "Loading APK...".to_owned()
+        }));
+
+        let mut progress = Vec::new();
+        while let Ok(ServerMessage::Progress(message)) = receiver.try_recv() {
+            progress.push(message.progress);
+        }
+        assert_eq!(progress, vec![0.9, 0.91, 0.92]);
     }
 
     #[test]
     fn progress_reports_completed_tasks_equally() {
         let (sender, mut receiver) = mpsc::channel(8);
-        futures::executor::block_on(async {
-            let mut reporter = ProgressReporter::new(sender, 2);
-            assert!(reporter.report(0.0, || "Loading APK...".to_owned()).await);
-            assert!(reporter.report_task(|| "Loading classes.dex...".to_owned()).await);
-            assert!(!reporter.report_task(|| "Loading classes2.dex...".to_owned()).await);
-        });
+        let mut reporter = ProgressReporter::new(sender, 2);
+        assert!(reporter.report(0.0, || "Loading APK...".to_owned()));
+        assert!(reporter.report_task(0, || "Loading classes.dex...".to_owned()));
+        assert!(!reporter.report_task(1, || "Loading classes2.dex...".to_owned()));
 
         let mut progress = Vec::new();
         while let Ok(ServerMessage::Progress(message)) = receiver.try_recv() {
             progress.push(message.progress);
         }
-        assert_eq!(progress, vec![0.0, 0.5]);
+        assert_eq!(progress, vec![0.9, 0.95]);
     }
 }
-

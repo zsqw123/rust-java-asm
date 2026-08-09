@@ -4,11 +4,10 @@ pub mod font;
 pub mod find;
 
 pub use find::{FindMatch, FindState};
-pub use msg::FindMessage;
 use crate::impls::fuzzy::SearchResult;
 use crate::ui::log::LogHolder;
 use crate::ui::AbsFile::{Dir, File};
-use crate::{AsmServer, LoadingState};
+use crate::{AsmServer, Instant, LoadingState};
 use java_asm::smali::{SmaliNode, SmaliToken};
 use java_asm::StrRef;
 use ::log::Level;
@@ -27,20 +26,32 @@ pub struct App {
     pub left: Arc<Mutex<Left>>,
     pub content: Arc<Mutex<Content>>,
     pub messages: Arc<Mutex<Vec<UIMessage>>>,
+    pub toasts: Arc<Mutex<Vec<Toast>>>,
 }
 
 #[derive(Clone, Debug)]
 pub enum UIMessage {
     OpenFile(OpenFileMessage),
     CloseDir(StrRef),
-    Find(FindMessage),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ToastKind {
+    Success,
+    Error,
+}
+
+#[derive(Clone, Debug)]
+pub struct Toast {
+    pub kind: ToastKind,
+    pub message: String,
+    pub created_at: Instant,
 }
 
 #[derive(Clone, Debug)]
 pub struct OpenFileMessage {
     pub path: StrRef,
 }
-
 
 #[derive(Default, Clone, Debug)]
 pub struct AppContainer(Arc<App>);
@@ -58,18 +69,26 @@ impl AppContainer {
         self.0.messages.lock().push(message);
     }
 
-    pub fn selected_file_key(&self) -> Option<StrRef> {
-        let content = self.content().lock();
-        let Some(selected) = content.selected else { return None; };
-        content.opened_tabs.get(selected).map(|tab| tab.file_key.clone())
+    pub fn toasts(&self) -> &Arc<Mutex<Vec<Toast>>> { &self.0.toasts }
+
+    pub fn push_toast(&self, kind: ToastKind, message: impl Into<String>) {
+        let mut toasts = self.0.toasts.lock();
+        const MAX_TOASTS: usize = 200;
+        if toasts.len() == MAX_TOASTS {
+            toasts.remove(0);
+        }
+        toasts.push(Toast {
+            kind,
+            message: message.into(),
+            created_at: Instant::now(),
+        });
     }
 
 }
 
 impl AppContainer {
-    pub fn process_messages(&mut self, server: &mut AsmServer) -> Option<(StrRef, usize)> {
+    pub fn process_messages(&mut self, server: &mut AsmServer) {
         let messages = self.0.messages.lock().drain(..).collect::<Vec<_>>();
-        let mut reveal_target = None;
         for message in messages {
             match message {
                 UIMessage::OpenFile(message) => {
@@ -78,58 +97,9 @@ impl AppContainer {
                 UIMessage::CloseDir(path) => {
                     server.close_dir(&path, self);
                 }
-                UIMessage::Find(message) => {
-                    reveal_target = self.process_find_message(message);
-                }
-            }
-        }
-        reveal_target
-    }
-
-    fn process_find_message(&self, message: FindMessage) -> Option<(StrRef, usize)> {
-        let mut content = self.content().lock();
-        match message {
-            FindMessage::Open { file_key } => {
-                let tab = find_tab_mut(&mut content, &file_key)?;
-                tab.find.open = true;
-                tab.find.update_matches(tab.rendered_lines.iter().map(|line| line.text.as_str()));
-                find_reveal_target(file_key, &tab.find)
-            }
-            FindMessage::Close { file_key } => {
-                let tab = find_tab_mut(&mut content, &file_key)?;
-                tab.find.open = false;
-                None
-            }
-            FindMessage::Update { file_key, query, case_sensitive } => {
-                let tab = find_tab_mut(&mut content, &file_key)?;
-                tab.find.query = query;
-                tab.find.case_sensitive = case_sensitive;
-                tab.find.update_matches(tab.rendered_lines.iter().map(|line| line.text.as_str()));
-                find_reveal_target(file_key, &tab.find)
-            }
-            FindMessage::Next { file_key } => {
-                let tab = find_tab_mut(&mut content, &file_key)?;
-                if !tab.find.open { return None; }
-                let line = tab.find.next()?;
-                Some((file_key, line))
-            }
-            FindMessage::Previous { file_key } => {
-                let tab = find_tab_mut(&mut content, &file_key)?;
-                if !tab.find.open { return None; }
-                let line = tab.find.previous()?;
-                Some((file_key, line))
             }
         }
     }
-}
-
-fn find_tab_mut<'a>(content: &'a mut Content, file_key: &str) -> Option<&'a mut Tab> {
-    content.opened_tabs.iter_mut()
-        .find(|tab| tab.file_key.as_ref() == file_key)
-}
-
-fn find_reveal_target(file_key: StrRef, find: &FindState) -> Option<(StrRef, usize)> {
-    find.current_match().map(|matched| (file_key, matched.line))
 }
 
 #[derive(Default, Clone, Debug)]
