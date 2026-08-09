@@ -155,7 +155,7 @@ impl EguiApp {
 
 
         for result in search_results.items {
-            let path = result.item.to_string();
+            let path = result.content.to_string();
             let sections = Self::get_highlight_sections(&path, result.indices);
             let mut text_layout_job = LayoutJob::default();
             for (section, highlighted) in sections {
@@ -168,7 +168,7 @@ impl EguiApp {
             let selectable_label = ui.selectable_label(false, text_layout_job);
             if selectable_label.clicked() {
                 let message = UIMessage::OpenFile(
-                    OpenFileMessage { path: result.item }
+                    OpenFileMessage { path: result.content }
                 );
                 self.ui_app.send_message(message);
                 Popup::close_id(ui.ctx(), popup_id);

@@ -1,17 +1,19 @@
+use clap::Parser;
+use std::io::Write;
+
 fn main() {
-    match asm_cli::execute(std::env::args().skip(1)) {
-        Ok(result) => match serde_json::to_string_pretty(&result) {
+    let cli = asm_cli::Cli::parse();
+    match asm_cli::execute(cli) {
+        Ok(asm_cli::CliOutput::Json(result)) => match serde_json::to_string_pretty(&result) {
             Ok(output) => println!("{output}"),
-            Err(error) => {
-                eprintln!("failed to encode result: {error}");
-                std::process::exit(1);
-            }
+            Err(error) => fail(&format!("failed to encode result: {error}")),
         },
-        Err(error) => {
-            if let asm_cli::CliError::Usage(message) = &error {
-                eprintln!("{message}");
-                std::process::exit(2);
+        Ok(asm_cli::CliOutput::Text(output)) => {
+            if let Err(error) = std::io::stdout().write_all(output.as_bytes()) {
+                fail(&format!("failed to write stdout: {error}"));
             }
+        }
+        Err(error) => {
             eprintln!(
                 "{}",
                 serde_json::json!({
@@ -22,4 +24,9 @@ fn main() {
             std::process::exit(1);
         }
     }
+}
+
+fn fail(message: &str) -> ! {
+    eprintln!("{message}");
+    std::process::exit(1)
 }

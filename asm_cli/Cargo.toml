@@ -10,10 +10,10 @@ homepage.workspace = true
 readme.workspace = true
 
 [dependencies]
+clap = { workspace = true }
 java_asm = { workspace = true }
+java_asm_server = { workspace = true }
 serde_json = { workspace = true }
-
-[target.'cfg(not(target_family = "wasm"))'.dependencies]
 zip = { workspace = true, features = ["default"] }
 
 [[bin]]

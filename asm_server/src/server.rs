@@ -70,6 +70,7 @@ impl AsmServer {
         schedule_task(async move {
             let new_server = AsmServer::new();
             *server.lock() = Some(new_server.clone());
+            *render_target.content().lock() = Content::default();
             new_server.on_progress_update(&render_target);
 
             let sender = Self::create_message_handler(

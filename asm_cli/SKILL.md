@@ -1,61 +1,53 @@
 ---
 name: asm-cli
-description: Inspect APK, DEX, JAR, ZIP and JVM class files with the repository's native asm_cli binary. Use when an Agent needs to find a class, method or field, identify its containing DEX/archive entry, or decompile all or a targeted class into predictable Smali-like files.
+description: Find and export classes from APK, APKS, DEX, JAR, ZIP, and JVM class inputs with the native asm_cli binary. Use when an Agent needs class names, method signatures, field types, nested APK/DEX locations, targeted Smali output, or filtered bulk export.
 ---
 
 # ASM CLI
 
-## Overview
+Use `asm_cli` to inspect bytecode without starting an app container or MCP server. Build it with `cargo build --release -p asm_cli`, then use `target/release/asm_cli.exe` on Windows or `target/release/asm_cli` elsewhere.
 
-Use the native `asm_cli` executable as a fast, machine-readable bridge to the bytecode parser. Search commands print JSON; decompilation writes Smali-like output and a `manifest.json`.
+## Find classes
 
-Build it from the repository root with `cargo build --release -p asm_cli`; use `target/release/asm_cli.exe` on Windows or `target/release/asm_cli` on other native targets.
-
-## Workflow
-
-1. Find the class or member in the original input.
-2. Read the JSON `source` field. For APK/JAR inputs this is normally an entry such as `classes14.dex`.
-3. Decompile only that class and source entry with `--class` and `--source`.
-4. Read the output path from the JSON response or inspect the generated `manifest.json`.
-
-## Search
-
-Run a fuzzy class search. Class queries accept dotted names, slash-separated internal names, and descriptors.
+Run `find-classes` with a dotted name, internal name, or descriptor. Matching and ordering use the same nucleo path matcher as the server: matching is case-insensitive, dots are treated as slash separators, and shorter paths rank first. Omit the query to return every class.
 
 ```text
-asm_cli find-class app.apk com.example.Main
-asm_cli findClass app.apk Lcom/example/Main;
+asm_cli find-classes app.apks com.example.Main
+asm_cli findClasses classes.dex Lcom/example/Main;
 ```
 
-Find members by class/name/descriptor. Omit the descriptor to return overloads.
+Read the JSON `classes` array. Each class includes `class_name`, `descriptor`, `methods` with names and signatures, and `fields` with names and types.
+
+For archive inputs, preserve the returned `internal_path` exactly. It identifies the DEX or class entry and includes nested package segments, such as `base.apk!classes2.dex`. Standalone DEX and class inputs omit `internal_path`.
+
+## Export one class
+
+Pass the same input, exact class name, and the `internal_path` returned by `find-classes`. Omit `--internal-path` for standalone DEX or class files.
 
 ```text
-asm_cli find-method app.apk com.example.Main onCreate '(Landroid/os/Bundle;)V'
-asm_cli find-field app.apk com.example.Main count I
-asm_cli findMethod app.apk 'Lcom/example/Main;->onCreate:(Landroid/os/Bundle;)V'
-asm_cli findField app.apk 'Lcom/example/Main;#count:I'
+asm_cli export-class app.apks com.example.Main --internal-path 'base.apk!classes2.dex'
+asm_cli exportClass classes.dex com.example.Main
 ```
 
-Member results include `class_name`, `class_descriptor`, `name`, `descriptor`, `source`, and `dex` (for DEX-backed inputs); class results use `descriptor` for the class descriptor. Use `--limit N` to bound results.
-
-## Decompile
-
-Decompile every supported class to `./asm_cli_output`:
+Without `--output`, read raw Smali from stdout. To save it directly:
 
 ```text
-asm_cli decompile app.apk
+asm_cli export-class app.apk com.example.Main --internal-path classes2.dex --output Main.smali
 ```
 
-Target one class and one APK DEX entry after a search:
+If a class occurs in multiple archive entries and no `internal_path` is supplied, rerun with one of the paths reported in the ambiguity error.
+
+## Export many classes
+
+Export all classes to `./asm_cli_output`, or use a fuzzy class filter and another directory.
 
 ```text
-asm_cli decompile app.apk --class com.example.Main --source classes14.dex
+asm_cli export-all app.apk
+asm_cli exportAll app.apk --class-filter com.example.feature --output exported
 ```
 
-Pass `--output DIR` when a separate run directory is needed. The response and `manifest.json` list exact output paths.
+Read `manifest.json` for exact output paths. Pass `--format smali` explicitly when a workflow should pin the representation; future versions may add other formats.
 
-## Input and failure handling
+## Failure handling
 
-Accept standalone `.class`, `.dex`, `.jar`, `.apk`, and ZIP files. The loader also sniffs magic bytes and does not create an app container or start the GUI.
-
-Treat an empty `results` array as “not found”. Non-usage failures are emitted as JSON on stderr and return a non-zero exit code. `--help` and malformed arguments return exit code 2.
+Use `asm_cli --help` or `asm_cli <command> --help` for the current interface. Treat an empty `classes` array as no match. Argument failures use clap diagnostics; parse, lookup, ambiguity, and I/O failures are JSON on stderr with a non-zero exit code.

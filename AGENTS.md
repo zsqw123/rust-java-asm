@@ -28,7 +28,7 @@ The parser core deliberately avoids runtime parsing dependencies. Repetitive bin
 - `asm_macro/` (`java_asm_macro`): derives `ReadFrom`/`WriteInto` and constant-container helpers. Change this when binary-layout boilerplate should be generated consistently.
 - `asm_server/` (`java_asm_server`): APK loading, lazy content access, fuzzy search, async/native-WASM task abstraction, and frontend-independent UI state/messages.
   - `src/targets/`: target-specific runtime adapters under the `native/` and `wasm/` directories. Keep target dispatch in `mod.rs`; shared APK indexing lives in `impls/apk_load.rs`.
-- `asm_cli/` (`asm_cli`): native Agent-facing CLI for indexing APK/DEX/JAR/class inputs, finding classes and members, and writing targeted or full Smali-like output. It does not create an `AppContainer` or provide MCP transport.
+- `asm_cli/` (`asm_cli`): native Agent-facing CLI for finding classes with basic member structure, locating nested archive entries through `internal_path`, and exporting one or many classes as Smali. It does not create an `AppContainer` or provide MCP transport.
 - `asm_egui/` (`java_asm_egui`): current desktop/experimental WASM egui frontend. UI code should consume `asm_server` state instead of reimplementing parsing.
   - `index.html` and `Trunk.toml`: browser shell and Trunk build configuration.
 - `ta/`: experimental Tauri/Preact frontend. It is currently excluded from Cargo workspace members; do not assume root Cargo commands build it.

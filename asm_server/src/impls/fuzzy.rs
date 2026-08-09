@@ -96,7 +96,6 @@ impl FuzzyMatchModel {
         if new_len < old_len || !new_input.starts_with(old_input) { return None; };
 
         let SearchResult { stop_idx, items: inc_items } = old_inc_info;
-        let inc_items: Vec<StrRef> = inc_items.iter().map(|item| Arc::clone(&item.item)).collect();
         let search_result = self.search_in_ranges(&inc_items, *stop_idx);
         self.inc_infos.resize(new_len + 1, None);
         self.inc_infos[new_len] = Some(search_result.clone());
@@ -142,7 +141,7 @@ impl FuzzyMatchModel {
     }
 
     fn search_in_ranges(
-        &mut self, items_1: &[StrRef], items_2_start_idx: usize,
+        &mut self, items_1: &[SearchResultItem], items_2_start_idx: usize,
     ) -> SearchResult {
         let Self { top_n, items: all_items, matcher, pattern, .. } = self;
         let top_n = *top_n;
@@ -154,7 +153,7 @@ impl FuzzyMatchModel {
             if items.len() >= top_n {
                 break;
             }
-            let haystack = Utf32Str::new(item.as_ref(), &mut buf);
+            let haystack = Utf32Str::new(item.content.as_ref(), &mut buf);
             let mut indices_record: Vec<u32> = vec![];
             let score = pattern
                 .indices(haystack, matcher, &mut indices_record);
@@ -166,7 +165,8 @@ impl FuzzyMatchModel {
                 indices.insert(idx as usize);
             }
             let result_item = SearchResultItem {
-                item: Arc::clone(item),
+                index: item.index,
+                content: Arc::clone(&item.content),
                 indices,
             };
             items.push((score, result_item));
@@ -191,18 +191,17 @@ impl FuzzyMatchModel {
                 indices.insert(idx as usize);
             }
             let result_item = SearchResultItem {
-                item: Arc::clone(item),
-                indices,
+                index: idx, content: Arc::clone(item), indices,
             };
             // .map(|score| (item, score, indices_record.clone()));
             items.push((score, result_item));
         }
 
         items.sort_by(|(left_score, left), (right_score, right)| {
-            left.item.chars().count()
-                .cmp(&right.item.chars().count())
+            left.content.chars().count()
+                .cmp(&right.content.chars().count())
                 .then_with(|| right_score.cmp(left_score))
-                .then_with(|| left.item.cmp(&right.item))
+                .then_with(|| left.content.cmp(&right.content))
         });
         let items: Vec<_> = items.into_iter().map(|(_, item)| item).collect();
         SearchResult { stop_idx, items }
@@ -211,7 +210,8 @@ impl FuzzyMatchModel {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SearchResultItem {
-    pub item: StrRef,
+    pub index: usize,
+    pub content: StrRef,
     pub indices: BitSet,
 }
 
@@ -247,7 +247,8 @@ mod tests {
             stop_idx: 1,
             items: vec![
                 SearchResultItem {
-                    item: "apple/banana/cake".into(),
+                    index: 1,
+                    content: "apple/banana/cake".into(),
                     indices: expected_bits,
                 }
             ],
@@ -264,11 +265,13 @@ mod tests {
             stop_idx: 1,
             items: vec![
                 SearchResultItem {
-                    item: "apple/banana".into(),
+                    index: 0,
+                    content: "apple/banana".into(),
                     indices: expected_bits.clone(),
                 },
                 SearchResultItem {
-                    item: "apple/banana/cake".into(),
+                    index: 1,
+                    content: "apple/banana/cake".into(),
                     indices: expected_bits,
                 }
             ],
@@ -297,7 +300,7 @@ mod tests {
         assert_eq!(initial_result.items.len(), 1);
 
         let result = model.search_with_new_input("a".into());
-        assert!(result.items.iter().any(|item| item.item.as_ref() == "Lfoo/Alpha;"));
+        assert!(result.items.iter().any(|item| item.content.as_ref() == "Lfoo/Alpha;"));
     }
 
     #[test]
@@ -314,9 +317,11 @@ mod tests {
         let result_items: Vec<&str> = result
             .items
             .iter()
-            .map(|item| item.item.as_ref())
+            .map(|item| item.content.as_ref())
             .collect();
         assert_eq!(result_items, vec!["Foo", "pkg/Foo", "a/very/long/Foo"]);
+        let result_indices: Vec<usize> = result.items.iter().map(|item| item.index).collect();
+        assert_eq!(result_indices, vec![1, 2, 0]);
     }
 
     #[test]
@@ -328,7 +333,7 @@ mod tests {
         let mut model = FuzzyMatchModel::new("".into(), &items, 10);
 
         let result = model.search_with_new_input(" core. models. SafeListAdapter\t".into());
-        assert_eq!(result.items[0].item, "core/models/SafeListAdapter".into());
+        assert_eq!(result.items[0].content, "core/models/SafeListAdapter".into());
     }
 
     #[test]

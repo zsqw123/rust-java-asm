@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="EGUI native" type="CargoCommandRunConfiguration" factoryName="Cargo Command" folderName="egui">
+  <configuration default="false" name="EGUI native" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
     <option name="buildProfileId" value="dev" />
     <option name="command" value="run --package java_asm_egui --bin java_asm_egui" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />

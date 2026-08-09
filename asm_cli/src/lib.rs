@@ -1,22 +1,30 @@
+mod render;
+
+#[cfg(target_family = "wasm")]
+compile_error!("asm_cli is a native-only executable");
+
+use clap::{Args, Parser, Subcommand, ValueEnum, ValueHint};
 use java_asm::AsmErr;
+use java_asm::StrRef;
 use java_asm::dex::{ClassDef, DexFile, DexFileAccessor};
-use java_asm::node::element::{ClassNode, FieldNode, MethodNode};
-use java_asm::smali::ToSmali;
-use serde_json::{Value, json};
+use java_asm::node::element::ClassNode;
+use java_asm_server::fuzzy::FuzzyMatchModel;
+use serde_json::{Map, Value, json};
 use std::fmt::{Display, Formatter};
 use std::fs;
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-#[cfg(not(target_family = "wasm"))]
 use zip::ZipArchive;
 
+use crate::render::render_jvm_class;
+
 pub const DEFAULT_OUTPUT_DIR: &str = "asm_cli_output";
+const MAX_ARCHIVE_DEPTH: usize = 8;
 
 #[derive(Debug)]
 pub enum CliError {
-    Usage(String),
     Io {
         path: PathBuf,
         source: std::io::Error,
@@ -30,39 +38,127 @@ pub enum CliError {
         message: String,
     },
     NotFound(String),
+    Ambiguous(String),
 }
 
 impl Display for CliError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Usage(message) => write!(f, "{message}"),
             Self::Io { path, source } => write!(f, "{}: {source}", path.display()),
             Self::Zip { path, message } => write!(f, "{}: {message}", path.display()),
             Self::Parse { source, message } => write!(f, "{source}: {message}"),
-            Self::NotFound(message) => write!(f, "{message}"),
+            Self::NotFound(message) | Self::Ambiguous(message) => write!(f, "{message}"),
         }
     }
 }
 
 impl std::error::Error for CliError {}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum CommandKind {
-    Decompile,
-    FindClass,
-    FindMethod,
-    FindField,
+#[derive(Debug, Parser)]
+#[command(
+    name = "asm_cli",
+    version,
+    about = "Find and export classes from Java and Android bytecode",
+    after_help = "Find commands emit JSON. export-class writes Smali to stdout unless --output is provided.\n\nExamples:\n  asm_cli find-classes app.apks com.example.Main\n  asm_cli export-class app.apks com.example.Main --internal-path base.apk!classes2.dex\n  asm_cli export-all app.apk --class-filter com.example --output exported",
+    arg_required_else_help = true,
+    propagate_version = true
+)]
+pub struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Debug, Subcommand)]
+enum Commands {
+    #[command(
+        visible_alias = "findClasses",
+        about = "Find all matching classes and return their basic structure"
+    )]
+    FindClasses(FindClassesArgs),
+    #[command(
+        visible_alias = "exportClass",
+        about = "Export one class to stdout or a file"
+    )]
+    ExportClass(ExportClassArgs),
+    #[command(
+        visible_alias = "exportAll",
+        about = "Export all classes matching an optional filter"
+    )]
+    ExportAll(ExportAllArgs),
+}
+
+#[derive(Debug, Args)]
+struct FindClassesArgs {
+    /// APK, APKS, DEX, JAR, ZIP, class file, or another supported input.
+    #[arg(value_name = "INPUT", value_hint = ValueHint::FilePath)]
+    input: PathBuf,
+    /// Dotted name, slash-separated name, or descriptor. Omit to list every class.
+    #[arg(value_name = "QUERY")]
+    query: Option<String>,
+}
+
+#[derive(Debug, Args)]
+struct ExportClassArgs {
+    /// The same input file passed to find-classes.
+    #[arg(value_name = "INPUT", value_hint = ValueHint::FilePath)]
+    input: PathBuf,
+    /// Exact dotted name, slash-separated name, or descriptor.
+    #[arg(value_name = "CLASS")]
+    class_name: String,
+    /// Archive path returned by find-classes, for example base.apk!classes2.dex.
+    #[arg(long, value_name = "PATH")]
+    internal_path: Option<String>,
+    /// Write to this file instead of stdout.
+    #[arg(short, long, value_name = "FILE", value_hint = ValueHint::FilePath)]
+    output: Option<PathBuf>,
+    /// Export representation. Additional formats may be added in the future.
+    #[arg(long, value_enum, default_value_t = ExportFormat::Smali)]
+    format: ExportFormat,
+}
+
+#[derive(Debug, Args)]
+struct ExportAllArgs {
+    /// APK, APKS, DEX, JAR, ZIP, class file, or another supported input.
+    #[arg(value_name = "INPUT", value_hint = ValueHint::FilePath)]
+    input: PathBuf,
+    /// Fuzzy class-name filter. Omit to export every class.
+    #[arg(long, alias = "filter", value_name = "QUERY")]
+    class_filter: Option<String>,
+    /// Directory for exported classes and manifest.json.
+    #[arg(
+        short,
+        long,
+        default_value = "asm_cli_output",
+        value_name = "DIR",
+        value_hint = ValueHint::DirPath
+    )]
+    output: PathBuf,
+    /// Export representation. Additional formats may be added in the future.
+    #[arg(long, value_enum, default_value_t = ExportFormat::Smali)]
+    format: ExportFormat,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum ExportFormat {
+    Smali,
+}
+
+impl ExportFormat {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Smali => "smali",
+        }
+    }
+
+    fn extension(self) -> &'static str {
+        self.as_str()
+    }
 }
 
 #[derive(Debug)]
-struct CommandLine {
-    kind: CommandKind,
-    input: PathBuf,
-    positionals: Vec<String>,
-    output: PathBuf,
-    class_filter: Option<String>,
-    source_filter: Option<String>,
-    limit: usize,
+pub enum CliOutput {
+    Json(Value),
+    Text(String),
 }
 
 enum ClassPayload {
@@ -76,9 +172,9 @@ enum ClassPayload {
 }
 
 struct ClassEntry {
-    class_name: String,
+    internal_name: String,
     descriptor: String,
-    source: String,
+    internal_path: Option<String>,
     payload: ClassPayload,
 }
 
@@ -87,256 +183,245 @@ struct InputIndex {
     classes: Vec<ClassEntry>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum MemberKind {
-    Method,
-    Field,
-}
-
-#[derive(Debug)]
-struct MemberEntry {
-    kind: MemberKind,
-    owner: String,
-    owner_descriptor: String,
+#[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct MethodInfo {
     name: String,
-    descriptor: String,
-    source: String,
-    dex: Option<String>,
+    signature: String,
 }
 
-#[derive(Debug, Default)]
-struct MemberQuery {
-    owner: Option<String>,
-    name: Option<String>,
-    descriptor: Option<String>,
+#[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct FieldInfo {
+    name: String,
+    field_type: String,
 }
 
-pub fn execute<I, S>(args: I) -> Result<Value, CliError>
-where
-    I: IntoIterator<Item = S>,
-    S: Into<String>,
-{
-    let args: Vec<String> = args.into_iter().map(Into::into).collect();
-    let command_line = parse_command_line(&args)?;
-    let index = InputIndex::load(&command_line.input, command_line.source_filter.as_deref())?;
-
-    match command_line.kind {
-        CommandKind::Decompile => execute_decompile(&command_line, &index),
-        CommandKind::FindClass => execute_find_class(&command_line, &index),
-        CommandKind::FindMethod | CommandKind::FindField => {
-            execute_find_member(&command_line, &index)
-        }
+pub fn execute(cli: Cli) -> Result<CliOutput, CliError> {
+    match cli.command {
+        Commands::FindClasses(args) => execute_find_classes(args),
+        Commands::ExportClass(args) => execute_export_class(args),
+        Commands::ExportAll(args) => execute_export_all(args),
     }
 }
 
-pub fn usage() -> &'static str {
-    "asm_cli - inspect and render Java class files, DEX, JAR and APK inputs
-
-USAGE:
-  asm_cli decompile <input> [--output <dir>] [--class <name>] [--source <entry>]
-  asm_cli find-class <input> <query> [--limit <n>]
-  asm_cli find-method <input> <class> <name> [descriptor] [--limit <n>]
-  asm_cli find-field  <input> <class> <name> [descriptor] [--limit <n>]
-
-Aliases: findClass, findMethod, findField. If the first argument is an input
-file, decompile is assumed. Class names accept dotted, slash-separated and
-descriptor forms (for example com.example.Main, com/example/Main or
-Lcom/example/Main;). Member references also accept Lpkg/Class;->method:(I)V.
-
-The default decompile directory is ./asm_cli_output. Search results include
-the source entry, such as classes14.dex, so it can be passed to --source for a
-faster targeted decompile."
+fn execute_find_classes(args: FindClassesArgs) -> Result<CliOutput, CliError> {
+    let index = InputIndex::load(&args.input, None)?;
+    let query = args.query.unwrap_or_default();
+    let classes = find_matching_classes(&index, &query)
+        .into_iter()
+        .map(|entry| entry.to_json())
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(CliOutput::Json(json!({
+        "ok": true,
+        "operation": "findClasses",
+        "input": args.input,
+        "query": query,
+        "count": classes.len(),
+        "classes": classes,
+    })))
 }
 
-fn parse_command_line(args: &[String]) -> Result<CommandLine, CliError> {
-    if args.is_empty() || args[0] == "--help" || args[0] == "-h" {
-        return Err(CliError::Usage(usage().to_owned()));
-    }
-
-    let (kind, start) = match args[0].as_str() {
-        "decompile" | "dump" => (CommandKind::Decompile, 1),
-        "find-class" | "findClass" => (CommandKind::FindClass, 1),
-        "find-method" | "findMethod" => (CommandKind::FindMethod, 1),
-        "find-field" | "findField" => (CommandKind::FindField, 1),
-        "--version" | "-V" => {
-            return Err(CliError::Usage(env!("CARGO_PKG_VERSION").to_owned()));
+fn execute_export_class(args: ExportClassArgs) -> Result<CliOutput, CliError> {
+    let index = InputIndex::load(&args.input, args.internal_path.as_deref())?;
+    let expected = normalize_class_name(&args.class_name);
+    let matches: Vec<&ClassEntry> = index
+        .classes
+        .iter()
+        .filter(|entry| entry.internal_name == expected)
+        .collect();
+    let entry = match matches.as_slice() {
+        [] => {
+            return Err(CliError::NotFound(format!(
+                "class not found: {}",
+                args.class_name
+            )));
         }
-        _ => (CommandKind::Decompile, 0),
+        [entry] => *entry,
+        entries => {
+            let paths = entries
+                .iter()
+                .filter_map(|entry| entry.internal_path.as_deref())
+                .collect::<Vec<_>>()
+                .join(", ");
+            return Err(CliError::Ambiguous(format!(
+                "class {} exists in multiple locations; pass --internal-path with one of: {paths}",
+                args.class_name
+            )));
+        }
     };
-    let mut positionals = Vec::new();
-    let mut output = PathBuf::from(DEFAULT_OUTPUT_DIR);
-    let mut class_filter = None;
-    let mut source_filter = None;
-    let mut limit = 30usize;
-    let mut index = start;
-    while index < args.len() {
-        let arg = &args[index];
-        match arg.as_str() {
-            "--help" | "-h" => return Err(CliError::Usage(usage().to_owned())),
-            "--output" | "-o" => {
-                output = PathBuf::from(next_value(args, &mut index, arg)?);
-            }
-            "--class" | "-c" => {
-                class_filter = Some(next_value(args, &mut index, arg)?);
-            }
-            "--source" | "-s" => {
-                source_filter = Some(next_value(args, &mut index, arg)?);
-            }
-            "--limit" | "-n" => {
-                let raw = next_value(args, &mut index, arg)?;
-                limit = raw
-                    .parse()
-                    .map_err(|_| CliError::Usage(format!("invalid --limit value: {raw}")))?;
-            }
-            _ if arg.starts_with('-') => {
-                return Err(CliError::Usage(format!(
-                    "unknown option: {arg}\n\n{}",
-                    usage()
-                )));
-            }
-            _ => positionals.push(arg.clone()),
-        }
-        index += 1;
-    }
-
-    let Some(input) = positionals.first() else {
-        return Err(CliError::Usage(usage().to_owned()));
+    let content = entry.render(args.format)?;
+    let Some(output) = args.output else {
+        return Ok(CliOutput::Text(content));
     };
-    if matches!(kind, CommandKind::Decompile) && positionals.len() > 1 {
-        return Err(CliError::Usage(
-            "decompile accepts one input; use --class and --source for filters".to_owned(),
-        ));
-    }
-    if matches!(kind, CommandKind::FindClass) && positionals.len() != 2 {
-        return Err(CliError::Usage(
-            "find-class requires <input> <query>".to_owned(),
-        ));
-    }
-    if matches!(kind, CommandKind::FindMethod | CommandKind::FindField) && positionals.len() < 2 {
-        return Err(CliError::Usage(
-            "find-method/find-field requires an input and a member query".to_owned(),
-        ));
-    }
-    if !matches!(kind, CommandKind::Decompile)
-        && (output != PathBuf::from(DEFAULT_OUTPUT_DIR)
-            || class_filter.is_some()
-            || source_filter.is_some())
-    {
-        return Err(CliError::Usage(
-            "--output, --class and --source are only valid for decompile".to_owned(),
-        ));
-    }
-
-    Ok(CommandLine {
-        kind,
-        input: PathBuf::from(input),
-        positionals: positionals.into_iter().skip(1).collect(),
-        output,
-        class_filter,
-        source_filter,
-        limit,
-    })
+    write_file(&output, content.as_bytes())?;
+    let mut result = Map::from_iter([
+        ("ok".to_owned(), Value::Bool(true)),
+        (
+            "operation".to_owned(),
+            Value::String("exportClass".to_owned()),
+        ),
+        ("input".to_owned(), json!(args.input)),
+        (
+            "class_name".to_owned(),
+            Value::String(entry.qualified_name()),
+        ),
+        (
+            "descriptor".to_owned(),
+            Value::String(entry.descriptor.clone()),
+        ),
+        (
+            "format".to_owned(),
+            Value::String(args.format.as_str().to_owned()),
+        ),
+        ("output".to_owned(), json!(output)),
+    ]);
+    insert_internal_path(&mut result, entry.internal_path.as_deref());
+    Ok(CliOutput::Json(Value::Object(result)))
 }
 
-fn next_value(args: &[String], index: &mut usize, option: &str) -> Result<String, CliError> {
-    *index += 1;
-    args.get(*index)
-        .cloned()
-        .ok_or_else(|| CliError::Usage(format!("missing value for {option}\n\n{}", usage())))
+fn execute_export_all(args: ExportAllArgs) -> Result<CliOutput, CliError> {
+    let index = InputIndex::load(&args.input, None)?;
+    let filter = args.class_filter.as_deref().unwrap_or_default();
+    let selected = find_matching_classes(&index, filter);
+    if selected.is_empty() {
+        return Err(CliError::NotFound(format!(
+            "no classes matched filter: {filter}"
+        )));
+    }
+    fs::create_dir_all(&args.output).map_err(|source| CliError::Io {
+        path: args.output.clone(),
+        source,
+    })?;
+    let mut classes = Vec::with_capacity(selected.len());
+    for entry in selected {
+        let output = class_output_path(&args.output, entry, args.format);
+        let content = entry.render(args.format)?;
+        write_file(&output, content.as_bytes())?;
+        let mut class = Map::from_iter([
+            (
+                "class_name".to_owned(),
+                Value::String(entry.qualified_name()),
+            ),
+            (
+                "descriptor".to_owned(),
+                Value::String(entry.descriptor.clone()),
+            ),
+            ("output".to_owned(), json!(output)),
+        ]);
+        insert_internal_path(&mut class, entry.internal_path.as_deref());
+        classes.push(Value::Object(class));
+    }
+    let manifest = json!({
+        "ok": true,
+        "operation": "exportAll",
+        "input": args.input,
+        "class_filter": args.class_filter,
+        "format": args.format.as_str(),
+        "output_dir": args.output,
+        "count": classes.len(),
+        "classes": classes,
+    });
+    let manifest_path = args.output.join("manifest.json");
+    let bytes = serde_json::to_vec_pretty(&manifest).map_err(|error| CliError::Parse {
+        source: "manifest.json".to_owned(),
+        message: format!("serialize manifest: {error}"),
+    })?;
+    write_file(&manifest_path, &bytes)?;
+    Ok(CliOutput::Json(manifest))
 }
 
 impl InputIndex {
-    fn load(path: &Path, source_filter: Option<&str>) -> Result<Self, CliError> {
+    fn load(path: &Path, internal_path: Option<&str>) -> Result<Self, CliError> {
         let bytes = fs::read(path).map_err(|source| CliError::Io {
             path: path.to_owned(),
             source,
         })?;
-        let source = input_source_name(path);
-        if is_zip(&bytes) || is_archive_extension(path) {
-            Self::load_zip(path, bytes, source_filter)
+        let mut index = Self::default();
+        if let Some(internal_path) = internal_path {
+            let bytes = read_internal_entry(path, bytes, internal_path)?;
+            index.collect_embedded(bytes, Some(internal_path.to_owned()), 0)?;
         } else {
-            let mut index = Self::default();
-            index.add_embedded(&source, bytes)?;
-            if index.classes.is_empty() {
-                return Err(CliError::Parse {
-                    source,
-                    message: "unsupported input; expected DEX, class or ZIP/JAR/APK".to_owned(),
-                });
-            }
-            Ok(index)
+            index.collect_embedded(bytes, None, 0)?;
         }
+        if index.classes.is_empty() {
+            return Err(CliError::Parse {
+                source: input_label(path, internal_path),
+                message: "no supported DEX or class files found".to_owned(),
+            });
+        }
+        Ok(index)
     }
 
-    #[cfg(not(target_family = "wasm"))]
-    fn load_zip(
-        path: &Path,
+    fn collect_embedded(
+        &mut self,
         bytes: Vec<u8>,
-        source_filter: Option<&str>,
-    ) -> Result<Self, CliError> {
+        internal_path: Option<String>,
+        depth: usize,
+    ) -> Result<(), CliError> {
+        if is_dex(&bytes) {
+            return self.add_dex(internal_path, bytes);
+        }
+        if is_class(&bytes) {
+            return self.add_class(internal_path, bytes);
+        }
+        if !is_zip(&bytes) {
+            return Ok(());
+        }
+        self.collect_archive(bytes, internal_path.as_deref(), depth)
+    }
+
+    fn collect_archive(
+        &mut self,
+        bytes: Vec<u8>,
+        prefix: Option<&str>,
+        depth: usize,
+    ) -> Result<(), CliError> {
+        if depth >= MAX_ARCHIVE_DEPTH {
+            return Err(CliError::Parse {
+                source: prefix.unwrap_or("input").to_owned(),
+                message: "archive nesting is too deep".to_owned(),
+            });
+        }
+        let archive_label = prefix.unwrap_or("input");
         let mut archive = ZipArchive::new(Cursor::new(bytes)).map_err(|error| CliError::Zip {
-            path: path.to_owned(),
+            path: PathBuf::from(archive_label),
             message: error.to_string(),
         })?;
-        let mut index = Self::default();
-        for entry_index in 0..archive.len() {
-            let mut entry = archive
-                .by_index(entry_index)
-                .map_err(|error| CliError::Zip {
-                    path: path.to_owned(),
-                    message: error.to_string(),
-                })?;
-            if entry.is_dir() {
+        for index in 0..archive.len() {
+            let mut entry = archive.by_index(index).map_err(|error| CliError::Zip {
+                path: PathBuf::from(archive_label),
+                message: error.to_string(),
+            })?;
+            if entry.is_dir() || !is_possible_input_entry(entry.name()) || entry.size() < 4 {
                 continue;
             }
             let name = entry.name().to_owned();
-            if source_filter.is_some_and(|filter| filter != name) {
+            let mut header = [0; 4];
+            entry
+                .read_exact(&mut header)
+                .map_err(|source| CliError::Io {
+                    path: PathBuf::from(&name),
+                    source,
+                })?;
+            if !is_supported_magic(&header) {
                 continue;
             }
             let mut entry_bytes = Vec::with_capacity(entry.size().min(usize::MAX as u64) as usize);
+            entry_bytes.extend_from_slice(&header);
             entry
                 .read_to_end(&mut entry_bytes)
                 .map_err(|source| CliError::Io {
                     path: PathBuf::from(&name),
                     source,
                 })?;
-            if is_dex(&entry_bytes) || is_class(&entry_bytes) {
-                index.add_embedded(&name, entry_bytes)?;
-            }
+            let entry_path = join_internal_path(prefix, &name);
+            drop(entry);
+            self.collect_embedded(entry_bytes, Some(entry_path), depth + 1)?;
         }
-        if index.classes.is_empty() {
-            let suffix = source_filter
-                .map(|filter| format!(" matching --source {filter}"))
-                .unwrap_or_default();
-            return Err(CliError::Parse {
-                source: path.display().to_string(),
-                message: format!("archive contains no supported classes or DEX files{suffix}"),
-            });
-        }
-        Ok(index)
+        Ok(())
     }
 
-    #[cfg(target_family = "wasm")]
-    fn load_zip(
-        _path: &Path,
-        _bytes: Vec<u8>,
-        _source_filter: Option<&str>,
-    ) -> Result<Self, CliError> {
-        Err(CliError::Usage(
-            "asm_cli is a native-only executable".to_owned(),
-        ))
-    }
-
-    fn add_embedded(&mut self, source: &str, bytes: Vec<u8>) -> Result<(), CliError> {
-        if is_dex(&bytes) {
-            self.add_dex(source, bytes)
-        } else if is_class(&bytes) {
-            self.add_class(source, bytes)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn add_dex(&mut self, source: &str, bytes: Vec<u8>) -> Result<(), CliError> {
+    fn add_dex(&mut self, internal_path: Option<String>, bytes: Vec<u8>) -> Result<(), CliError> {
+        let source = internal_path.as_deref().unwrap_or("input.dex");
         let file =
             DexFile::resolve_from_bytes(&bytes).map_err(|error| parse_error(source, error))?;
         let accessor = Arc::new(DexFileAccessor::new(file, bytes, source.into()));
@@ -345,16 +430,16 @@ impl InputIndex {
             let descriptor = accessor
                 .get_type(class_def.class_idx)
                 .map_err(|error| parse_error(source, error))?;
-            let Some(class_name) = descriptor_to_internal(&descriptor) else {
+            let Some(internal_name) = descriptor_to_internal(&descriptor) else {
                 return Err(CliError::Parse {
                     source: source.to_owned(),
                     message: format!("invalid class descriptor {descriptor}"),
                 });
             };
             self.classes.push(ClassEntry {
-                class_name,
+                internal_name,
                 descriptor: descriptor.to_string(),
-                source: source.to_owned(),
+                internal_path: internal_path.clone(),
                 payload: ClassPayload::Dex {
                     accessor: Arc::clone(&accessor),
                     class_def,
@@ -364,19 +449,256 @@ impl InputIndex {
         Ok(())
     }
 
-    fn add_class(&mut self, source: &str, bytes: Vec<u8>) -> Result<(), CliError> {
+    fn add_class(&mut self, internal_path: Option<String>, bytes: Vec<u8>) -> Result<(), CliError> {
+        let source = internal_path.as_deref().unwrap_or("input.class");
         let node = ClassNode::from_bytes(&bytes).map_err(|error| parse_error(source, error))?;
-        let class_name = node.name.to_string();
-        let descriptor = format!("L{class_name};");
+        let internal_name = node.name.to_string();
         self.classes.push(ClassEntry {
-            class_name,
-            descriptor,
-            source: source.to_owned(),
+            descriptor: format!("L{internal_name};"),
+            internal_name,
+            internal_path,
             payload: ClassPayload::Jvm {
                 node: Arc::new(node),
             },
         });
         Ok(())
+    }
+}
+
+impl ClassEntry {
+    fn qualified_name(&self) -> String {
+        self.internal_name.replace('/', ".")
+    }
+
+    fn members(&self) -> Result<(Vec<MethodInfo>, Vec<FieldInfo>), CliError> {
+        let (mut methods, mut fields) = match &self.payload {
+            ClassPayload::Jvm { node } => (
+                node.methods
+                    .iter()
+                    .map(|method| MethodInfo {
+                        name: method.name.to_string(),
+                        signature: method.desc.to_string(),
+                    })
+                    .collect(),
+                node.fields
+                    .iter()
+                    .map(|field| FieldInfo {
+                        name: field.name.to_string(),
+                        field_type: field.desc.to_string(),
+                    })
+                    .collect(),
+            ),
+            ClassPayload::Dex {
+                accessor,
+                class_def,
+            } => {
+                if class_def.class_data_off == 0 {
+                    (Vec::new(), Vec::new())
+                } else {
+                    let source = self.internal_path.as_deref().unwrap_or("input.dex");
+                    let data = accessor
+                        .get_class_element(class_def.class_data_off)
+                        .map_err(|error| parse_error(source, error))?;
+                    let methods = data
+                        .direct_methods
+                        .into_iter()
+                        .chain(data.virtual_methods)
+                        .map(|method| MethodInfo {
+                            name: method.name.to_string(),
+                            signature: format!(
+                                "({}){}",
+                                method
+                                    .parameters
+                                    .iter()
+                                    .map(|parameter| parameter.as_ref())
+                                    .collect::<String>(),
+                                method.return_type,
+                            ),
+                        })
+                        .collect();
+                    let fields = data
+                        .static_fields
+                        .into_iter()
+                        .chain(data.instance_fields)
+                        .map(|field| FieldInfo {
+                            name: field.name.to_string(),
+                            field_type: field.descriptor.to_string(),
+                        })
+                        .collect();
+                    (methods, fields)
+                }
+            }
+        };
+        methods.sort();
+        fields.sort();
+        Ok((methods, fields))
+    }
+
+    fn to_json(&self) -> Result<Value, CliError> {
+        let (methods, fields) = self.members()?;
+        let mut class = Map::from_iter([
+            (
+                "class_name".to_owned(),
+                Value::String(self.qualified_name()),
+            ),
+            (
+                "descriptor".to_owned(),
+                Value::String(self.descriptor.clone()),
+            ),
+            (
+                "methods".to_owned(),
+                Value::Array(
+                    methods
+                        .into_iter()
+                        .map(|method| {
+                            json!({
+                                "name": method.name,
+                                "signature": method.signature,
+                            })
+                        })
+                        .collect(),
+                ),
+            ),
+            (
+                "fields".to_owned(),
+                Value::Array(
+                    fields
+                        .into_iter()
+                        .map(|field| {
+                            json!({
+                                "name": field.name,
+                                "type": field.field_type,
+                            })
+                        })
+                        .collect(),
+                ),
+            ),
+        ]);
+        insert_internal_path(&mut class, self.internal_path.as_deref());
+        Ok(Value::Object(class))
+    }
+
+    fn render(&self, format: ExportFormat) -> Result<String, CliError> {
+        match format {
+            ExportFormat::Smali => match &self.payload {
+                ClassPayload::Jvm { node } => Ok(render_jvm_class(node)),
+                ClassPayload::Dex {
+                    accessor,
+                    class_def,
+                } => accessor
+                    .get_class_smali(*class_def)
+                    .map(|node| node.render(0))
+                    .map_err(|error| {
+                        parse_error(self.internal_path.as_deref().unwrap_or("input.dex"), error)
+                    }),
+            },
+        }
+    }
+}
+
+fn find_matching_classes<'a>(index: &'a InputIndex, query: &str) -> Vec<&'a ClassEntry> {
+    let keys: Vec<StrRef> = index
+        .classes
+        .iter()
+        .map(|entry| entry.descriptor.clone().into())
+        .collect();
+    let mut model = FuzzyMatchModel::new(query.into(), &keys, keys.len());
+    let result = model.full_search();
+
+    result
+        .items
+        .into_iter()
+        .filter_map(|item| index.classes.get(item.index))
+        .collect()
+}
+
+fn read_internal_entry(
+    input: &Path,
+    bytes: Vec<u8>,
+    internal_path: &str,
+) -> Result<Vec<u8>, CliError> {
+    if internal_path.is_empty() {
+        return Err(CliError::Parse {
+            source: input.display().to_string(),
+            message: "internal_path cannot be empty".to_owned(),
+        });
+    }
+    let mut current = bytes;
+    let mut consumed = Vec::new();
+    for segment in internal_path.split('!') {
+        if segment.is_empty() {
+            return Err(CliError::Parse {
+                source: internal_path.to_owned(),
+                message: "internal_path contains an empty segment".to_owned(),
+            });
+        }
+        if !is_zip(&current) {
+            return Err(CliError::Parse {
+                source: consumed.join("!"),
+                message: format!("cannot descend into non-archive entry {segment}"),
+            });
+        }
+        let mut archive = ZipArchive::new(Cursor::new(current)).map_err(|error| CliError::Zip {
+            path: input.to_owned(),
+            message: error.to_string(),
+        })?;
+        let mut entry = archive.by_name(segment).map_err(|error| CliError::Zip {
+            path: PathBuf::from(internal_path),
+            message: error.to_string(),
+        })?;
+        let mut next = Vec::with_capacity(entry.size().min(usize::MAX as u64) as usize);
+        entry
+            .read_to_end(&mut next)
+            .map_err(|source| CliError::Io {
+                path: PathBuf::from(internal_path),
+                source,
+            })?;
+        consumed.push(segment);
+        current = next;
+    }
+    Ok(current)
+}
+
+fn write_file(path: &Path, bytes: &[u8]) -> Result<(), CliError> {
+    if let Some(parent) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        fs::create_dir_all(parent).map_err(|source| CliError::Io {
+            path: parent.to_owned(),
+            source,
+        })?;
+    }
+    fs::write(path, bytes).map_err(|source| CliError::Io {
+        path: path.to_owned(),
+        source,
+    })
+}
+
+fn class_output_path(output: &Path, entry: &ClassEntry, format: ExportFormat) -> PathBuf {
+    let mut result = output.to_owned();
+    if matches!(&entry.payload, ClassPayload::Dex { .. }) {
+        if let Some(internal_path) = &entry.internal_path {
+            result.push(safe_component(internal_path));
+        }
+    } else if let Some(internal_path) = &entry.internal_path
+        && let Some((archive_path, _)) = internal_path.rsplit_once('!')
+    {
+        result.push(safe_component(archive_path));
+    }
+    for part in entry.internal_name.split('/') {
+        result.push(safe_component(part));
+    }
+    result.set_extension(format.extension());
+    result
+}
+
+fn insert_internal_path(result: &mut Map<String, Value>, internal_path: Option<&str>) {
+    if let Some(internal_path) = internal_path {
+        result.insert(
+            "internal_path".to_owned(),
+            Value::String(internal_path.to_owned()),
+        );
     }
 }
 
@@ -387,34 +709,15 @@ fn parse_error(source: &str, error: AsmErr) -> CliError {
     }
 }
 
-fn is_dex(bytes: &[u8]) -> bool {
-    bytes.len() >= 8 && &bytes[..4] == b"dex\n"
+fn input_label(path: &Path, internal_path: Option<&str>) -> String {
+    internal_path.map_or_else(
+        || path.display().to_string(),
+        |internal_path| format!("{}!{internal_path}", path.display()),
+    )
 }
 
-fn is_class(bytes: &[u8]) -> bool {
-    bytes.len() >= 4 && bytes[..4] == [0xCA, 0xFE, 0xBA, 0xBE]
-}
-
-fn is_zip(bytes: &[u8]) -> bool {
-    bytes.len() >= 4 && matches!(&bytes[..4], b"PK\x03\x04" | b"PK\x05\x06" | b"PK\x07\x08")
-}
-
-fn is_archive_extension(path: &Path) -> bool {
-    path.extension()
-        .and_then(|extension| extension.to_str())
-        .is_some_and(|extension| {
-            matches!(
-                extension.to_ascii_lowercase().as_str(),
-                "apk" | "jar" | "zip"
-            )
-        })
-}
-
-fn input_source_name(path: &Path) -> String {
-    path.file_name()
-        .and_then(|name| name.to_str())
-        .map(ToOwned::to_owned)
-        .unwrap_or_else(|| path.display().to_string())
+fn join_internal_path(prefix: Option<&str>, entry: &str) -> String {
+    prefix.map_or_else(|| entry.to_owned(), |prefix| format!("{prefix}!{entry}"))
 }
 
 fn descriptor_to_internal(descriptor: &str) -> Option<String> {
@@ -431,377 +734,32 @@ fn normalize_class_name(value: &str) -> String {
     value.replace('.', "/")
 }
 
-fn class_matches(entry: &ClassEntry, query: &str) -> Option<u32> {
-    let query = normalize_class_name(query);
-    if query.is_empty() {
-        return Some(0);
-    }
-    let name = entry.class_name.as_str();
-    if name == query {
-        return Some(10_000);
-    }
-    let query_lower = query.to_ascii_lowercase();
-    let name_lower = name.to_ascii_lowercase();
-    if name_lower == query_lower {
-        return Some(9_000);
-    }
-    if name_lower.ends_with(&format!("/{query_lower}")) {
-        return Some(8_000);
-    }
-    if name_lower.contains(&query_lower) {
-        return Some(5_000);
-    }
-    let mut query_chars = query_lower.chars();
-    let mut next = query_chars.next();
-    let mut matched = 0u32;
-    for character in name_lower.chars() {
-        if next == Some(character) {
-            matched += 1;
-            next = query_chars.next();
-        }
-    }
-    (next.is_none() && matched > 0).then_some(1_000 + matched)
+fn is_dex(bytes: &[u8]) -> bool {
+    bytes.get(..4) == Some(b"dex\n")
 }
 
-fn execute_find_class(command: &CommandLine, index: &InputIndex) -> Result<Value, CliError> {
-    let query = command.positionals.first().cloned().unwrap_or_default();
-    let mut matches: Vec<(&ClassEntry, u32)> = index
-        .classes
+fn is_class(bytes: &[u8]) -> bool {
+    bytes.get(..4) == Some(&[0xCA, 0xFE, 0xBA, 0xBE])
+}
+
+fn is_zip(bytes: &[u8]) -> bool {
+    matches!(
+        bytes.get(..4),
+        Some(b"PK\x03\x04" | b"PK\x05\x06" | b"PK\x07\x08")
+    )
+}
+
+fn is_supported_magic(bytes: &[u8]) -> bool {
+    is_dex(bytes) || is_class(bytes) || is_zip(bytes)
+}
+
+fn is_possible_input_entry(name: &str) -> bool {
+    let Some((_, extension)) = name.rsplit_once('.') else {
+        return true;
+    };
+    ["dex", "class", "apk", "apks", "xapk", "aab", "zip", "jar"]
         .iter()
-        .filter_map(|entry| class_matches(entry, &query).map(|score| (entry, score)))
-        .collect();
-    matches.sort_by(|(left, left_score), (right, right_score)| {
-        right_score
-            .cmp(left_score)
-            .then_with(|| left.class_name.cmp(&right.class_name))
-            .then_with(|| left.source.cmp(&right.source))
-    });
-    let results: Vec<Value> = matches
-        .into_iter()
-        .take(command.limit)
-        .map(|(entry, _)| class_json(entry))
-        .collect();
-    Ok(json!({
-        "ok": true,
-        "operation": "findClass",
-        "query": query,
-        "count": results.len(),
-        "results": results,
-    }))
-}
-
-fn execute_find_member(command: &CommandLine, index: &InputIndex) -> Result<Value, CliError> {
-    let kind = match command.kind {
-        CommandKind::FindMethod => MemberKind::Method,
-        CommandKind::FindField => MemberKind::Field,
-        _ => unreachable!(),
-    };
-    let query = parse_member_query(&command.positionals)?;
-    let mut results = Vec::new();
-    for class in &index.classes {
-        if let Some(owner) = &query.owner {
-            if normalize_class_name(&class.class_name) != *owner {
-                continue;
-            }
-        }
-        for member in class.members(kind)? {
-            if query
-                .name
-                .as_deref()
-                .is_some_and(|name| member.name != name)
-            {
-                continue;
-            }
-            if query
-                .descriptor
-                .as_deref()
-                .is_some_and(|descriptor| member.descriptor != descriptor)
-            {
-                continue;
-            }
-            results.push(member_json(&member));
-        }
-    }
-    results.truncate(command.limit);
-    Ok(json!({
-        "ok": true,
-        "operation": if kind == MemberKind::Method { "findMethod" } else { "findField" },
-        "query": {
-            "class": query.owner,
-            "name": query.name,
-            "descriptor": query.descriptor,
-        },
-        "count": results.len(),
-        "results": results,
-    }))
-}
-
-fn parse_member_query(positionals: &[String]) -> Result<MemberQuery, CliError> {
-    let Some(first) = positionals.first() else {
-        return Err(CliError::Usage("member query cannot be empty".to_owned()));
-    };
-    if positionals.len() == 1 {
-        if let Some((owner, name, descriptor)) = parse_member_reference(first) {
-            return Ok(MemberQuery {
-                owner: Some(normalize_class_name(owner)),
-                name: Some(name.to_owned()),
-                descriptor: descriptor.map(ToOwned::to_owned),
-            });
-        }
-        return Ok(MemberQuery {
-            name: Some(first.clone()),
-            ..Default::default()
-        });
-    }
-    let owner = normalize_class_name(first);
-    let name = positionals[1].clone();
-    let descriptor = positionals.get(2).cloned();
-    if positionals.len() > 3 {
-        return Err(CliError::Usage(
-            "member query accepts <class> <name> [descriptor]".to_owned(),
-        ));
-    }
-    Ok(MemberQuery {
-        owner: Some(owner),
-        name: Some(name),
-        descriptor,
-    })
-}
-
-fn parse_member_reference(value: &str) -> Option<(&str, &str, Option<&str>)> {
-    let (owner, member) = value
-        .split_once("->")
-        .or_else(|| value.split_once("::"))
-        .or_else(|| value.split_once('#'))?;
-    let (name, descriptor) = member
-        .split_once(':')
-        .map_or((member, None), |(name, descriptor)| {
-            (name, Some(descriptor))
-        });
-    (!owner.is_empty() && !name.is_empty()).then_some((owner, name, descriptor))
-}
-
-impl ClassEntry {
-    fn members(&self, kind: MemberKind) -> Result<Vec<MemberEntry>, CliError> {
-        match &self.payload {
-            ClassPayload::Jvm { node } => Ok(jvm_members(self, node, kind)),
-            ClassPayload::Dex {
-                accessor,
-                class_def,
-            } => {
-                let class_data = if class_def.class_data_off == 0 {
-                    None
-                } else {
-                    Some(
-                        accessor
-                            .get_class_element(class_def.class_data_off)
-                            .map_err(|error| parse_error(&self.source, error))?,
-                    )
-                };
-                let mut result = Vec::new();
-                let Some(class_data) = class_data else {
-                    return Ok(result);
-                };
-                if kind == MemberKind::Field {
-                    result.extend(
-                        class_data
-                            .static_fields
-                            .into_iter()
-                            .chain(class_data.instance_fields)
-                            .map(|field| MemberEntry {
-                                kind,
-                                owner: self.class_name.clone(),
-                                owner_descriptor: self.descriptor.clone(),
-                                name: field.name.to_string(),
-                                descriptor: field.descriptor.to_string(),
-                                source: self.source.clone(),
-                                dex: Some(self.source.clone()),
-                            }),
-                    );
-                } else {
-                    result.extend(
-                        class_data
-                            .direct_methods
-                            .into_iter()
-                            .chain(class_data.virtual_methods)
-                            .map(|method| MemberEntry {
-                                kind,
-                                owner: self.class_name.clone(),
-                                owner_descriptor: self.descriptor.clone(),
-                                name: method.name.to_string(),
-                                descriptor: format!(
-                                    "({}){}",
-                                    method
-                                        .parameters
-                                        .iter()
-                                        .map(|parameter| parameter.as_ref())
-                                        .collect::<String>(),
-                                    method.return_type,
-                                ),
-                                source: self.source.clone(),
-                                dex: Some(self.source.clone()),
-                            }),
-                    );
-                }
-                Ok(result)
-            }
-        }
-    }
-
-    fn render(&self) -> Result<String, CliError> {
-        match &self.payload {
-            ClassPayload::Jvm { node } => Ok(render_jvm_class(node)),
-            ClassPayload::Dex {
-                accessor,
-                class_def,
-            } => accessor
-                .get_class_smali(*class_def)
-                .map(|node| format!("# source: {}\n{}", self.source, node.render(0)))
-                .map_err(|error| parse_error(&self.source, error)),
-        }
-    }
-}
-
-fn jvm_members(class: &ClassEntry, node: &ClassNode, kind: MemberKind) -> Vec<MemberEntry> {
-    match kind {
-        MemberKind::Field => node
-            .fields
-            .iter()
-            .map(|field| member_from_jvm_field(class, field))
-            .collect(),
-        MemberKind::Method => node
-            .methods
-            .iter()
-            .map(|method| member_from_jvm_method(class, method))
-            .collect(),
-    }
-}
-
-fn member_from_jvm_field(class: &ClassEntry, field: &FieldNode) -> MemberEntry {
-    MemberEntry {
-        kind: MemberKind::Field,
-        owner: class.class_name.clone(),
-        owner_descriptor: class.descriptor.clone(),
-        name: field.name.to_string(),
-        descriptor: field.desc.to_string(),
-        source: class.source.clone(),
-        dex: None,
-    }
-}
-
-fn member_from_jvm_method(class: &ClassEntry, method: &MethodNode) -> MemberEntry {
-    MemberEntry {
-        kind: MemberKind::Method,
-        owner: class.class_name.clone(),
-        owner_descriptor: class.descriptor.clone(),
-        name: method.name.to_string(),
-        descriptor: method.desc.to_string(),
-        source: class.source.clone(),
-        dex: None,
-    }
-}
-
-fn class_json(entry: &ClassEntry) -> Value {
-    json!({
-        "class_name": entry.class_name,
-        "descriptor": entry.descriptor,
-        "source": entry.source,
-        "dex": class_dex_source(entry),
-        "can_decompile": true,
-    })
-}
-
-fn member_json(member: &MemberEntry) -> Value {
-    json!({
-        "kind": if member.kind == MemberKind::Method { "method" } else { "field" },
-        "class_name": member.owner,
-        "class_descriptor": member.owner_descriptor,
-        "name": member.name,
-        "descriptor": member.descriptor,
-        "source": member.source,
-        "dex": member.dex,
-        "can_decompile": true,
-    })
-}
-
-fn execute_decompile(command: &CommandLine, index: &InputIndex) -> Result<Value, CliError> {
-    let selected: Vec<&ClassEntry> = if let Some(filter) = &command.class_filter {
-        let normalized = normalize_class_name(filter);
-        index
-            .classes
-            .iter()
-            .filter(|entry| entry.class_name == normalized)
-            .collect()
-    } else {
-        index.classes.iter().collect()
-    };
-    if selected.is_empty() {
-        let class = command.class_filter.as_deref().unwrap_or("<all>");
-        return Err(CliError::NotFound(format!("class not found: {class}")));
-    }
-    fs::create_dir_all(&command.output).map_err(|source| CliError::Io {
-        path: command.output.clone(),
-        source,
-    })?;
-    let mut outputs = Vec::with_capacity(selected.len());
-    for entry in selected {
-        let content = entry.render()?;
-        let output_path = class_output_path(&command.output, entry);
-        if let Some(parent) = output_path.parent() {
-            fs::create_dir_all(parent).map_err(|source| CliError::Io {
-                path: parent.to_owned(),
-                source,
-            })?;
-        }
-        fs::write(&output_path, content.as_bytes()).map_err(|source| CliError::Io {
-            path: output_path.clone(),
-            source,
-        })?;
-        outputs.push(json!({
-            "class_name": entry.class_name,
-            "descriptor": entry.descriptor,
-            "source": entry.source,
-            "output": output_path,
-        }));
-    }
-    let manifest = json!({
-        "ok": true,
-        "operation": "decompile",
-        "input": command.input,
-        "output_dir": command.output,
-        "count": outputs.len(),
-        "classes": outputs,
-    });
-    let manifest_path = command.output.join("manifest.json");
-    let manifest_bytes = serde_json::to_vec_pretty(&manifest)
-        .map_err(|error| CliError::Usage(format!("serialize manifest: {error}")))?;
-    fs::write(&manifest_path, manifest_bytes).map_err(|source| CliError::Io {
-        path: manifest_path,
-        source,
-    })?;
-    Ok(manifest)
-}
-
-fn class_output_path(output: &Path, entry: &ClassEntry) -> PathBuf {
-    let mut result = output.to_owned();
-    result.push(safe_component(&source_stem(&entry.source)));
-    for part in entry.class_name.split('/') {
-        result.push(safe_component(part));
-    }
-    result.set_extension("smali");
-    result
-}
-
-fn class_dex_source(entry: &ClassEntry) -> Option<&str> {
-    matches!(&entry.payload, ClassPayload::Dex { .. }).then_some(entry.source.as_str())
-}
-
-fn source_stem(source: &str) -> String {
-    Path::new(source)
-        .file_stem()
-        .and_then(|stem| stem.to_str())
-        .map(ToOwned::to_owned)
-        .unwrap_or_else(|| "input".to_owned())
+        .any(|candidate| extension.eq_ignore_ascii_case(candidate))
 }
 
 fn safe_component(value: &str) -> String {
@@ -822,141 +780,45 @@ fn safe_component(value: &str) -> String {
     }
 }
 
-fn render_jvm_class(node: &ClassNode) -> String {
-    let mut output = String::new();
-    output.push_str(".class");
-    append_words(&mut output, java_class_access(node.access));
-    output.push(' ');
-    output.push_str(&node.name);
-    output.push('\n');
-    if let Some(super_name) = &node.super_name {
-        output.push_str(".super ");
-        output.push_str(super_name);
-        output.push('\n');
-    }
-    for interface in &node.interfaces {
-        output.push_str(".implements ");
-        output.push_str(interface);
-        output.push('\n');
-    }
-    if let Some(source_file) = &node.source_file {
-        output.push_str(".source ");
-        output.push_str(source_file);
-        output.push('\n');
-    }
-    for field in &node.fields {
-        output.push_str(".field");
-        append_words(&mut output, java_field_access(field.access));
-        output.push(' ');
-        output.push_str(&field.name);
-        output.push(' ');
-        output.push_str(&field.desc);
-        if let Some(value) = &field.value {
-            output.push_str(" = ");
-            output.push_str(&format!("{value:?}"));
-        }
-        output.push('\n');
-    }
-    for method in &node.methods {
-        output.push_str(".method");
-        append_words(&mut output, java_method_access(method.access));
-        output.push(' ');
-        output.push_str(&method.name);
-        output.push(' ');
-        output.push_str(&method.desc);
-        output.push('\n');
-        if let Some(code_body) = &method.code_body {
-            output.push_str("  .registers ");
-            output.push_str(&code_body.max_locals.to_string());
-            output.push('\n');
-            for instruction in &code_body.instructions {
-                for line in instruction.to_smali().render(0).lines() {
-                    output.push_str("  ");
-                    output.push_str(line);
-                    output.push('\n');
-                }
-            }
-        }
-        output.push_str(".end method\n");
-    }
-    output.push_str(".end class\n");
-    output
-}
-
-fn append_words(output: &mut String, words: Vec<&'static str>) {
-    for word in words {
-        output.push(' ');
-        output.push_str(word);
-    }
-}
-
-fn java_class_access(flags: u16) -> Vec<&'static str> {
-    access_words(
-        flags,
-        &[
-            (0x0001, "public"),
-            (0x0002, "private"),
-            (0x0004, "protected"),
-            (0x0010, "final"),
-            (0x0200, "interface"),
-            (0x0400, "abstract"),
-            (0x1000, "synthetic"),
-            (0x2000, "annotation"),
-            (0x4000, "enum"),
-            (0x8000, "module"),
-        ],
-    )
-}
-
-fn java_method_access(flags: u16) -> Vec<&'static str> {
-    access_words(
-        flags,
-        &[
-            (0x0001, "public"),
-            (0x0002, "private"),
-            (0x0004, "protected"),
-            (0x0008, "static"),
-            (0x0010, "final"),
-            (0x0020, "synchronized"),
-            (0x0040, "bridge"),
-            (0x0080, "varargs"),
-            (0x0100, "native"),
-            (0x0400, "abstract"),
-            (0x0800, "strict"),
-            (0x1000, "synthetic"),
-        ],
-    )
-}
-
-fn java_field_access(flags: u16) -> Vec<&'static str> {
-    access_words(
-        flags,
-        &[
-            (0x0001, "public"),
-            (0x0002, "private"),
-            (0x0004, "protected"),
-            (0x0008, "static"),
-            (0x0010, "final"),
-            (0x0040, "volatile"),
-            (0x0080, "transient"),
-            (0x1000, "synthetic"),
-            (0x4000, "enum"),
-        ],
-    )
-}
-
-fn access_words(flags: u16, known: &[(u16, &'static str)]) -> Vec<&'static str> {
-    known
-        .iter()
-        .filter_map(|(flag, name)| (flags & flag != 0).then_some(*name))
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::{
-        InputIndex, MemberKind, normalize_class_name, parse_member_reference, safe_component,
+        Cli, Commands, ExportFormat, InputIndex, class_output_path, normalize_class_name,
+        read_internal_entry,
     };
+    use clap::Parser;
+    use std::io::{Cursor, Write};
+    use std::path::PathBuf;
+    use zip::ZipWriter;
+    use zip::write::SimpleFileOptions;
+
+    fn zip_file(name: &str, bytes: &[u8]) -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        writer
+            .start_file(name, SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(bytes).unwrap();
+        writer.finish().unwrap().into_inner()
+    }
+
+    #[test]
+    fn parses_new_command_aliases() {
+        let cli = Cli::try_parse_from([
+            "asm_cli",
+            "exportClass",
+            "app.apks",
+            "com.example.Main",
+            "--internal-path",
+            "base.apk!classes2.dex",
+        ])
+        .unwrap();
+        let Commands::ExportClass(args) = cli.command else {
+            panic!("expected export-class command");
+        };
+        assert_eq!(args.input, PathBuf::from("app.apks"));
+        assert_eq!(args.class_name, "com.example.Main");
+        assert_eq!(args.internal_path.as_deref(), Some("base.apk!classes2.dex"));
+    }
 
     #[test]
     fn normalizes_java_class_names() {
@@ -968,36 +830,81 @@ mod tests {
     }
 
     #[test]
-    fn parses_smali_member_reference() {
-        assert_eq!(
-            parse_member_reference("Lpkg/Main;->run:(I)V"),
-            Some(("Lpkg/Main;", "run", Some("(I)V"))),
-        );
-        assert_eq!(
-            parse_member_reference("Lpkg/Main;#count:I"),
-            Some(("Lpkg/Main;", "count", Some("I")))
-        );
-    }
-
-    #[test]
-    fn sanitizes_output_components() {
-        assert_eq!(safe_component("classes14.dex"), "classes14.dex");
-        assert_eq!(safe_component("a:b"), "a_b");
-    }
-
-    #[test]
-    fn indexes_jvm_fixture_and_resolves_members() {
+    fn standalone_class_has_structure_without_internal_path() {
         let bytes = include_bytes!("../../asm/tests/res/bytecode/CompileTesting.class");
         let mut index = InputIndex::default();
-        index
-            .add_embedded("CompileTesting.class", bytes.to_vec())
-            .unwrap();
+        index.collect_embedded(bytes.to_vec(), None, 0).unwrap();
 
-        assert_eq!(index.classes.len(), 1);
-        assert_eq!(index.classes[0].class_name, "CompileTesting");
-        let methods = index.classes[0].members(MemberKind::Method).unwrap();
-        assert!(methods.iter().any(|method| {
-            method.name == "main" && method.descriptor == "([Ljava/lang/String;)V"
-        }));
+        let class = index.classes[0].to_json().unwrap();
+        assert_eq!(class["class_name"], "CompileTesting");
+        assert!(class.get("internal_path").is_none());
+        assert!(
+            class["methods"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|method| method["name"] == "main"
+                    && method["signature"] == "([Ljava/lang/String;)V")
+        );
+    }
+
+    #[test]
+    fn standalone_dex_omits_internal_path() {
+        let dex = include_bytes!("../../asm/tests/res/dex/classes14.dex");
+        let mut index = InputIndex::default();
+        index.collect_embedded(dex.to_vec(), None, 0).unwrap();
+
+        assert!(!index.classes.is_empty());
+        assert!(
+            index
+                .classes
+                .iter()
+                .all(|class| class.internal_path.is_none())
+        );
+        assert!(
+            index.classes[0]
+                .to_json()
+                .unwrap()
+                .get("internal_path")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn nested_apks_reports_exportable_internal_path() {
+        let dex = include_bytes!("../../asm/tests/res/dex/classes14.dex");
+        let apk = zip_file("classes14.dex", dex);
+        let apks = zip_file("base.apk", &apk);
+        let mut index = InputIndex::default();
+        index.collect_embedded(apks, None, 0).unwrap();
+
+        assert!(!index.classes.is_empty());
+        assert!(
+            index
+                .classes
+                .iter()
+                .all(|class| class.internal_path.as_deref() == Some("base.apk!classes14.dex"))
+        );
+        let output = class_output_path(
+            &PathBuf::from("out"),
+            &index.classes[0],
+            ExportFormat::Smali,
+        );
+        assert!(output.starts_with("out/base.apk_classes14.dex"));
+        assert_eq!(
+            output.extension().and_then(|value| value.to_str()),
+            Some("smali")
+        );
+    }
+
+    #[test]
+    fn internal_path_reads_only_the_requested_nested_dex() {
+        let dex = include_bytes!("../../asm/tests/res/dex/classes14.dex");
+        let apk = zip_file("classes14.dex", dex);
+        let apks = zip_file("base.apk", &apk);
+        let input = PathBuf::from("sample.apks");
+
+        let selected = read_internal_entry(&input, apks, "base.apk!classes14.dex").unwrap();
+        assert_eq!(selected, dex);
     }
 }
