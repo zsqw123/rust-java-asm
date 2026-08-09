@@ -1,13 +1,17 @@
 [package]
-name = "asm_cli"
+name = "java_asm_cli"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Native command-line class and DEX inspection tool for java-asm"
 repository.workspace = true
-homepage.workspace = true
+homepage = "https://github.com/zsqw123/rust-java-asm"
+documentation = "https://docs.rs/java_asm_cli"
 readme.workspace = true
+publish = ["crates-io"]
+keywords = ["java", "jvm", "dex", "android", "bytecode"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 clap = { workspace = true }
@@ -17,5 +21,5 @@ serde_json = { workspace = true }
 zip = { workspace = true, features = ["default"] }
 
 [[bin]]
-name = "asm_cli"
+name = "java_asm_cli"
 path = "src/main.rs"

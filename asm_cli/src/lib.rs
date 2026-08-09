@@ -1,7 +1,7 @@
 mod render;
 
 #[cfg(target_family = "wasm")]
-compile_error!("asm_cli is a native-only executable");
+compile_error!("java_asm_cli is a native-only executable");
 
 use clap::{Args, Parser, Subcommand, ValueEnum, ValueHint};
 use java_asm::AsmErr;
@@ -56,10 +56,10 @@ impl std::error::Error for CliError {}
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "asm_cli",
+    name = "java_asm_cli",
     version,
     about = "Find and export classes from Java and Android bytecode",
-    after_help = "Find commands emit JSON. export-class writes Smali to stdout unless --output is provided.\n\nExamples:\n  asm_cli find-classes app.apks com.example.Main\n  asm_cli export-class app.apks com.example.Main --internal-path base.apk!classes2.dex\n  asm_cli export-all app.apk --class-filter com.example --output exported",
+    after_help = "Find commands emit JSON. export-class writes Smali to stdout unless --output is provided.\n\nExamples:\n  java_asm_cli find-classes app.apks com.example.Main\n  java_asm_cli export-class app.apks com.example.Main --internal-path base.apk!classes2.dex\n  java_asm_cli export-all app.apk --class-filter com.example --output exported",
     arg_required_else_help = true,
     propagate_version = true
 )]
@@ -804,7 +804,7 @@ mod tests {
     #[test]
     fn parses_new_command_aliases() {
         let cli = Cli::try_parse_from([
-            "asm_cli",
+            "java_asm_cli",
             "exportClass",
             "app.apks",
             "com.example.Main",

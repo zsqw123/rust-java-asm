@@ -25,6 +25,20 @@ jobs:
           # [default value: false]
           draft: true
 
+  publish-crates:
+    needs: create-release
+    runs-on: ubuntu-latest
+    env:
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish crates.io packages
+        run: |
+          cargo publish -p java_asm_macro
+          cargo publish -p java_asm
+          cargo publish -p java_asm_server
+          cargo publish -p java_asm_cli
+
   upload-assets:
     needs: create-release
     strategy:
@@ -43,7 +57,7 @@ jobs:
         with:
           # (required) Comma-separated list of binary names (non-extension portion of filename) to build and upload.
           # Note that glob pattern is not supported yet.
-          bin: java_asm_egui
+          bin: java_asm_egui,java_asm_cli
           # (optional) Target triple, default is host triple.
           # This is optional but it is recommended that this always be set to
           # clarify which target you are building for if macOS is included in

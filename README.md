@@ -43,6 +43,16 @@ Both builds inspect the selected files locally; the file is not uploaded to a se
 server.) For a quick inspection, the web version is usually the easiest option. For large APKs, unusual compression
 formats, or the best loading performance, the native build is generally the better choice.
 
+### CLI
+
+The `java_asm_cli` executable provides these commands:
+
+- `find-classes`: find classes and list their basic method and field structure.
+- `export-class`: export one class as Smali.
+- `export-all`: export multiple classes as Smali, with optional class filtering.
+
+See the [CLI skill guide](asm_cli/SKILL.md) for installation, complete usage, options, and examples.
+
 ## Current Stage
 
 After version 0.0.6, you can try to use `ClassNode::from_jvms` to read a class file into a `ClassNode`, 
