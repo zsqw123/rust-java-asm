@@ -8,7 +8,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.4" # JAVA_ASM_VERSION
+version = "0.2.1" # JAVA_ASM_VERSION
 authors = ["zsqw123"]
 edition = "2024"
 license = "Apache-2.0"
@@ -19,9 +19,9 @@ homepage = "https://crates.io/crates/java_asm"
 readme = "README.md"
 
 [workspace.dependencies]
-java_asm_macro = { path = "asm_macro", version = "0.1.4" } # JAVA_ASM_VERSION
-java_asm = { path = "asm", version = "0.1.4" } # JAVA_ASM_VERSION
-java_asm_server = { path = "asm_server", version = "0.1.4" } # JAVA_ASM_VERSION
+java_asm_macro = { path = "asm_macro", version = "0.2.1" } # JAVA_ASM_VERSION
+java_asm = { path = "asm", version = "0.2.1" } # JAVA_ASM_VERSION
+java_asm_server = { path = "asm_server", version = "0.2.1" } # JAVA_ASM_VERSION
 clap = { version = "4", features = ["derive", "color", "suggestions"] }
 serde_json = "1.0"
 

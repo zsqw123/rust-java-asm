@@ -2356,14 +2356,14 @@ checksum = "92ecc6618181def0457392ccd0ee51198e065e016d1d527a7ac1b6dc7c1f09d2"
 
 [[package]]
 name = "java_asm"
-version = "0.1.4"
+version = "0.2.1"
 dependencies = [
  "java_asm_macro",
 ]
 
 [[package]]
 name = "java_asm_cli"
-version = "0.1.4"
+version = "0.2.1"
 dependencies = [
  "clap",
  "java_asm",
@@ -2374,7 +2374,7 @@ dependencies = [
 
 [[package]]
 name = "java_asm_egui"
-version = "0.1.4"
+version = "0.2.1"
 dependencies = [
  "bit-set 0.8.0",
  "eframe",
@@ -2396,7 +2396,7 @@ dependencies = [
 
 [[package]]
 name = "java_asm_macro"
-version = "0.1.4"
+version = "0.2.1"
 dependencies = [
  "quote",
  "syn",
@@ -2404,7 +2404,7 @@ dependencies = [
 
 [[package]]
 name = "java_asm_server"
-version = "0.1.4"
+version = "0.2.1"
 dependencies = [
  "bit-set 0.8.0",
  "chrono",
