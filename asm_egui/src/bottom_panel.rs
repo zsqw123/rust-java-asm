@@ -23,6 +23,12 @@ impl EguiApp {
                         ui, &mut self.bottom_window,
                         BottomWindow::Log, "Log / 日志",
                     );
+                    if ui.button("GitHub").clicked() {
+                        ui.ctx().open_url(egui::OpenUrl {
+                            url: "https://github.com/zsqw123/rust-java-asm".to_owned(),
+                            new_tab: true,
+                        });
+                    }
                 });
 
                 let Some(bottom_window) = self.bottom_window else { return; };
