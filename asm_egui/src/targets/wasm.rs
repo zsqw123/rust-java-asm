@@ -1,12 +1,37 @@
 use crate::app::EguiApp;
 use eframe::CreationContext;
 use eframe::epaint::text::{FontData, FontDefinitions};
-use egui::FontFamily;
+use egui::{DroppedFileHandle, FontFamily};
+use java_asm_server::rw_access::ReadAccess;
+use java_asm_server::ui::AppContainer;
+use java_asm_server::{AsmServer, ServerMut};
 use js_sys::Uint8Array;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{self, Response};
 use std::sync::Arc;
+
+pub(crate) fn open_dropped_file(
+    dropped_file: DroppedFileHandle,
+    server: ServerMut,
+    ui_app: AppContainer,
+) {
+    wasm_bindgen_futures::spawn_local(async move {
+        let name = dropped_file
+            .path()
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "dropped-file".to_owned());
+        match dropped_file.bytes_async().await {
+            Ok(bytes) => AsmServer::smart_open(
+                server,
+                ReadAccess::from_raw(name, Arc::from(bytes.into_boxed_slice())),
+                ui_app,
+            ),
+            Err(error) => log::error!("failed to read dropped file: {error}"),
+        }
+    });
+}
 
 const CJK_FONT_URL: &str =
     "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf";

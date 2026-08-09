@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="EGUI wasm" type="ShConfigurationType" folderName="egui">
+  <configuration default="false" name="EGUI wasm" type="ShConfigurationType">
     <option name="SCRIPT_TEXT" value="trunk serve --config Trunk.toml --open" />
     <option name="INDEPENDENT_SCRIPT_PATH" value="true" />
     <option name="SCRIPT_PATH" value="" />

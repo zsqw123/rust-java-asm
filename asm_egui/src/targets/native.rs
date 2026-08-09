@@ -1,14 +1,24 @@
 use crate::app::EguiApp;
 use eframe::epaint::text::{FontData, FontDefinitions};
 use eframe::CreationContext;
-use egui::{IconData, ViewportBuilder};
+use egui::{DroppedFileHandle, IconData, ViewportBuilder};
 use image::{ImageFormat, ImageReader};
-use java_asm_server::ui::font::FontFallbacks;
-use java_asm_server::Instant;
+use java_asm_server::rw_access::ReadAccess;
+use java_asm_server::ui::{font::FontFallbacks, AppContainer};
+use java_asm_server::{AsmServer, Instant, ServerMut};
 use log::info;
 use std::collections::{BTreeMap, HashSet};
 use std::io::Cursor;
 use std::sync::Arc;
+
+pub(crate) fn open_dropped_file(
+    dropped_file: DroppedFileHandle,
+    server: ServerMut,
+    ui_app: AppContainer,
+) {
+    let path = dropped_file.path().to_path_buf();
+    AsmServer::smart_open(server, ReadAccess::from_path(&path), ui_app);
+}
 
 fn insert_font_into_definitions(
     font_map: &mut BTreeMap<String, Arc<FontData>>,

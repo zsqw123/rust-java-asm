@@ -2,12 +2,11 @@ use crate::file_tab::render_tabs;
 use crate::file_tree::render_dir;
 use crate::smali::smali_layout;
 use eframe::{CreationContext, Frame};
-use egui::{Context, DroppedFileHandle, ScrollArea, Ui};
+use egui::{Context, ScrollArea, Ui};
 use egui_extras::{Size, StripBuilder};
-use java_asm_server::rw_access::ReadAccess;
-use java_asm_server::ui::log::{inject_log, LogHolder};
 use java_asm_server::ui::AppContainer;
-use java_asm_server::{AsmServer, Duration, Instant, ServerMut};
+use java_asm_server::ui::log::{LogHolder, inject_log};
+use java_asm_server::{Duration, Instant, ServerMut};
 use std::sync::Arc;
 
 struct Toast {
@@ -120,6 +119,21 @@ impl EguiApp {
             smali_layout(ui, server, &self.ui_app);
         });
     }
+
+    fn handle_events(&mut self, ctx: &Context) {
+        let mut mutex = self.server.lock();
+        let Some(server) = mutex.as_mut() else {
+            return;
+        };
+
+        // 1. process server messages
+        self.ui_app.process_messages(server);
+        // 2. process loading state
+        let in_loading = server.loading_state.in_loading;
+        if in_loading { // Keep the progress bar responsive.
+            ctx.request_repaint_after(Duration::from_millis(150));
+        }
+    }
 }
 
 // action triggers
@@ -129,54 +143,14 @@ impl EguiApp {
             let Some(dropped_file) = input.raw.dropped_files.first().cloned() else {
                 return;
             };
-            open_dropped_file(dropped_file, self.server.clone(), self.ui_app.clone());
+            crate::targets::open_dropped_file(dropped_file, self.server.clone(), self.ui_app.clone());
         })
-    }
-}
-
-fn open_dropped_file(
-    dropped_file: DroppedFileHandle,
-    server: ServerMut,
-    ui_app: AppContainer,
-) {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let path = dropped_file.path().to_path_buf();
-        AsmServer::smart_open(server, ReadAccess::from_path(&path), ui_app);
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        wasm_bindgen_futures::spawn_local(async move {
-            let name = dropped_file
-                .path()
-                .file_name()
-                .map(|name| name.to_string_lossy().into_owned())
-                .unwrap_or_else(|| "dropped-file".to_owned());
-            match dropped_file.bytes_async().await {
-                Ok(bytes) => AsmServer::smart_open(
-                    server,
-                    ReadAccess::from_raw(name, Arc::from(bytes.into_boxed_slice())),
-                    ui_app,
-                ),
-                Err(error) => log::error!("failed to read dropped file: {error}"),
-            }
-        });
     }
 }
 
 impl eframe::App for EguiApp {
     fn logic(&mut self, ctx: &Context, _frame: &mut Frame) {
-        let mut mutex = self.server.lock();
-        if let Some(server) = mutex.as_mut() {
-            self.ui_app.process_messages(server);
-            if server.loading_state.in_loading {
-                // Progress arrives from the APK loader's background task. Keep
-                // the progress bar responsive even when the window is idle.
-                ctx.request_repaint_after(Duration::from_millis(150));
-            }
-        }
-        drop(mutex);
+        self.handle_events(ctx);
     }
 
     fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {

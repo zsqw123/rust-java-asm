@@ -55,19 +55,18 @@ impl EguiApp {
         let edit_path_ui = Self::file_path_input_area(ui, &mut file_path);
 
         let popup_id = Id::new("file_path_popup");
-        let search_input_triggered = edit_path_ui.clicked()
-            || edit_path_ui.gained_focus()
-            || edit_path_ui.changed();
-        if search_input_triggered {
+        let search_input_opened = edit_path_ui.clicked() || edit_path_ui.gained_focus();
+        let search_input_changed = edit_path_ui.changed();
+        if search_input_changed {
             let server_locked = self.server.lock();
             let Some(server) = server_locked.deref() else { return; };
             server.search(&mut locked_top);
         }
+        let search_input_triggered = search_input_opened || search_input_changed;
 
-        let search_results = locked_top.search_result.clone();
+        if locked_top.search_result.items.is_empty() { return; }
         drop(locked_top);
 
-        if search_results.items.is_empty() { return; }
         Popup::from_response(&edit_path_ui)
             .id(popup_id)
             .layout(Layout::top_down_justified(Align::LEFT))
