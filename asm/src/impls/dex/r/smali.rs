@@ -6,7 +6,7 @@ use crate::dex::insn_syntax::*;
 use crate::dex::{ClassAccessFlags, ClassDef, CodeItem, DebugInfoItem, DexFileAccessor, EncodedAnnotation, EncodedAnnotationAttribute, EncodedArray, EncodedValue, FieldAccessFlags, InsnContainer, MethodAccessFlags, MethodHandle, MethodHandleType, NO_INDEX, U4};
 use crate::impls::dex::r::element::DebugInfoMap;
 use crate::impls::ToStringRef;
-use crate::smali::{stb, tokens_to_raw, Dex2Smali, SmaliNode};
+use crate::smali::{stb, tokens_to_display, Dex2Smali, SmaliNode};
 use crate::{raw_smali, AsmResult, ConstContainer, DescriptorRef, StrRef};
 use std::collections::HashMap;
 
@@ -38,7 +38,7 @@ impl InsnContainer {
             let local_var_info = debug_info.local_vars.move_to(offset as u32);
 
             for (src_line, src_file_name_idx) in line_info {
-                let mut stb = stb().raw(".source-line").other(src_line.to_ref());
+                let mut stb = stb().raw(".source-line").source_line(*src_line);
                 if let Some(src_file_name_idx) = src_file_name_idx.value() {
                     let src_file_name = accessor.opt_str(src_file_name_idx as usize);
                     stb = stb.l(src_file_name);
@@ -516,7 +516,7 @@ fn render_method_handle(accessor: &DexFileAccessor, method_handle_idx: u16) -> S
 
 fn render_method_handle_str(accessor: &DexFileAccessor, method_handle_idx: u16) -> StrRef {
     let tokens = render_method_handle(accessor, method_handle_idx).content;
-    tokens_to_raw(&tokens).to_ref()
+    tokens_to_display(&tokens).to_ref()
 }
 
 fn render_invoke_poly(accessor: &DexFileAccessor, f45cc: F45cc) -> SmaliNode {

@@ -1,6 +1,6 @@
 use crate::targets::{schedule_task, Instant};
 use crate::server::OpenFileError;
-use crate::ui::{AppContainer, DirInfo, Left, ToastKind};
+use crate::ui::{AppContainer, DirInfo, Left};
 use crate::{AccessorEnum, AccessorMut, AsmServer, ServerMut};
 use log::info;
 use std::ops::DerefMut;
@@ -49,7 +49,7 @@ impl AsmServer {
                         server_ref.loading_state.in_loading = false;
                         server_ref.loading_state.loading_message = "Load failed".to_owned();
                         server_ref.on_progress_update(&render_target);
-                        render_target.push_toast(ToastKind::Error, message);
+                        render_target.error_toast(message);
                     }
                 }
             }
@@ -85,11 +85,12 @@ impl AsmServer {
         let current_loading_state = &self.loading_state;
         let mut top = render_target.top().lock();
         let top_mut = top.deref_mut();
-        (*top_mut).loading_state = current_loading_state.clone();
+        top_mut.loading_state = current_loading_state.clone();
     }
 
     fn render_to_app(&self, app: AppContainer) {
         let classes = self.read_classes();
+        let classes = self.mapped_classes(&classes);
         let start = Instant::now();
         let dir_info = DirInfo::from_classes(&classes);
         info!("resolve dir info cost: {:?}", start.elapsed());

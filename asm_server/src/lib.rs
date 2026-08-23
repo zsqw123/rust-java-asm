@@ -7,6 +7,7 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 
 pub mod server;
+pub mod mapping;
 
 pub(crate) mod impls;
 pub(crate) mod targets;
@@ -25,6 +26,7 @@ pub struct AsmServer {
     pub accessor: AccessorMut,
     classes: ArcVarOpt<Vec<StrRef>>,
     fuzzy: ArcVarOpt<FuzzyMatchModel>,
+    mapping: ArcVarOpt<mapping::Mapping>,
 }
 
 pub type ArcVarOpt<T> = Arc<Mutex<Option<T>>>;

@@ -2,10 +2,11 @@ use eframe::epaint::Color32;
 use egui::text::{LayoutJob, TextFormat};
 use egui::containers::{Popup, PopupCloseBehavior, PopupKind};
 use egui::{Align, Button, FontId, Id, Key, Modifiers, Response, ScrollArea, SetOpenCommand, TextEdit, TextStyle, Ui, Vec2};
-use java_asm::smali::SmaliToken;
+use java_asm::smali::{MappedName, SmaliToken};
 use java_asm::StrRef;
 use java_asm_server::ui::{AppContainer, FindState, OpenFileMessage, SmaliLine, SmaliLineToken, UIMessage};
 use java_asm_server::AsmServer;
+use std::sync::Arc;
 
 pub fn smali_layout(
     ui: &mut Ui, server: &AsmServer, app: &AppContainer,
@@ -17,12 +18,12 @@ pub fn smali_layout(
     let Some(selected_tab) = content_locked.opened_tabs.get_mut(selected_tab_index) else { return; };
 
     let style = ui.style();
-    let font = TextStyle::Monospace.resolve(&style);
+    let font = TextStyle::Monospace.resolve(style);
     let dft_color = style.visuals.text_color();
     let dark_mode = style.visuals.dark_mode;
     let smali_style = if dark_mode { SmaliStyle::DARK } else { SmaliStyle::LIGHT };
 
-    let lines = selected_tab.rendered_lines.clone();
+    let lines = Arc::clone(&selected_tab.rendered_lines);
     let reveal_line = find_toolbar(
         ui, &mut selected_tab.find, selected_tab.file_key.as_ref(), &lines,
     );
@@ -44,7 +45,7 @@ pub fn smali_layout(
     }
 
     let mut render_context = RenderContext {
-        app: &app,
+        app,
         server,
         font: &font,
         lines: lines.as_ref(),
@@ -240,10 +241,11 @@ impl<'a> RenderContext<'a> {
             SmaliToken::RegisterRange(_, _) => {
                 self.styled_text(ui, line_index, rendered_token, self.smali_style.register)
             },
-            SmaliToken::MemberName(_) => {
-                self.styled_text(ui, line_index, rendered_token, dft_color)
+            SmaliToken::MemberName(name) => {
+                let text_ui = self.styled_text(ui, line_index, rendered_token, dft_color);
+                self.raw_name_popup(text_ui, name, "member_name_click_popup")
             },
-            SmaliToken::Descriptor(s) => {
+            SmaliToken::Descriptor(name) => {
                 let mut text_ui = self.styled_text(
                     ui, line_index, rendered_token, self.smali_style.desc,
                 );
@@ -252,7 +254,7 @@ impl<'a> RenderContext<'a> {
                 if !click_popup_open && !text_ui.clicked() {
                     text_ui = text_ui.on_hover_ui(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
-                        self.descriptor_menu(ui, s);
+                        self.descriptor_menu(ui, name);
                     });
                 }
                 Popup::from_response(&text_ui)
@@ -262,12 +264,22 @@ impl<'a> RenderContext<'a> {
                     .close_behavior(PopupCloseBehavior::CloseOnClickOutside)
                     .show(|ui| {
                         ui.style_mut().interaction.selectable_labels = true;
-                        self.descriptor_menu(ui, s);
+                        self.descriptor_menu(ui, name);
                     });
                 text_ui.context_menu(|ui| {
-                    self.descriptor_menu(ui, s);
+                    self.descriptor_menu(ui, name);
                 });
                 text_ui
+            },
+            SmaliToken::SourceLine { raw_line, display_line } => {
+                let text_ui = self.styled_text(
+                    ui, line_index, rendered_token, self.smali_style.literal,
+                );
+                if display_line != raw_line {
+                    text_ui.on_hover_text(format!("raw line: {raw_line}"))
+                } else {
+                    text_ui
+                }
             },
             SmaliToken::Literal(_) => {
                 self.styled_text(ui, line_index, rendered_token, self.smali_style.literal)
@@ -280,6 +292,32 @@ impl<'a> RenderContext<'a> {
         &self, ui: &mut Ui, line_index: usize, token: &SmaliLineToken, color: Color32,
     ) -> Response {
         ui.label(self.token_layout(line_index, token, color))
+    }
+
+    fn raw_name_popup(
+        &self, mut response: Response, name: &MappedName, popup_salt: &'static str,
+    ) -> Response {
+        if name.display_name == name.raw_name {
+            return response;
+        }
+        let popup_id = response.id.with(popup_salt);
+        let click_popup_open = Popup::is_id_open(&response.ctx, popup_id);
+        if !click_popup_open && !response.clicked() {
+            response = response.on_hover_ui(|ui| {
+                ui.style_mut().interaction.selectable_labels = true;
+                ui.label(format!("raw: {}", name.raw_name));
+            });
+        }
+        Popup::from_response(&response)
+            .id(popup_id)
+            .kind(PopupKind::Tooltip)
+            .open_memory(response.clicked().then_some(SetOpenCommand::Toggle))
+            .close_behavior(PopupCloseBehavior::CloseOnClickOutside)
+            .show(|ui| {
+                ui.style_mut().interaction.selectable_labels = true;
+                ui.label(format!("raw: {}", name.raw_name));
+            });
+        response
     }
 
     fn token_layout(
@@ -332,16 +370,17 @@ impl<'a> RenderContext<'a> {
     }
 
     fn descriptor_menu(
-        &mut self, ui: &mut Ui, descriptor: &str,
+        &mut self, ui: &mut Ui, descriptor: &MappedName,
     ) {
+        let display_descriptor = descriptor.display_name.as_ref();
         ui.vertical(|ui| {
-            if descriptor.starts_with('(') {
-                self.descriptor_menu_for_fn(ui, descriptor);
+            if display_descriptor.starts_with('(') {
+                self.descriptor_menu_for_fn(ui, display_descriptor);
             } else {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
                     ui.label("type: ");
-                    self.render_single_descriptor(ui, descriptor);
+                    self.render_single_descriptor(ui, display_descriptor);
                 });
             }
         });
@@ -415,19 +454,25 @@ impl<'a> RenderContext<'a> {
     fn render_single_descriptor(
         &mut self, ui: &mut Ui, descriptor: &str,
     ) {
-        let existed = self.server.find_class(descriptor);
+        let array_level = descriptor.chars().take_while(|ch| *ch == '[').count();
+        let class_descriptor = &descriptor[array_level..];
+        let existed = self.server.find_class(class_descriptor);
+        let raw_name = self.server.raw_class_name(class_descriptor);
         if !existed {
-            ui.label(format!("{descriptor}"));
+            ui.label(descriptor);
         } else {
             let link = ui.link(descriptor);
             if link.clicked() {
                 let file_open_message = UIMessage::OpenFile(
                     OpenFileMessage {
-                        path: descriptor.into(),
+                        path: class_descriptor.into(),
                     }
                 );
                 self.app.send_message(file_open_message);
             }
+        }
+        if let Some(raw_name) = raw_name.filter(|raw_name| raw_name.as_ref() != class_descriptor) {
+            ui.weak(format!(" (raw: {}{})", "[".repeat(array_level), raw_name));
         }
     }
 }

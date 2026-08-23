@@ -1,5 +1,5 @@
 use crate::impls::ToStringRef;
-use crate::smali::{tokens_to_raw, SmaliNode, SmaliToken};
+use crate::smali::{write_tokens_display, SmaliNode, SmaliToken};
 
 impl SmaliNode {
     pub(crate) fn render_internal(&self, ident_level: usize, result: &mut String) {
@@ -11,12 +11,12 @@ impl SmaliNode {
         }
         let tag = self.tag;
         if let Some(tag) = tag {
-            result.push_str(&tag.to_string());
+            result.push_str(tag);
             result.push(' ');
         }
         let content = &self.content;
         if !content.is_empty() {
-            result.push_str(&tokens_to_raw(content));
+            let _ = write_tokens_display(content, result);
             result.push(' ')
         }
 
@@ -30,7 +30,7 @@ impl SmaliNode {
         if let Some(postfix) = &self.end_tag {
             result.push('\n');
             result.push_str(&indent_str);
-            result.push_str(&postfix);
+            result.push_str(postfix);
         }
     }
 
@@ -64,7 +64,7 @@ fn render_to_lines(
         let child_lines = render_to_lines(child, ident_width + 2, max_offset_len);
         lines.extend(child_lines);
     }
-    if children.len() > 0 {
+    if !children.is_empty() {
         lines.push(vec![])
     }
     if let Some(postfix) = end_tag {

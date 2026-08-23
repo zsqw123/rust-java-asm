@@ -25,12 +25,17 @@ type IncrementalInfos = Vec<Option<SearchResult>>;
 // Java references copied from IDEs use dots, while internal class paths use slashes.
 // Whitespace is only a separator in copied references, not part of a class path.
 fn normalize_search_input(input: &str) -> StrRef {
-    input
+    let normalized: String = input
         .chars()
         .filter(|ch| !ch.is_whitespace())
         .map(|ch| if ch == '.' { '/' } else { ch })
-        .collect::<String>()
-        .into()
+        .collect();
+    // `nucleo-matcher` treats a trailing `$` as postfix syntax; class names use it literally.
+    let normalized = normalized
+        .strip_suffix('$')
+        .map(|prefix| format!("{prefix}\\$"))
+        .unwrap_or(normalized);
+    normalized.into()
 }
 
 impl FuzzyMatchModel {
@@ -337,6 +342,19 @@ mod tests {
     }
 
     #[test]
+    fn test_dollar_in_class_name_is_literal() {
+        let items = vec_str_ref![
+            "Lcom/example/R$WhenMappings;",
+            "Lcom/example/Regular;",
+        ];
+        let mut model = FuzzyMatchModel::new("".into(), &items, 10);
+
+        let result = model.search_with_new_input("R$".into());
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(result.items[0].content, "Lcom/example/R$WhenMappings;".into());
+    }
+
+    #[test]
     fn test_huge_input() {
         let sample_size = 100_000;
         let input: StrRef = "im2z".into();
@@ -377,4 +395,3 @@ mod tests {
         assert_eq!(result.items.len(), 10000);
     }
 }
-

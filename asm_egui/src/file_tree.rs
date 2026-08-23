@@ -3,12 +3,13 @@ use egui::text::LayoutJob;
 use egui::{ScrollArea, TextStyle};
 use java_asm::StrRef;
 use java_asm_server::ui::{AppContainer, FileEntry, FileInfo, OpenFileMessage, RawDirInfo, UIMessage};
+use std::sync::Arc;
 
 pub fn render_dir(ui: &mut egui::Ui, app: &mut EguiApp) {
     let server_app = &app.ui_app;
     let mut left = server_app.left().lock();
-    let offset_key = left.offset_key.clone();
-    let hint_key = left.hint_key.clone();
+    let offset_key = left.offset_key.as_ref().map(StrRef::clone);
+    let hint_key = left.hint_key.as_ref().map(StrRef::clone);
     left.offset_key = None; // set to none to avoid ui can't scrolling.
     let file_tree = &mut left.root_node.visible_items(offset_key);
     let required_file_index = file_tree.required_file_index;
@@ -60,7 +61,7 @@ fn render_file(
         if label.clicked() {
             let message = UIMessage::OpenFile(
                 OpenFileMessage {
-                    path: file_key.clone(),
+                    path: Arc::clone(file_key),
                 }
             );
             app.send_message(message);
@@ -90,7 +91,7 @@ fn render_dir_raw(
             } else {
                 // need to close all child dir
                 // so we passed a message to server
-                app_container.send_message(UIMessage::CloseDir(dir_info.dir_key.clone()))
+                app_container.send_message(UIMessage::CloseDir(Arc::clone(&dir_info.dir_key)))
             }
         }
     });

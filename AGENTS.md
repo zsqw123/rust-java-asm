@@ -26,7 +26,8 @@ The parser core deliberately avoids runtime parsing dependencies. Repetitive bin
   - `src/impls/`: internal read/write/transform implementations. Keep implementation details here unless they are intentionally public API.
   - `tests/`: sample-backed integration tests for JVMS, node conversion, and DEX.
 - `asm_macro/` (`java_asm_macro`): derives `ReadFrom`/`WriteInto` and constant-container helpers. Change this when binary-layout boilerplate should be generated consistently.
-- `asm_server/` (`java_asm_server`): APK loading, lazy content access, fuzzy search, async/native-WASM task abstraction, and frontend-independent UI state/messages.
+- `asm_server/` (`java_asm_server`): APK loading, lazy content access, R8/ProGuard mapping, fuzzy search, async/native-WASM task abstraction, and frontend-independent UI state/messages.
+  - `src/mapping.rs`: mapping parsing and presentation-time class/member/line lookup. Accessors continue to use raw bytecode names.
   - `src/targets/`: target-specific runtime adapters under the `native/` and `wasm/` directories. Keep target dispatch in `mod.rs`; shared APK indexing lives in `impls/apk_load.rs`.
 - `asm_cli/` (`java_asm_cli`): native Agent-facing CLI for finding classes with basic member structure, locating nested archive entries through `internal_path`, and exporting one or many classes as Smali. It does not create an `AppContainer` or provide MCP transport.
 - `asm_egui/` (`java_asm_egui`): current desktop/experimental WASM egui frontend. UI code should consume `asm_server` state instead of reimplementing parsing.
@@ -48,6 +49,7 @@ The parser core deliberately avoids runtime parsing dependencies. Repetitive bin
 6. Use `UIMessage` only when an action must cross into server-owned behavior. Do not introduce event queues, result containers, pending flags, synthetic IDs, or pass-through return values when the UI can derive the result from existing state.
 7. Keep durable facts as state and derive transient presentation from them. For example, render a toast from its stored kind, message, and creation time instead of mirroring it into separate frontend state.
 8. Put native/WASM differences behind `asm_server::targets`; keep shared APK indexing in `impls/apk_load.rs`. Browser code must use the public `java_asm_server` re-exports for `Instant`, `SystemTime`, and `Duration`, plus the existing scheduling helpers. Do not add direct `web-time` dependencies or target checks to parsing, state, or frontend code.
+9. Keep mapping as a server-owned presentation transform. `MappedName::raw_name` is the stable class/DEX lookup key, while `display_name` initially matches it and may be replaced by imported mapping data for Smali, search, tabs, and the file tree.
 
 ## Coding style observed in this repository
 
@@ -64,6 +66,7 @@ The parser core deliberately avoids runtime parsing dependencies. Repetitive bin
 - Early returns and `let Some(value) = ... else { return; };` are favored for guard clauses. Compact one-line guards already occur frequently; match the surrounding file instead of reformatting unrelated code.
 - Prefer iterator pipelines for transformations and straightforward loops when parsing bytes or mutating state.
 - Use `Arc` for genuinely shared immutable names/data and `parking_lot::Mutex` for shared application state; do not introduce shared ownership by default.
+- Clone `Arc`/`Rc` values and aliases explicitly with `Arc::clone(&value)`/`Rc::clone(&value)` so shared-reference cloning is distinguishable from cloning owned data.
 - Logging/timing is part of the debugging style: backend code uses `log::{info,error,...}` and integration tests use `println!` plus `Instant`.
 - Proc-macro failures may panic with actionable messages because they are compile-time author errors. Runtime parsers should return `AsmErr` instead.
 - Commit subjects are short, imperative, lower-case English phrases such as `add wasm support` or `support fuzzy search in egui`.

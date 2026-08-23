@@ -5,11 +5,11 @@ pub mod find;
 
 pub use find::{FindMatch, FindState};
 use crate::impls::fuzzy::SearchResult;
-use crate::ui::log::LogHolder;
 use crate::ui::AbsFile::{Dir, File};
+use crate::ui::log::LogHolder;
 use crate::{AsmServer, Instant, LoadingState};
-use java_asm::smali::{SmaliNode, SmaliToken};
 use java_asm::StrRef;
+use java_asm::smali::{MappedName, SmaliNode, SmaliToken};
 use ::log::Level;
 use parking_lot::Mutex;
 use std::collections::BTreeMap;
@@ -71,7 +71,15 @@ impl AppContainer {
 
     pub fn toasts(&self) -> &Arc<Mutex<Vec<Toast>>> { &self.0.toasts }
 
-    pub fn push_toast(&self, kind: ToastKind, message: impl Into<String>) {
+    pub fn success_toast(&self, message: impl Into<String>) {
+        self.push_toast(ToastKind::Success, message);
+    }
+
+    pub fn error_toast(&self, message: impl Into<String>) {
+        self.push_toast(ToastKind::Error, message);
+    }
+
+    fn push_toast(&self, kind: ToastKind, message: impl Into<String>) {
         let mut toasts = self.0.toasts.lock();
         const MAX_TOASTS: usize = 200;
         if toasts.len() == MAX_TOASTS {
@@ -112,7 +120,9 @@ pub struct Top {
 #[derive(Default, Clone, Debug)]
 pub struct Left {
     pub root_node: DirInfo,
+    // scroll the tree on its next render.
     pub offset_key: Option<StrRef>,
+    // persistently highlighted in the tree.
     pub hint_key: Option<StrRef>,
 }
 
@@ -150,30 +160,30 @@ pub struct DirInfo {
     pub files: FileMap,
 }
 
-fn visible_items<'a, 'b>(
+fn visible_items<'b>(
     // input
     dir_info: &'b mut DirInfo, offset_key: &Option<StrRef>,
     // output
-    container: &'a mut Vec<FileEntry<'b>>, offset: &mut usize,
+    container: &mut Vec<FileEntry<'b>>, offset: &mut usize,
 ) {
     let opened = dir_info.raw.opened;
     container.push(Dir(&mut dir_info.raw));
     if !opened { return; }
-    for (_, dir) in dir_info.dirs.iter_mut() {
+    for dir in dir_info.dirs.values_mut() {
         visible_items(dir, offset_key, container, offset);
     }
-    for (_, file) in dir_info.files.iter_mut() {
-        if let Some(file_key) = offset_key {
-            if *file_key == file.file_key {
-                *offset = container.len();
-            }
+    for file in dir_info.files.values_mut() {
+        if let Some(file_key) = offset_key
+            && *file_key == file.file_key
+        {
+            *offset = container.len();
         }
         container.push(File(file));
     }
 }
 
 impl DirInfo {
-    pub fn from_classes(class_names: &[StrRef]) -> Self {
+    pub fn from_classes(class_names: &[MappedName]) -> Self {
         let root_raw_dir = RawDirInfo {
             title: Arc::from("Root"),
             dir_key: Arc::from(""),
@@ -182,34 +192,34 @@ impl DirInfo {
         };
         let mut root_node = DirInfo { raw: root_raw_dir, ..Default::default() };
         for class_name in class_names {
-            root_node.put_entry_if_absent(class_name.clone());
+            root_node.put_entry_if_absent(class_name);
         }
         root_node
     }
 
     pub fn get_entry(&self, path: &str) -> Option<AbsFile<&FileInfo, &DirInfo>> {
-        let mut parts = Self::entry_parts(&path);
+        let mut parts = Self::entry_parts(path);
+        let mut current = self;
         while let Some((_, part)) = parts.next() {
-            let part = Arc::from(part);
-            let dir = self.dirs.get(&part);
-            if let Some(dir) = dir {
-                let next = parts.peek();
-                if next.is_none() { return next.map(|_| Dir(dir)); }
-                continue;
+            if parts.peek().is_none() {
+                if let Some(dir) = current.dirs.get(part) {
+                    return Some(Dir(dir));
+                }
+                return current.files.get(part).map(File);
             }
-            let file = self.files.get(&part);
-            return file.map(|file| File(file));
+            current = current.dirs.get(part)?;
         }
         None
     }
 
-    pub fn put_entry_if_absent(&mut self, path: StrRef) {
-        let mut parts = Self::entry_parts(&path);
+    pub fn put_entry_if_absent(&mut self, name: &MappedName) {
+        let display_path = Arc::clone(&name.display_name);
+        let mut parts = Self::entry_parts(&display_path);
         let mut current = self;
         while let Some((index, part)) = parts.next() {
             let index = index as u16;
             if parts.peek().is_none() {
-                let file_key = Arc::clone(&path);
+                let file_key = Arc::clone(&name.raw_name);
                 let file_name = Arc::from(part);
                 current.put_file_if_absent(index, file_key, file_name);
             } else {
@@ -233,23 +243,21 @@ impl DirInfo {
     }
 
     fn put_file_if_absent(&mut self, level: u16, file_key: StrRef, file_name: StrRef) -> &mut FileInfo {
-        let title = file_name.clone();
+        let title = Arc::clone(&file_name);
         self.files.entry(file_name).or_insert_with(|| {
-            FileInfo { title, level, file_key, ..Default::default() }
+            FileInfo { title, level, file_key }
         })
     }
 
     fn put_dir_if_absent(&mut self, level: u16, folder_name: StrRef) -> &mut DirInfo {
-        let title = folder_name.clone();
+        let title = Arc::clone(&folder_name);
         let parent_dir_key = &self.raw.dir_key;
-        let dir_key: StrRef;
-        if parent_dir_key.is_empty() {
-            // direct n
-            dir_key = folder_name.into();
+        let dir_key: StrRef = if parent_dir_key.is_empty() {
+            folder_name
         } else {
-            dir_key = format!("{}/{}", parent_dir_key, folder_name).into();
-        }
-        self.dirs.entry(title.clone()).or_insert_with(|| {
+            format!("{}/{}", parent_dir_key, folder_name).into()
+        };
+        self.dirs.entry(Arc::clone(&title)).or_insert_with(|| {
             let raw = RawDirInfo { title, level, dir_key, ..Default::default() };
             DirInfo { raw, ..Default::default() }
         })
@@ -276,7 +284,6 @@ pub struct Tab {
     pub file_key: StrRef,
     pub title: StrRef,
     pub rendered_lines: Arc<Vec<SmaliLine>>,
-    pub exported_content: Arc<str>,
     pub find: FindState,
     pub scroll_offset: f32,
 }
@@ -305,7 +312,7 @@ impl SmaliLine {
                 let tokens = tokens
                     .into_iter()
                     .map(|token| {
-                        let token_text = display_token_text(&token);
+                        let token_text = token.display_text();
                         let start_byte = text.len();
                         text.push_str(&token_text);
                         let end_byte = text.len();
@@ -320,22 +327,6 @@ impl SmaliLine {
                 Self { text, tokens }
             })
             .collect()
-    }
-}
-
-fn display_token_text(token: &SmaliToken) -> String {
-    match token {
-        SmaliToken::SourceInfo(source) => format!("#from: {source}"),
-        SmaliToken::Raw(raw) => raw.to_string(),
-        SmaliToken::Op(op) => op.to_string(),
-        SmaliToken::LineStartOffsetMarker { raw, .. } => raw.clone(),
-        SmaliToken::Offset { relative, absolute } => format!("@{absolute}({relative:+})"),
-        SmaliToken::Register(reg) => format!("v{reg}"),
-        SmaliToken::RegisterRange(start, end) => format!("v{start}..v{end}"),
-        SmaliToken::MemberName(name) => name.to_string(),
-        SmaliToken::Descriptor(descriptor) => descriptor.to_string(),
-        SmaliToken::Literal(literal) => literal.to_string(),
-        SmaliToken::Other(other) => other.to_string(),
     }
 }
 

@@ -1,5 +1,37 @@
 use crate::dex::DexFileAccessor;
 use crate::{ConstStr, StrRef};
+use std::fmt::{self, Display, Formatter};
+use std::sync::Arc;
+
+/// A bytecode name with separate storage and presentation forms.
+///
+/// - `raw_name` is stored in the class/DEX file and is used for lookup.
+/// - `display_name` is shown to users and initially equals `raw_name`.
+/// - Importing a mapping may replace `display_name` with its pre-obfuscation name.
+#[derive(Debug, Clone, Default, Hash, Eq, PartialEq)]
+pub struct MappedName {
+    pub raw_name: StrRef,
+    pub display_name: StrRef,
+}
+
+impl MappedName {
+    #[inline]
+    pub fn new(raw_name: StrRef) -> Self {
+        Self { display_name: Arc::clone(&raw_name), raw_name }
+    }
+}
+
+impl From<StrRef> for MappedName {
+    fn from(raw_name: StrRef) -> Self {
+        Self::new(raw_name)
+    }
+}
+
+impl Display for MappedName {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+        formatter.write_str(&self.display_name)
+    }
+}
 
 #[derive(Debug, Clone, Default, Hash, Eq, PartialEq)]
 pub struct SmaliNode {
@@ -32,8 +64,12 @@ pub enum SmaliToken {
     Register(u16),
     RegisterRange(u16, u16),
 
-    MemberName(StrRef),
-    Descriptor(StrRef),
+    MemberName(MappedName),
+    Descriptor(MappedName),
+    SourceLine {
+        raw_line: u32,
+        display_line: u32,
+    },
     Literal(StrRef),
 
     Other(StrRef),
@@ -44,11 +80,12 @@ pub fn stb() -> SmaliTokensBuilder {
     SmaliTokensBuilder::new()
 }
 
+#[derive(Default)]
 pub struct SmaliTokensBuilder(Vec<SmaliToken>);
 
 impl SmaliTokensBuilder {
     pub fn new() -> Self {
-        Self(Vec::new())
+        Self::default()
     }
 
     #[inline]
@@ -108,12 +145,17 @@ impl SmaliTokensBuilder {
 
     #[inline]
     pub fn mn(self, name: StrRef) -> Self {
-        self.push(SmaliToken::MemberName(name))
+        self.push(SmaliToken::MemberName(name.into()))
     }
     
     #[inline]
     pub fn d(self, desc: StrRef) -> Self {
-        self.push(SmaliToken::Descriptor(desc))
+        self.push(SmaliToken::Descriptor(desc.into()))
+    }
+
+    #[inline]
+    pub fn source_line(self, raw_line: u32) -> Self {
+        self.push(SmaliToken::SourceLine { raw_line, display_line: raw_line })
     }
 
     #[inline]
@@ -127,26 +169,46 @@ impl SmaliTokensBuilder {
     }
 }
 
-pub fn tokens_to_raw(tokens: &[SmaliToken]) -> String {
-    tokens.iter().map(|token| token.raw()).collect::<Vec<_>>().join(" ")
+pub fn write_tokens_display(
+    tokens: &[SmaliToken], output: &mut impl fmt::Write,
+) -> fmt::Result {
+    for (index, token) in tokens.iter().enumerate() {
+        if index > 0 {
+            output.write_char(' ')?;
+        }
+        write!(output, "{token}")?;
+    }
+    Ok(())
+}
+
+pub fn tokens_to_display(tokens: &[SmaliToken]) -> String {
+    let mut output = String::new();
+    let _ = write_tokens_display(tokens, &mut output);
+    output
 }
 
 impl SmaliToken {
-    pub fn raw(&self) -> String {
+    #[inline]
+    pub fn display_text(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl Display for SmaliToken {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::SourceInfo(source) => format!("# source: {source}"),
-            Self::Raw(tag) => tag.to_string(),
-            Self::Op(op) => op.to_string(),
-            Self::LineStartOffsetMarker { raw, .. } => raw.clone(),
+            Self::SourceInfo(source) => write!(formatter, "# source: {source}"),
+            Self::Raw(tag) => formatter.write_str(tag),
+            Self::Op(op) => formatter.write_str(op),
+            Self::LineStartOffsetMarker { raw, .. } => formatter.write_str(raw),
             Self::Offset { relative, absolute } => {
-                format!("@{absolute}({relative:+})")
+                write!(formatter, "@{absolute}({relative:+})")
             }
-            Self::Register(reg) => format!("v{reg}"),
-            Self::RegisterRange(start, end) => format!("v{start}..v{end}"),
-            Self::MemberName(name) => name.to_string(),
-            Self::Descriptor(desc) => desc.to_string(),
-            Self::Literal(lit) => lit.to_string(),
-            Self::Other(other) => other.to_string(),
+            Self::Register(reg) => write!(formatter, "v{reg}"),
+            Self::RegisterRange(start, end) => write!(formatter, "v{start}..v{end}"),
+            Self::MemberName(name) | Self::Descriptor(name) => Display::fmt(name, formatter),
+            Self::SourceLine { display_line, .. } => Display::fmt(display_line, formatter),
+            Self::Literal(lit) | Self::Other(lit) => formatter.write_str(lit),
         }
     }
 }
@@ -155,8 +217,8 @@ impl SmaliToken {
 #[macro_export]
 macro_rules! raw_smali {
     ($($arg:tt)*) => {
-        crate::smali::SmaliNode { content: vec![
-            crate::smali::SmaliToken::Other(format!($($arg)*).to_ref())
+        $crate::smali::SmaliNode { content: vec![
+            $crate::smali::SmaliToken::Other(format!($($arg)*).to_ref())
         ], ..Default::default() }
     }
 }
