@@ -46,13 +46,14 @@ fn cp_infos_from_context(context: &mut ReadContext, max_len: usize) -> AsmResult
     while max_len > 0 {
         let tag: u8 = context.read()?;
         let info: Const = Const::from_context(context, tag)?;
+        result.push(CPInfo { tag, info });
         match tag {
             Constants::CONSTANT_Long | Constants::CONSTANT_Double => {
+                result.push(CPInfo { tag: 0, info: Const::Invalid });
                 max_len -= 2;
             },
             _ => { max_len -= 1; }
         }
-        result.push(CPInfo { tag, info });
     };
     Ok(result)
 }
